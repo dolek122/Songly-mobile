@@ -27,6 +27,8 @@ import com.songly.android.feed.FeedScreen
 import com.songly.android.feed.FeedViewModel
 import com.songly.android.friends.FriendsScreen
 import com.songly.android.friends.FriendsViewModel
+import com.songly.android.nowplaying.NowPlayingScreen
+import com.songly.android.nowplaying.NowPlayingViewModel
 import com.songly.android.post.CreatePostScreen
 import com.songly.android.post.CreatePostViewModel
 import com.songly.android.profile.ProfileScreen
@@ -112,8 +114,21 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	var commentsPostId by remember { mutableStateOf<String?>(null) }
 	var showProfile by remember { mutableStateOf(false) }
 	var showFriends by remember { mutableStateOf(false) }
+	var showNowPlaying by remember { mutableStateOf(false) }
 
 	when {
+		showNowPlaying -> {
+			val nowPlayingViewModel: NowPlayingViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { NowPlayingViewModel(client) }
+				},
+			)
+			NowPlayingScreen(
+				viewModel = nowPlayingViewModel,
+				onBack = { showNowPlaying = false },
+			)
+		}
+
 		showProfile -> {
 			val profileViewModel: ProfileViewModel = viewModel(
 				factory = viewModelFactory {
@@ -180,6 +195,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onOpenComments = { commentsPostId = it },
 				onOpenProfile = { showProfile = true },
 				onOpenFriends = { showFriends = true },
+				onOpenNowPlaying = { showNowPlaying = true },
 			)
 		}
 	}

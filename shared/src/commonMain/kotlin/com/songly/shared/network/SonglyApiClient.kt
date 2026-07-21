@@ -4,8 +4,11 @@ import com.songly.shared.config.ApiConfig
 import com.songly.shared.model.ApiError
 import com.songly.shared.model.AuthTokens
 import com.songly.shared.model.Comment
+import com.songly.shared.model.ConnectResponse
 import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.CreatePostRequest
+import com.songly.shared.model.ManualNowPlayingRequest
+import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
@@ -198,6 +201,44 @@ class SonglyApiClient(
 	/** Usuwa znajomego. */
 	suspend fun removeFriend(userId: String) =
 		http.delete("$base/api/v1/friends/$userId").ensureSuccessOrThrow()
+
+	// --- Teraz słucham (moduł now-playing) ---
+
+	/**
+	 * Aktualny status „teraz słucham" zalogowanego użytkownika, albo `null` gdy nic
+	 * nie gra (backend zwraca wtedy 204 bez ciała).
+	 */
+	suspend fun nowPlaying(): NowPlayingStatus? {
+		val response = http.get("$base/api/v1/now-playing/me")
+		return when {
+			response.status.value == 204 -> null
+			response.status.isSuccess() -> response.body()
+			else -> throw response.toApiException()
+		}
+	}
+
+	/**
+	 * Rozpoczyna łączenie ze Spotify — zwraca URL autoryzacji do otwarcia w
+	 * przeglądarce. Po zgodzie Spotify przekierowuje na publiczny callback backendu,
+	 * który dokańcza połączenie; aplikacja po powrocie odświeża [nowPlaying].
+	 */
+	suspend fun connectSpotify(): String =
+		http.post("$base/api/v1/now-playing/spotify/connect").decodeOrThrow<ConnectResponse>().authorizeUrl
+
+	/** Odłącza konto Spotify. */
+	suspend fun disconnectSpotify() =
+		http.delete("$base/api/v1/now-playing/spotify").ensureSuccessOrThrow()
+
+	/** Ustawia ręczny status „teraz słucham" (uniwersalny fallback dla dowolnego serwisu). */
+	suspend fun setManualNowPlaying(title: String, artist: String?, album: String?, source: String?) =
+		http.put("$base/api/v1/now-playing/manual") {
+			contentType(ContentType.Application.Json)
+			setBody(ManualNowPlayingRequest(title, artist, album, source))
+		}.ensureSuccessOrThrow()
+
+	/** Czyści ręczny status. */
+	suspend fun clearManualNowPlaying() =
+		http.delete("$base/api/v1/now-playing/manual").ensureSuccessOrThrow()
 
 	fun close() = http.close()
 
