@@ -9,59 +9,89 @@ import com.songly.shared.model.Post
 import com.songly.shared.model.RefreshRequest
 import com.songly.shared.model.RegisterRequest
 import com.songly.shared.model.SonglyApiException
+import com.songly.shared.session.InMemoryTokenStorage
+import com.songly.shared.session.TokenStorage
 import io.ktor.client.call.body
+import io.ktor.client.plugins.auth.authProvider
+import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 
 /**
- * Jedyny punkt styku mobilki z REST API Songly. Trzyma warstwę sieciową w
- * `shared` (KMP, §14 blueprintu backendu), żeby Android i iOS dzieliły dokładnie
- * tę samą logikę wywołań i mapowania błędów. UI dostaje gotowe modele albo
- * [SonglyApiException] w spójnym formacie [ApiError].
+ * Jedyny punkt styku mobilki z REST API Songly. Trzyma warstwę sieciową i sesji
+ * w `shared` (KMP, §14 blueprintu backendu), żeby Android i iOS dzieliły dokładnie
+ * tę samą logikę wywołań, mapowania błędów i odświeżania tokenów.
  *
- * Ten klient jest bezstanowy w kwestii tokenów — przechowywaniem i odświeżaniem
- * access/refresh tokenów zajmie się osobna warstwa (repozytorium sesji), którą
- * dołożymy przy pierwszym ekranie logowania.
+ * Sesja: po [register]/[login] tokeny lądują w [storage]; przy każdym żądaniu
+ * uwierzytelnionym access token dokłada wtyczka Auth, a po 401 sama odświeża go
+ * refresh tokenem (patrz [createHttpClient]). UI nie dotyka tokenów — woła metody
+ * domenowe i ewentualnie łapie [SonglyApiException].
  */
-class SonglyApiClient(private val config: ApiConfig) {
+class SonglyApiClient(
+	config: ApiConfig,
+	private val storage: TokenStorage = InMemoryTokenStorage(),
+) {
 
-	private val http = createHttpClient(config)
+	private val http = createHttpClient(config, storage)
 	private val base = config.baseUrl.trimEnd('/')
+
+	/** Czy istnieje zapisana sesja (są tokeny). Nie gwarantuje ich ważności. */
+	suspend fun isLoggedIn(): Boolean = storage.getTokens() != null
 
 	suspend fun register(email: String, password: String): AuthTokens =
 		http.post("$base/api/v1/auth/register") {
 			contentType(ContentType.Application.Json)
 			setBody(RegisterRequest(email, password))
-		}.decodeOrThrow()
+		}.decodeOrThrow<AuthTokens>().also { startSession(it) }
 
 	suspend fun login(email: String, password: String): AuthTokens =
 		http.post("$base/api/v1/auth/login") {
 			contentType(ContentType.Application.Json)
 			setBody(LoginRequest(email, password))
-		}.decodeOrThrow()
+		}.decodeOrThrow<AuthTokens>().also { startSession(it) }
 
-	suspend fun refresh(refreshToken: String): AuthTokens =
-		http.post("$base/api/v1/auth/refresh") {
-			contentType(ContentType.Application.Json)
-			setBody(RefreshRequest(refreshToken))
-		}.decodeOrThrow()
+	/**
+	 * Kończy sesję: unieważnia refresh token na serwerze (best-effort) i czyści
+	 * lokalny stan. Nawet gdy żądanie do serwera padnie, lokalnie wylogowujemy.
+	 */
+	suspend fun logout() {
+		val refreshToken = storage.getTokens()?.refreshToken
+		if (refreshToken != null) {
+			runCatching {
+				http.post("$base/api/v1/auth/logout") {
+					contentType(ContentType.Application.Json)
+					setBody(RefreshRequest(refreshToken))
+				}
+			}
+		}
+		endSession()
+	}
 
-	suspend fun feed(accessToken: String, page: Int = 0, size: Int = 20): Page<Post> =
+	suspend fun feed(page: Int = 0, size: Int = 20): Page<Post> =
 		http.get("$base/api/v1/feed") {
-			header(HttpHeaders.Authorization, "Bearer $accessToken")
 			parameter("page", page)
 			parameter("size", size)
 		}.decodeOrThrow()
 
 	fun close() = http.close()
+
+	private suspend fun startSession(tokens: AuthTokens) {
+		storage.saveTokens(tokens)
+		// Wymuś ponowne wczytanie tokenów przez wtyczkę Auth — inaczej trzymałaby
+		// w cache poprzedni (albo brak) token z czasu sprzed logowania.
+		http.authProvider<BearerAuthProvider>()?.clearToken()
+	}
+
+	private suspend fun endSession() {
+		storage.clear()
+		http.authProvider<BearerAuthProvider>()?.clearToken()
+	}
 
 	private suspend inline fun <reified T> HttpResponse.decodeOrThrow(): T {
 		if (status.isSuccess()) {

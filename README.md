@@ -31,6 +31,18 @@ przy zmianie API po stronie serwera zaktualizuj modele tutaj. Format błędów j
 spójny (`ApiError`: `code`, `message`, `timestamp`, `path`), więc obsługa błędów
 opiera się na jednym parserze.
 
+## Sesja i tokeny
+
+`SonglyApiClient` (w `shared`) obsługuje pełną sesję:
+- `register` / `login` zapisują access + refresh token do `TokenStorage`,
+- każde żądanie uwierzytelnione dostaje access token automatycznie (wtyczka Ktor Auth),
+- po odpowiedzi `401` klient sam woła `/auth/refresh` refresh tokenem, zapisuje nowe
+  tokeny i ponawia oryginalne żądanie — kod ekranów nie dotyka tokenów,
+- `logout` unieważnia refresh token na serwerze i czyści lokalny stan.
+
+> **Świadomy skrót:** domyślny `InMemoryTokenStorage` gubi sesję po restarcie aplikacji.
+> Przed pierwszym realnym wydaniem podłącz magazyn platformowy (Android: EncryptedSharedPreferences/Keystore, iOS: Keychain) — `TokenStorage` to interfejs właśnie po to.
+
 ## Uruchomienie
 
 **Wymagania:** JDK 17+, Android Studio (z wtyczką KMP), Xcode (dla iOS, tylko na macOS).
