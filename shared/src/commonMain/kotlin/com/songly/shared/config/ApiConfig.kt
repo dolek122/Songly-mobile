@@ -24,10 +24,10 @@ data class ApiConfig(
 			enableNetworkLogging = true,
 		)
 
-		// TODO: uzupełnić realnym URL-em stagingu z dashboardu Render,
-		//  gdy zostanie potwierdzony (zgadnięty adres okazał się cudzą usługą).
+		// Staging na Render (free tier — usypia po ~15 min bezczynności, pierwszy
+		// request po przebudzeniu trwa ~30–60 s; potwierdzony 2026-07-21).
 		val STAGING = ApiConfig(
-			baseUrl = "https://REPLACE-ME.onrender.com",
+			baseUrl = "https://songly-backend-q7zm.onrender.com",
 			enableNetworkLogging = true,
 		)
 	}

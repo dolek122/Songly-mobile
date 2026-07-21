@@ -51,5 +51,5 @@ opiera się na jednym parserze.
 ## Konfiguracja środowiska
 
 `ApiConfig` (w `shared`) trzyma URL backendu per środowisko: `LOCAL_ANDROID_EMULATOR`,
-`LOCAL_HOST`, `STAGING`. **URL stagingu wymaga uzupełnienia** — do potwierdzenia z
-dashboardu Render (zgadnięty adres okazał się cudzą usługą).
+`LOCAL_HOST`, `STAGING`. Staging działa pod `https://songly-backend-q7zm.onrender.com`
+(Render free tier — usypia po ~15 min, pierwszy request po przebudzeniu trwa ~30–60 s).
