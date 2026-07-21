@@ -19,6 +19,8 @@ import com.songly.android.auth.LoginScreen
 import com.songly.android.auth.LoginViewModel
 import com.songly.android.feed.FeedScreen
 import com.songly.android.feed.FeedViewModel
+import com.songly.android.post.CreatePostScreen
+import com.songly.android.post.CreatePostViewModel
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.network.SonglyApiClient
 
@@ -58,17 +60,7 @@ private fun AppRoot(client: SonglyApiClient) {
 	var loggedIn by remember { mutableStateOf(false) }
 
 	if (loggedIn) {
-		val feedViewModel: FeedViewModel = viewModel(
-			factory = viewModelFactory {
-				initializer { FeedViewModel(client) }
-			},
-		)
-		FeedScreen(
-			viewModel = feedViewModel,
-			client = client,
-			onLoggedOut = { loggedIn = false },
-			onSessionExpired = { loggedIn = false },
-		)
+		LoggedInNav(client = client, onLoggedOut = { loggedIn = false })
 	} else {
 		val loginViewModel: LoginViewModel = viewModel(
 			factory = viewModelFactory {
@@ -76,5 +68,44 @@ private fun AppRoot(client: SonglyApiClient) {
 			},
 		)
 		LoginScreen(viewModel = loginViewModel, onLoggedIn = { loggedIn = true })
+	}
+}
+
+/**
+ * Nawigacja w obrębie zalogowanej sesji: feed ↔ tworzenie posta. [feedViewModel]
+ * jest tu (a nie w gałęzi feedu), żeby po dodaniu posta odświeżyć feed tą samą
+ * instancją. Prosty stan zamiast Navigation-Compose — wystarcza na dwa ekrany.
+ */
+@Composable
+private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
+	val feedViewModel: FeedViewModel = viewModel(
+		factory = viewModelFactory {
+			initializer { FeedViewModel(client) }
+		},
+	)
+	var creatingPost by remember { mutableStateOf(false) }
+
+	if (creatingPost) {
+		val createPostViewModel: CreatePostViewModel = viewModel(
+			factory = viewModelFactory {
+				initializer { CreatePostViewModel(client) }
+			},
+		)
+		CreatePostScreen(
+			viewModel = createPostViewModel,
+			onCancel = { creatingPost = false },
+			onCreated = {
+				creatingPost = false
+				feedViewModel.load()
+			},
+		)
+	} else {
+		FeedScreen(
+			viewModel = feedViewModel,
+			client = client,
+			onLoggedOut = onLoggedOut,
+			onSessionExpired = onLoggedOut,
+			onCreatePost = { creatingPost = true },
+		)
 	}
 }

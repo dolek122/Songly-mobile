@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Card
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,6 +42,7 @@ fun FeedScreen(
 	client: SonglyApiClient,
 	onLoggedOut: () -> Unit,
 	onSessionExpired: () -> Unit,
+	onCreatePost: () -> Unit,
 ) {
 	val state = viewModel.uiState
 	val scope = rememberCoroutineScope()
@@ -70,6 +72,11 @@ fun FeedScreen(
 					}
 				},
 			)
+		},
+		floatingActionButton = {
+			FloatingActionButton(onClick = onCreatePost) {
+				Text(text = "+", style = MaterialTheme.typography.headlineMedium)
+			}
 		},
 	) { padding ->
 		Box(modifier = Modifier.fillMaxSize().padding(padding)) {

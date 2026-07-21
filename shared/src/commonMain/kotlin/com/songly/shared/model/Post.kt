@@ -2,6 +2,10 @@ package com.songly.shared.model
 
 import kotlinx.serialization.Serializable
 
+/** Żądanie utworzenia posta (backend: content.dto.CreatePostRequest, treść max 1000 znaków). */
+@Serializable
+data class CreatePostRequest(val content: String)
+
 /** Post z feedu (backend: content.dto.PostResponse). */
 @Serializable
 data class Post(

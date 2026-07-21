@@ -3,6 +3,7 @@ package com.songly.shared.network
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.model.ApiError
 import com.songly.shared.model.AuthTokens
+import com.songly.shared.model.CreatePostRequest
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.Page
 import com.songly.shared.model.Post
@@ -77,6 +78,13 @@ class SonglyApiClient(
 		http.get("$base/api/v1/feed") {
 			parameter("page", page)
 			parameter("size", size)
+		}.decodeOrThrow()
+
+	/** Tworzy nowy post autorstwa zalogowanego użytkownika. */
+	suspend fun createPost(content: String): Post =
+		http.post("$base/api/v1/posts") {
+			contentType(ContentType.Application.Json)
+			setBody(CreatePostRequest(content))
 		}.decodeOrThrow()
 
 	fun close() = http.close()
