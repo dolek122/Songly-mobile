@@ -17,6 +17,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.songly.android.auth.LoginScreen
 import com.songly.android.auth.LoginViewModel
+import com.songly.android.comments.CommentsScreen
+import com.songly.android.comments.CommentsViewModel
 import com.songly.android.feed.FeedScreen
 import com.songly.android.feed.FeedViewModel
 import com.songly.android.post.CreatePostScreen
@@ -84,28 +86,50 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 		},
 	)
 	var creatingPost by remember { mutableStateOf(false) }
+	var commentsPostId by remember { mutableStateOf<String?>(null) }
 
-	if (creatingPost) {
-		val createPostViewModel: CreatePostViewModel = viewModel(
-			factory = viewModelFactory {
-				initializer { CreatePostViewModel(client) }
-			},
-		)
-		CreatePostScreen(
-			viewModel = createPostViewModel,
-			onCancel = { creatingPost = false },
-			onCreated = {
-				creatingPost = false
-				feedViewModel.refresh()
-			},
-		)
-	} else {
-		FeedScreen(
-			viewModel = feedViewModel,
-			client = client,
-			onLoggedOut = onLoggedOut,
-			onSessionExpired = onLoggedOut,
-			onCreatePost = { creatingPost = true },
-		)
+	when {
+		creatingPost -> {
+			val createPostViewModel: CreatePostViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { CreatePostViewModel(client) }
+				},
+			)
+			CreatePostScreen(
+				viewModel = createPostViewModel,
+				onCancel = { creatingPost = false },
+				onCreated = {
+					creatingPost = false
+					feedViewModel.refresh()
+				},
+			)
+		}
+
+		commentsPostId != null -> {
+			val postId = commentsPostId!!
+			// Klucz per post — inaczej viewModel() oddałby komentarze innego posta.
+			val commentsViewModel: CommentsViewModel = viewModel(
+				key = "comments-$postId",
+				factory = viewModelFactory {
+					initializer { CommentsViewModel(client, postId) }
+				},
+			)
+			CommentsScreen(
+				viewModel = commentsViewModel,
+				onBack = { commentsPostId = null },
+				onCommentAdded = { feedViewModel.incrementCommentCount(postId) },
+			)
+		}
+
+		else -> {
+			FeedScreen(
+				viewModel = feedViewModel,
+				client = client,
+				onLoggedOut = onLoggedOut,
+				onSessionExpired = onLoggedOut,
+				onCreatePost = { creatingPost = true },
+				onOpenComments = { commentsPostId = it },
+			)
+		}
 	}
 }

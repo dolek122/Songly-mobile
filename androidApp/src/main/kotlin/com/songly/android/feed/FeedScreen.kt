@@ -1,8 +1,10 @@
 package com.songly.android.feed
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,6 +50,7 @@ fun FeedScreen(
 	onLoggedOut: () -> Unit,
 	onSessionExpired: () -> Unit,
 	onCreatePost: () -> Unit,
+	onOpenComments: (String) -> Unit,
 ) {
 	val state = viewModel.uiState
 	val scope = rememberCoroutineScope()
@@ -121,7 +124,11 @@ fun FeedScreen(
 						modifier = Modifier.fillMaxSize(),
 					) {
 						items(state.posts, key = { it.id }) { post ->
-							PostCard(post)
+							PostCard(
+								post = post,
+								onToggleLike = { viewModel.toggleLike(post) },
+								onOpenComments = { onOpenComments(post.id) },
+							)
 						}
 						if (state.isLoadingMore || state.appendErrorMessage != null) {
 							item(key = "footer") {
@@ -153,7 +160,11 @@ private fun FeedFooter(isLoading: Boolean, errorMessage: String?, onRetry: () ->
 }
 
 @Composable
-private fun PostCard(post: Post) {
+private fun PostCard(
+	post: Post,
+	onToggleLike: () -> Unit,
+	onOpenComments: () -> Unit,
+) {
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(16.dp)) {
 			Text(
@@ -166,12 +177,31 @@ private fun PostCard(post: Post) {
 				style = MaterialTheme.typography.bodyMedium,
 				modifier = Modifier.padding(top = 6.dp),
 			)
-			Text(
-				text = "♥ ${post.likeCount}   💬 ${post.commentCount}   ↗ ${post.shareCount}",
-				style = MaterialTheme.typography.labelMedium,
-				color = MaterialTheme.colorScheme.onSurfaceVariant,
+			Row(
+				horizontalArrangement = Arrangement.spacedBy(20.dp),
+				verticalAlignment = Alignment.CenterVertically,
 				modifier = Modifier.padding(top = 10.dp),
-			)
+			) {
+				// Lajk — klikalny, podświetlony gdy polubiony.
+				Text(
+					text = "${if (post.likedByMe) "♥" else "♡"} ${post.likeCount}",
+					style = MaterialTheme.typography.labelLarge,
+					color = if (post.likedByMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+					modifier = Modifier.clickable(onClick = onToggleLike),
+				)
+				// Komentarze — klikalne, otwierają ekran komentarzy.
+				Text(
+					text = "💬 ${post.commentCount}",
+					style = MaterialTheme.typography.labelLarge,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+					modifier = Modifier.clickable(onClick = onOpenComments),
+				)
+				Text(
+					text = "↗ ${post.shareCount}",
+					style = MaterialTheme.typography.labelLarge,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+				)
+			}
 		}
 	}
 }

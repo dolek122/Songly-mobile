@@ -3,6 +3,8 @@ package com.songly.shared.network
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.model.ApiError
 import com.songly.shared.model.AuthTokens
+import com.songly.shared.model.Comment
+import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.CreatePostRequest
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.Page
@@ -15,9 +17,11 @@ import com.songly.shared.session.TokenStorage
 import io.ktor.client.call.body
 import io.ktor.client.plugins.auth.authProvider
 import io.ktor.client.plugins.auth.providers.BearerAuthProvider
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
@@ -87,6 +91,28 @@ class SonglyApiClient(
 			setBody(CreatePostRequest(content))
 		}.decodeOrThrow()
 
+	/** Polubienie posta (idempotentne po stronie serwera). */
+	suspend fun likePost(postId: String) =
+		http.put("$base/api/v1/posts/$postId/likes").ensureSuccessOrThrow()
+
+	/** Cofnięcie polubienia. */
+	suspend fun unlikePost(postId: String) =
+		http.delete("$base/api/v1/posts/$postId/likes").ensureSuccessOrThrow()
+
+	/** Komentarze posta, stronicowane. */
+	suspend fun comments(postId: String, page: Int = 0, size: Int = 50): Page<Comment> =
+		http.get("$base/api/v1/posts/$postId/comments") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/** Dodaje komentarz do posta i zwraca go. */
+	suspend fun addComment(postId: String, content: String): Comment =
+		http.post("$base/api/v1/posts/$postId/comments") {
+			contentType(ContentType.Application.Json)
+			setBody(CreateCommentRequest(content))
+		}.decodeOrThrow()
+
 	fun close() = http.close()
 
 	private suspend fun startSession(tokens: AuthTokens) {
@@ -105,8 +131,19 @@ class SonglyApiClient(
 		if (status.isSuccess()) {
 			return body()
 		}
+		throw toApiException()
+	}
+
+	/** Dla odpowiedzi bez ciała (204) — tylko weryfikuje status. */
+	private suspend fun HttpResponse.ensureSuccessOrThrow() {
+		if (!status.isSuccess()) {
+			throw toApiException()
+		}
+	}
+
+	private suspend fun HttpResponse.toApiException(): SonglyApiException {
 		val error = runCatching { body<ApiError>() }.getOrNull()
-		throw SonglyApiException(
+		return SonglyApiException(
 			status = status.value,
 			error = error,
 			message = error?.let { "${it.code}: ${it.message}" } ?: "HTTP ${status.value}",

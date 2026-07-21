@@ -65,6 +65,37 @@ class FeedViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loadPage(reset = false)
 	}
 
+	/**
+	 * Przełącza polubienie posta optymistycznie: najpierw aktualizuje UI, potem
+	 * woła serwer; przy błędzie cofa zmianę. Lajk „czuje się" natychmiastowy, a
+	 * spójność ze stanem serwera i tak wygrywa (rollback).
+	 */
+	fun toggleLike(post: Post) {
+		val liked = !post.likedByMe
+		updatePost(post.id) {
+			it.copy(likedByMe = liked, likeCount = it.likeCount + if (liked) 1 else -1)
+		}
+		viewModelScope.launch {
+			try {
+				if (liked) client.likePost(post.id) else client.unlikePost(post.id)
+			} catch (e: Exception) {
+				// Rollback do stanu sprzed kliknięcia.
+				updatePost(post.id) { it.copy(likedByMe = post.likedByMe, likeCount = post.likeCount) }
+			}
+		}
+	}
+
+	/** Podbija licznik komentarzy posta po dodaniu komentarza na ekranie komentarzy. */
+	fun incrementCommentCount(postId: String) {
+		updatePost(postId) { it.copy(commentCount = it.commentCount + 1) }
+	}
+
+	private fun updatePost(postId: String, transform: (Post) -> Post) {
+		uiState = uiState.copy(
+			posts = uiState.posts.map { if (it.id == postId) transform(it) else it },
+		)
+	}
+
 	private fun loadPage(reset: Boolean) {
 		loading = true
 		viewModelScope.launch {
