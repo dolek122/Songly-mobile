@@ -3,14 +3,18 @@ package com.songly.android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -25,6 +29,7 @@ import com.songly.android.post.CreatePostScreen
 import com.songly.android.post.CreatePostViewModel
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.session.AndroidKeystoreTokenStorage
 
 /**
  * Punkt wejścia aplikacji Androida. UI natywny (Jetpack Compose, §14); logika
@@ -37,7 +42,10 @@ import com.songly.shared.network.SonglyApiClient
 class MainActivity : ComponentActivity() {
 
 	private val apiClient: SonglyApiClient by lazy {
-		SonglyApiClient(ApiConfig.LOCAL_ANDROID_EMULATOR)
+		SonglyApiClient(
+			config = ApiConfig.LOCAL_ANDROID_EMULATOR,
+			storage = AndroidKeystoreTokenStorage(applicationContext),
+		)
 	}
 
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,17 +67,28 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppRoot(client: SonglyApiClient) {
-	var loggedIn by remember { mutableStateOf(false) }
+	// null = jeszcze sprawdzamy zapisaną sesję (Keystore, I/O poza głównym wątkiem).
+	var loggedIn by remember { mutableStateOf<Boolean?>(null) }
 
-	if (loggedIn) {
-		LoggedInNav(client = client, onLoggedOut = { loggedIn = false })
-	} else {
-		val loginViewModel: LoginViewModel = viewModel(
-			factory = viewModelFactory {
-				initializer { LoginViewModel(client) }
-			},
-		)
-		LoginScreen(viewModel = loginViewModel, onLoggedIn = { loggedIn = true })
+	LaunchedEffect(Unit) {
+		loggedIn = client.isLoggedIn()
+	}
+
+	when (loggedIn) {
+		null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+			CircularProgressIndicator()
+		}
+
+		true -> LoggedInNav(client = client, onLoggedOut = { loggedIn = false })
+
+		false -> {
+			val loginViewModel: LoginViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { LoginViewModel(client) }
+				},
+			)
+			LoginScreen(viewModel = loginViewModel, onLoggedIn = { loggedIn = true })
+		}
 	}
 }
 
