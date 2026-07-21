@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
@@ -84,13 +87,25 @@ fun FriendsScreen(
 						}
 					}
 
-					item(key = "add") {
-						AddFriendSection(
-							userId = state.addUserId,
-							canSend = state.canSend,
-							onChange = viewModel::onAddUserIdChange,
-							onSend = viewModel::sendRequest,
+					item(key = "search") {
+						SearchSection(
+							query = state.searchQuery,
+							isSearching = state.isSearching,
+							canSearch = state.canSearch,
+							onChange = viewModel::onSearchQueryChange,
+							onSearch = viewModel::search,
 						)
+					}
+					if (state.searchResults.isNotEmpty()) {
+						items(state.searchResults, key = { "sr-${it.userId}" }) { result ->
+							SearchResultRow(
+								name = result.displayName,
+								enabled = !state.isBusy,
+								onSend = { viewModel.sendRequestTo(result.userId) },
+							)
+						}
+					} else if (state.searched && !state.isSearching) {
+						item(key = "sr-empty") { EmptyHint("Brak użytkowników dla tej frazy.") }
 					}
 
 					item(key = "h-incoming") { SectionHeader("Zaproszenia otrzymane") }
@@ -139,24 +154,35 @@ fun FriendsScreen(
 }
 
 @Composable
-private fun AddFriendSection(
-	userId: String,
-	canSend: Boolean,
+private fun SearchSection(
+	query: String,
+	isSearching: Boolean,
+	canSearch: Boolean,
 	onChange: (String) -> Unit,
-	onSend: () -> Unit,
+	onSearch: () -> Unit,
 ) {
 	Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-		SectionHeader("Dodaj znajomego")
+		SectionHeader("Znajdź znajomych")
 		OutlinedTextField(
-			value = userId,
+			value = query,
 			onValueChange = onChange,
-			label = { Text("ID użytkownika") },
+			label = { Text("Szukaj po nazwie") },
 			singleLine = true,
+			enabled = !isSearching,
+			keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+			keyboardActions = KeyboardActions(onSearch = { onSearch() }),
 			modifier = Modifier.fillMaxWidth(),
 		)
-		Button(onClick = onSend, enabled = canSend, modifier = Modifier.align(Alignment.End)) {
-			Text("Wyślij zaproszenie")
+		Button(onClick = onSearch, enabled = canSearch, modifier = Modifier.align(Alignment.End)) {
+			Text(if (isSearching) "Szukanie…" else "Szukaj")
 		}
+	}
+}
+
+@Composable
+private fun SearchResultRow(name: String, enabled: Boolean, onSend: () -> Unit) {
+	PersonRow(name = name) {
+		Button(onClick = onSend, enabled = enabled) { Text("Zaproś") }
 	}
 }
 

@@ -8,22 +8,26 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
 import com.songly.shared.model.SonglyApiException
+import com.songly.shared.model.UserSearchResult
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
-/** Stan ekranu znajomych: lista znajomych + zaproszenia otrzymane i wysłane. */
+/** Stan ekranu znajomych: lista znajomych + zaproszenia otrzymane i wysłane + wyszukiwarka. */
 data class FriendsUiState(
 	val isLoading: Boolean = true,
 	val errorMessage: String? = null,
 	val friends: List<Friend> = emptyList(),
 	val incoming: List<FriendRequest> = emptyList(),
 	val outgoing: List<FriendRequest> = emptyList(),
-	val addUserId: String = "",
-	val isBusy: Boolean = false, // akcja w toku (blokuje przyciski)
+	val searchQuery: String = "",
+	val isSearching: Boolean = false,
+	val searchResults: List<UserSearchResult> = emptyList(),
+	val searched: Boolean = false, // czy było już wyszukiwanie (do rozróżnienia „brak wyników")
+	val isBusy: Boolean = false, // akcja mutująca w toku (blokuje przyciski)
 	val statusMessage: String? = null,
 ) {
-	val canSend: Boolean
-		get() = addUserId.isNotBlank() && !isBusy
+	val canSearch: Boolean
+		get() = searchQuery.isNotBlank() && !isSearching
 }
 
 /**
@@ -61,15 +65,35 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	fun onAddUserIdChange(value: String) {
-		uiState = uiState.copy(addUserId = value, statusMessage = null)
+	fun onSearchQueryChange(value: String) {
+		uiState = uiState.copy(searchQuery = value, statusMessage = null)
 	}
 
-	fun sendRequest() {
-		if (!uiState.canSend) return
+	/** Wyszukuje użytkowników po nazwie. Osobny stan [FriendsUiState.isSearching]. */
+	fun search() {
+		if (!uiState.canSearch) return
+		uiState = uiState.copy(isSearching = true, statusMessage = null)
+		viewModelScope.launch {
+			try {
+				val results = client.searchUsers(uiState.searchQuery.trim()).content
+				uiState = uiState.copy(isSearching = false, searchResults = results, searched = true)
+			} catch (e: SonglyApiException) {
+				uiState = uiState.copy(
+					isSearching = false,
+					statusMessage = e.error?.message ?: "Nie udało się wyszukać (HTTP ${e.status})",
+				)
+			} catch (e: Exception) {
+				uiState = uiState.copy(isSearching = false, statusMessage = "Brak połączenia z serwerem.")
+			}
+		}
+	}
+
+	/** Wysyła zaproszenie do wybranego z wyników wyszukiwania użytkownika. */
+	fun sendRequestTo(userId: String) {
 		runAction("Wysłano zaproszenie", "wysłać zaproszenia") {
-			client.sendFriendRequest(uiState.addUserId.trim())
-			uiState = uiState.copy(addUserId = "")
+			client.sendFriendRequest(userId)
+			// Usuń zaproszonego z wyników — od razu wędruje do „wysłanych".
+			uiState = uiState.copy(searchResults = uiState.searchResults.filterNot { it.userId == userId })
 		}
 	}
 

@@ -25,3 +25,11 @@ data class FriendRequest(
 /** Wysłanie zaproszenia (backend: social.dto.SendFriendRequestRequest). */
 @Serializable
 data class SendFriendRequestRequest(val addresseeId: String)
+
+/** Wynik wyszukiwania użytkownika (backend: profile.dto.UserSearchResponse). */
+@Serializable
+data class UserSearchResult(
+	val userId: String,
+	val displayName: String,
+	val avatarUrl: String? = null,
+)

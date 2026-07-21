@@ -22,6 +22,7 @@ import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.model.UpdateProfileRequest
+import com.songly.shared.model.UserSearchResult
 import com.songly.shared.session.InMemoryTokenStorage
 import com.songly.shared.session.TokenStorage
 import io.ktor.client.call.body
@@ -201,6 +202,14 @@ class SonglyApiClient(
 	/** Usuwa znajomego. */
 	suspend fun removeFriend(userId: String) =
 		http.delete("$base/api/v1/friends/$userId").ensureSuccessOrThrow()
+
+	/** Wyszukuje użytkowników po fragmencie nazwy (do dodawania znajomych). */
+	suspend fun searchUsers(query: String, page: Int = 0, size: Int = 20): Page<UserSearchResult> =
+		http.get("$base/api/v1/profiles/search") {
+			parameter("query", query)
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
 
 	// --- Teraz słucham (moduł now-playing) ---
 
