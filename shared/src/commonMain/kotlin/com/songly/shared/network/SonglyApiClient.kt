@@ -7,12 +7,15 @@ import com.songly.shared.model.Comment
 import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.CreatePostRequest
 import com.songly.shared.model.LoginRequest
+import com.songly.shared.model.Friend
+import com.songly.shared.model.FriendRequest
 import com.songly.shared.model.Genre
 import com.songly.shared.model.Page
 import com.songly.shared.model.Post
 import com.songly.shared.model.Profile
 import com.songly.shared.model.RefreshRequest
 import com.songly.shared.model.RegisterRequest
+import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.model.UpdateProfileRequest
@@ -155,6 +158,46 @@ class SonglyApiClient(
 			parameter("page", page)
 			parameter("size", size)
 		}.decodeOrThrow()
+
+	// --- Znajomi i zaproszenia (moduł social-graph) ---
+
+	/** Wysyła zaproszenie do znajomych do użytkownika o danym id. */
+	suspend fun sendFriendRequest(addresseeId: String): FriendRequest =
+		http.post("$base/api/v1/friends/requests") {
+			contentType(ContentType.Application.Json)
+			setBody(SendFriendRequestRequest(addresseeId))
+		}.decodeOrThrow()
+
+	/** Zaproszenia otrzymane (INCOMING) lub wysłane (OUTGOING). */
+	suspend fun friendRequests(direction: String, page: Int = 0, size: Int = 20): Page<FriendRequest> =
+		http.get("$base/api/v1/friends/requests") {
+			parameter("direction", direction)
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/** Akceptuje otrzymane zaproszenie. */
+	suspend fun acceptFriendRequest(requestId: String): FriendRequest =
+		http.post("$base/api/v1/friends/requests/$requestId/accept").decodeOrThrow()
+
+	/** Odrzuca otrzymane zaproszenie. */
+	suspend fun declineFriendRequest(requestId: String): FriendRequest =
+		http.post("$base/api/v1/friends/requests/$requestId/decline").decodeOrThrow()
+
+	/** Anuluje wysłane przez siebie zaproszenie. */
+	suspend fun cancelFriendRequest(requestId: String) =
+		http.delete("$base/api/v1/friends/requests/$requestId").ensureSuccessOrThrow()
+
+	/** Lista znajomych, stronicowana. */
+	suspend fun friends(page: Int = 0, size: Int = 20): Page<Friend> =
+		http.get("$base/api/v1/friends") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/** Usuwa znajomego. */
+	suspend fun removeFriend(userId: String) =
+		http.delete("$base/api/v1/friends/$userId").ensureSuccessOrThrow()
 
 	fun close() = http.close()
 

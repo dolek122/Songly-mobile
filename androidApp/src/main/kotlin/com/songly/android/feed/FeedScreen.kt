@@ -52,6 +52,7 @@ fun FeedScreen(
 	onCreatePost: () -> Unit,
 	onOpenComments: (String) -> Unit,
 	onOpenProfile: () -> Unit,
+	onOpenFriends: () -> Unit,
 ) {
 	val state = viewModel.uiState
 	val scope = rememberCoroutineScope()
@@ -86,6 +87,7 @@ fun FeedScreen(
 			TopAppBar(
 				title = { Text("Songly") },
 				actions = {
+					TextButton(onClick = onOpenFriends) { Text("Znajomi") }
 					TextButton(onClick = onOpenProfile) { Text("Profil") }
 					TextButton(onClick = {
 						scope.launch {
