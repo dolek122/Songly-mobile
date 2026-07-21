@@ -85,6 +85,21 @@ class FeedViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
+	/** Przełącza udostępnienie posta optymistycznie (analogicznie do [toggleLike]). */
+	fun toggleShare(post: Post) {
+		val shared = !post.sharedByMe
+		updatePost(post.id) {
+			it.copy(sharedByMe = shared, shareCount = it.shareCount + if (shared) 1 else -1)
+		}
+		viewModelScope.launch {
+			try {
+				if (shared) client.sharePost(post.id) else client.unsharePost(post.id)
+			} catch (e: Exception) {
+				updatePost(post.id) { it.copy(sharedByMe = post.sharedByMe, shareCount = post.shareCount) }
+			}
+		}
+	}
+
 	/** Podbija licznik komentarzy posta po dodaniu komentarza na ekranie komentarzy. */
 	fun incrementCommentCount(postId: String) {
 		updatePost(postId) { it.copy(commentCount = it.commentCount + 1) }

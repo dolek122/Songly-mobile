@@ -99,6 +99,14 @@ class SonglyApiClient(
 	suspend fun unlikePost(postId: String) =
 		http.delete("$base/api/v1/posts/$postId/likes").ensureSuccessOrThrow()
 
+	/** Udostępnienie posta (idempotentne po stronie serwera). */
+	suspend fun sharePost(postId: String) =
+		http.put("$base/api/v1/posts/$postId/shares").ensureSuccessOrThrow()
+
+	/** Cofnięcie udostępnienia. */
+	suspend fun unsharePost(postId: String) =
+		http.delete("$base/api/v1/posts/$postId/shares").ensureSuccessOrThrow()
+
 	/** Komentarze posta, stronicowane. */
 	suspend fun comments(postId: String, page: Int = 0, size: Int = 50): Page<Comment> =
 		http.get("$base/api/v1/posts/$postId/comments") {

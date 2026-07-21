@@ -128,6 +128,7 @@ fun FeedScreen(
 								post = post,
 								onToggleLike = { viewModel.toggleLike(post) },
 								onOpenComments = { onOpenComments(post.id) },
+								onToggleShare = { viewModel.toggleShare(post) },
 							)
 						}
 						if (state.isLoadingMore || state.appendErrorMessage != null) {
@@ -164,6 +165,7 @@ private fun PostCard(
 	post: Post,
 	onToggleLike: () -> Unit,
 	onOpenComments: () -> Unit,
+	onToggleShare: () -> Unit,
 ) {
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(16.dp)) {
@@ -196,10 +198,12 @@ private fun PostCard(
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 					modifier = Modifier.clickable(onClick = onOpenComments),
 				)
+				// Udostępnienie — klikalne, podświetlone gdy udostępnione.
 				Text(
 					text = "↗ ${post.shareCount}",
 					style = MaterialTheme.typography.labelLarge,
-					color = MaterialTheme.colorScheme.onSurfaceVariant,
+					color = if (post.sharedByMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+					modifier = Modifier.clickable(onClick = onToggleShare),
 				)
 			}
 		}
