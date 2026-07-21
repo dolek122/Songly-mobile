@@ -27,6 +27,8 @@ import com.songly.android.feed.FeedScreen
 import com.songly.android.feed.FeedViewModel
 import com.songly.android.post.CreatePostScreen
 import com.songly.android.post.CreatePostViewModel
+import com.songly.android.profile.ProfileScreen
+import com.songly.android.profile.ProfileViewModel
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.session.AndroidKeystoreTokenStorage
@@ -106,8 +108,21 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	)
 	var creatingPost by remember { mutableStateOf(false) }
 	var commentsPostId by remember { mutableStateOf<String?>(null) }
+	var showProfile by remember { mutableStateOf(false) }
 
 	when {
+		showProfile -> {
+			val profileViewModel: ProfileViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { ProfileViewModel(client) }
+				},
+			)
+			ProfileScreen(
+				viewModel = profileViewModel,
+				onBack = { showProfile = false },
+			)
+		}
+
 		creatingPost -> {
 			val createPostViewModel: CreatePostViewModel = viewModel(
 				factory = viewModelFactory {
@@ -148,6 +163,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onSessionExpired = onLoggedOut,
 				onCreatePost = { creatingPost = true },
 				onOpenComments = { commentsPostId = it },
+				onOpenProfile = { showProfile = true },
 			)
 		}
 	}

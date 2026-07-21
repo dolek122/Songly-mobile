@@ -7,11 +7,15 @@ import com.songly.shared.model.Comment
 import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.CreatePostRequest
 import com.songly.shared.model.LoginRequest
+import com.songly.shared.model.Genre
 import com.songly.shared.model.Page
 import com.songly.shared.model.Post
+import com.songly.shared.model.Profile
 import com.songly.shared.model.RefreshRequest
 import com.songly.shared.model.RegisterRequest
+import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.SonglyApiException
+import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.session.InMemoryTokenStorage
 import com.songly.shared.session.TokenStorage
 import io.ktor.client.call.body
@@ -119,6 +123,37 @@ class SonglyApiClient(
 		http.post("$base/api/v1/posts/$postId/comments") {
 			contentType(ContentType.Application.Json)
 			setBody(CreateCommentRequest(content))
+		}.decodeOrThrow()
+
+	// --- Profil i ulubione gatunki (moduł profile) ---
+
+	/** Profil zalogowanego użytkownika. */
+	suspend fun myProfile(): Profile =
+		http.get("$base/api/v1/profiles/me").decodeOrThrow()
+
+	/** Aktualizuje profil i zwraca zaktualizowaną wersję. */
+	suspend fun updateProfile(displayName: String, bio: String?, avatarUrl: String?): Profile =
+		http.put("$base/api/v1/profiles/me") {
+			contentType(ContentType.Application.Json)
+			setBody(UpdateProfileRequest(displayName, bio, avatarUrl))
+		}.decodeOrThrow()
+
+	/** Ulubione gatunki zalogowanego użytkownika. */
+	suspend fun myFavoriteGenres(): List<Genre> =
+		http.get("$base/api/v1/profiles/me/genres").decodeOrThrow()
+
+	/** Ustawia ulubione gatunki (backend wymaga zbioru niepustego). */
+	suspend fun setFavoriteGenres(genreIds: Set<String>) =
+		http.put("$base/api/v1/profiles/me/genres") {
+			contentType(ContentType.Application.Json)
+			setBody(SetFavoriteGenresRequest(genreIds))
+		}.ensureSuccessOrThrow()
+
+	/** Wszystkie dostępne gatunki, stronicowane. */
+	suspend fun genres(page: Int = 0, size: Int = 100): Page<Genre> =
+		http.get("$base/api/v1/genres") {
+			parameter("page", page)
+			parameter("size", size)
 		}.decodeOrThrow()
 
 	fun close() = http.close()

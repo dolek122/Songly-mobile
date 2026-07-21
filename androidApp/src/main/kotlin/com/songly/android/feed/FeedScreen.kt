@@ -51,6 +51,7 @@ fun FeedScreen(
 	onSessionExpired: () -> Unit,
 	onCreatePost: () -> Unit,
 	onOpenComments: (String) -> Unit,
+	onOpenProfile: () -> Unit,
 ) {
 	val state = viewModel.uiState
 	val scope = rememberCoroutineScope()
@@ -85,6 +86,7 @@ fun FeedScreen(
 			TopAppBar(
 				title = { Text("Songly") },
 				actions = {
+					TextButton(onClick = onOpenProfile) { Text("Profil") }
 					TextButton(onClick = {
 						scope.launch {
 							client.logout()
