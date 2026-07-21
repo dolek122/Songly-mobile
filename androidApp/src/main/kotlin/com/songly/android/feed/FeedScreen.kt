@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,6 +23,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,9 +36,9 @@ import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
 /**
- * Ekran feedu (Compose, natywny UI — §14). Stan pochodzi z [FeedViewModel];
- * dane z modułu `shared` (auto-refresh tokenów w tle). Gdy sesja wygaśnie
- * bezpowrotnie, wywołuje [onSessionExpired], żeby wrócić do logowania.
+ * Ekran feedu z paginacją (Compose, natywny UI — §14). Stan pochodzi z
+ * [FeedViewModel]; dane z modułu `shared` (auto-refresh tokenów w tle). Gdy sesja
+ * wygaśnie bezpowrotnie, wywołuje [onSessionExpired], żeby wrócić do logowania.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,15 +51,30 @@ fun FeedScreen(
 ) {
 	val state = viewModel.uiState
 	val scope = rememberCoroutineScope()
+	val listState = rememberLazyListState()
 
-	// Ładuj przy każdym wejściu na ekran (także po ponownym logowaniu — ViewModel
+	// Odśwież przy każdym wejściu na ekran (także po ponownym logowaniu — ViewModel
 	// bywa cache'owany na Activity, więc init{} by nie wystarczył).
 	LaunchedEffect(Unit) {
-		viewModel.load()
+		viewModel.refresh()
 	}
 
 	LaunchedEffect(state.sessionExpired) {
 		if (state.sessionExpired) onSessionExpired()
+	}
+
+	// Infinite scroll: gdy widoczny jest jeden z ostatnich elementów, doczytaj
+	// kolejną stronę. Warunki (koniec listy, trwające żądanie, błąd) pilnuje
+	// sam [FeedViewModel.loadNextPage].
+	val shouldLoadMore by remember {
+		derivedStateOf {
+			val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+			val total = listState.layoutInfo.totalItemsCount
+			total > 0 && lastVisible >= total - 3
+		}
+	}
+	LaunchedEffect(shouldLoadMore) {
+		if (shouldLoadMore) viewModel.loadNextPage()
 	}
 
 	Scaffold(
@@ -86,15 +106,16 @@ fun FeedScreen(
 				}
 
 				state.errorMessage != null -> {
-					ErrorState(message = state.errorMessage, onRetry = viewModel::load)
+					ErrorState(message = state.errorMessage, onRetry = viewModel::refresh)
 				}
 
 				state.isEmpty -> {
-					EmptyState(onRefresh = viewModel::load)
+					EmptyState(onRefresh = viewModel::refresh)
 				}
 
 				else -> {
 					LazyColumn(
+						state = listState,
 						contentPadding = PaddingValues(16.dp),
 						verticalArrangement = Arrangement.spacedBy(12.dp),
 						modifier = Modifier.fillMaxSize(),
@@ -102,8 +123,30 @@ fun FeedScreen(
 						items(state.posts, key = { it.id }) { post ->
 							PostCard(post)
 						}
+						if (state.isLoadingMore || state.appendErrorMessage != null) {
+							item(key = "footer") {
+								FeedFooter(
+									isLoading = state.isLoadingMore,
+									errorMessage = state.appendErrorMessage,
+									onRetry = viewModel::retryNextPage,
+								)
+							}
+						}
 					}
 				}
+			}
+		}
+	}
+}
+
+@Composable
+private fun FeedFooter(isLoading: Boolean, errorMessage: String?, onRetry: () -> Unit) {
+	Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+		when {
+			isLoading -> CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+			errorMessage != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+				Text(text = errorMessage, style = MaterialTheme.typography.bodySmall)
+				TextButton(onClick = onRetry) { Text("Ponów") }
 			}
 		}
 	}

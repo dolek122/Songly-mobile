@@ -96,7 +96,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			onCancel = { creatingPost = false },
 			onCreated = {
 				creatingPost = false
-				feedViewModel.load()
+				feedViewModel.refresh()
 			},
 		)
 	} else {

@@ -10,13 +10,17 @@ import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
-/** Stan ekranu feedu. */
+private const val PAGE_SIZE = 20
+
+/** Stan ekranu feedu z paginacją. */
 data class FeedUiState(
-	val isLoading: Boolean = false,
+	val isLoading: Boolean = false, // pierwsze wczytanie / odświeżenie (cała lista)
+	val isLoadingMore: Boolean = false, // doczytywanie kolejnej strony
 	val posts: List<Post> = emptyList(),
-	val errorMessage: String? = null,
+	val errorMessage: String? = null, // błąd pierwszego wczytania (pusta lista)
+	val appendErrorMessage: String? = null, // błąd doczytywania (lista zostaje)
+	val endReached: Boolean = false, // ostatnia strona wczytana
 	// Odświeżanie zwróciło 401 mimo auto-refreshu = refresh token też wygasł.
-	// UI powinno wrócić do logowania.
 	val sessionExpired: Boolean = false,
 ) {
 	val isEmpty: Boolean
@@ -24,37 +28,79 @@ data class FeedUiState(
 }
 
 /**
- * Logika ekranu feedu. Woła [SonglyApiClient.feed] z modułu `shared` — access
- * token i ewentualny refresh po 401 obsługuje warstwa sesji, więc tu tylko
- * mapujemy wynik na stan. 401, które przeszło mimo auto-refreshu, oznacza
- * wygasłą sesję: ustawiamy [FeedUiState.sessionExpired].
+ * Logika ekranu feedu z paginacją (infinite scroll). Woła [SonglyApiClient.feed]
+ * z modułu `shared` (access token i refresh po 401 obsługuje warstwa sesji).
+ *
+ * [refresh] ładuje od strony 0 (odświeżenie), [loadNextPage] dokłada kolejną.
+ * Flaga [loading] blokuje równoległe/zduplikowane żądania — infinite scroll
+ * potrafi wyzwolić doczytanie wielokrotnie zanim pierwsze wróci.
  */
 class FeedViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(FeedUiState(isLoading = true))
 		private set
 
-	fun load() {
-		uiState = uiState.copy(isLoading = true, errorMessage = null)
+	private var nextPage = 0
+	private var loading = false
+
+	/** Ładuje feed od początku (strona 0), zastępując dotychczasową listę. */
+	fun refresh() {
+		if (loading) return
+		nextPage = 0
+		uiState = uiState.copy(isLoading = true, errorMessage = null, appendErrorMessage = null, endReached = false)
+		loadPage(reset = true)
+	}
+
+	/** Dokłada kolejną stronę na koniec listy. Ignorowane, gdy nie ma czego/kiedy doczytywać. */
+	fun loadNextPage() {
+		if (loading || uiState.endReached || uiState.isLoading || uiState.appendErrorMessage != null) return
+		uiState = uiState.copy(isLoadingMore = true)
+		loadPage(reset = false)
+	}
+
+	/** Ponawia doczytywanie po błędzie strony (footer „Ponów"). */
+	fun retryNextPage() {
+		if (loading) return
+		uiState = uiState.copy(appendErrorMessage = null, isLoadingMore = true)
+		loadPage(reset = false)
+	}
+
+	private fun loadPage(reset: Boolean) {
+		loading = true
 		viewModelScope.launch {
 			try {
-				val page = client.feed(page = 0, size = 20)
-				uiState = uiState.copy(isLoading = false, posts = page.content)
-			} catch (e: SonglyApiException) {
-				if (e.status == 401) {
-					uiState = uiState.copy(isLoading = false, sessionExpired = true)
-				} else {
-					uiState = uiState.copy(
-						isLoading = false,
-						errorMessage = e.error?.message ?: "Nie udało się wczytać feedu (HTTP ${e.status})",
-					)
-				}
-			} catch (e: Exception) {
+				val page = client.feed(page = nextPage, size = PAGE_SIZE)
+				val merged = if (reset) page.content else uiState.posts + page.content
+				nextPage = page.number + 1
 				uiState = uiState.copy(
 					isLoading = false,
-					errorMessage = "Brak połączenia z serwerem. Spróbuj ponownie.",
+					isLoadingMore = false,
+					posts = merged,
+					endReached = page.last,
+					errorMessage = null,
+					appendErrorMessage = null,
 				)
+			} catch (e: SonglyApiException) {
+				if (e.status == 401) {
+					uiState = uiState.copy(isLoading = false, isLoadingMore = false, sessionExpired = true)
+				} else {
+					val message = e.error?.message ?: "Nie udało się wczytać feedu (HTTP ${e.status})"
+					uiState = failure(reset, message)
+				}
+			} catch (e: Exception) {
+				uiState = failure(reset, "Brak połączenia z serwerem. Spróbuj ponownie.")
+			} finally {
+				loading = false
 			}
 		}
 	}
+
+	// Błąd pierwszego wczytania czyści listę (errorMessage); błąd doczytywania
+	// zostawia dotychczasowe posty i pokazuje footer (appendErrorMessage).
+	private fun failure(reset: Boolean, message: String): FeedUiState =
+		if (reset) {
+			uiState.copy(isLoading = false, isLoadingMore = false, errorMessage = message)
+		} else {
+			uiState.copy(isLoading = false, isLoadingMore = false, appendErrorMessage = message)
+		}
 }
