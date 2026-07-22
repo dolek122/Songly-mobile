@@ -33,6 +33,8 @@ import com.songly.android.feed.FeedScreen
 import com.songly.android.feed.FeedViewModel
 import com.songly.android.friends.FriendsScreen
 import com.songly.android.friends.FriendsViewModel
+import com.songly.android.matches.MatchesScreen
+import com.songly.android.matches.MatchesViewModel
 import com.songly.android.notifications.NotificationsScreen
 import com.songly.android.notifications.NotificationsViewModel
 import com.songly.android.nowplaying.NowPlayingScreen
@@ -153,8 +155,21 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	var showNotifications by remember { mutableStateOf(false) }
 	var showCommunities by remember { mutableStateOf(false) }
 	var communityDetailId by remember { mutableStateOf<String?>(null) }
+	var showMatches by remember { mutableStateOf(false) }
 
 	when {
+		showMatches -> {
+			val matchesViewModel: MatchesViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { MatchesViewModel(client) }
+				},
+			)
+			MatchesScreen(
+				viewModel = matchesViewModel,
+				onBack = { showMatches = false },
+			)
+		}
+
 		communityDetailId != null -> {
 			val id = communityDetailId!!
 			// Klucz per społeczność — inaczej viewModel() oddałby dane innej.
@@ -278,6 +293,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onOpenNowPlaying = { showNowPlaying = true },
 				onOpenNotifications = { showNotifications = true },
 				onOpenCommunities = { showCommunities = true },
+				onOpenMatches = { showMatches = true },
 			)
 		}
 	}

@@ -15,6 +15,7 @@ import com.songly.shared.model.ManualNowPlayingRequest
 import com.songly.shared.model.Notification
 import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.model.LoginRequest
+import com.songly.shared.model.Match
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
 import com.songly.shared.model.Genre
@@ -327,6 +328,15 @@ class SonglyApiClient(
 	/** Członkowie społeczności, stronicowane. */
 	suspend fun communityMembers(communityId: String, page: Int = 0, size: Int = 20): Page<CommunityMember> =
 		http.get("$base/api/v1/communities/$communityId/members") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	// --- Dopasowywanie po gatunkach (moduł matching) ---
+
+	/** Ranking użytkowników o podobnym guście (Jaccard na gatunkach), malejąco po score. */
+	suspend fun matches(page: Int = 0, size: Int = 20): Page<Match> =
+		http.get("$base/api/v1/matches") {
 			parameter("page", page)
 			parameter("size", size)
 		}.decodeOrThrow()

@@ -63,6 +63,7 @@ fun FeedScreen(
 	onOpenNowPlaying: () -> Unit,
 	onOpenNotifications: () -> Unit,
 	onOpenCommunities: () -> Unit,
+	onOpenMatches: () -> Unit,
 ) {
 	val state = viewModel.uiState
 	val scope = rememberCoroutineScope()
@@ -134,6 +135,10 @@ fun FeedScreen(
 						DropdownMenuItem(
 							text = { Text("Społeczności") },
 							onClick = { menuOpen = false; onOpenCommunities() },
+						)
+						DropdownMenuItem(
+							text = { Text("Dopasowani") },
+							onClick = { menuOpen = false; onOpenMatches() },
 						)
 						DropdownMenuItem(
 							text = { Text("Profil") },
