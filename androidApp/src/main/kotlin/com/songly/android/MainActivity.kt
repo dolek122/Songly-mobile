@@ -25,6 +25,10 @@ import com.songly.android.auth.RegisterScreen
 import com.songly.android.auth.RegisterViewModel
 import com.songly.android.comments.CommentsScreen
 import com.songly.android.comments.CommentsViewModel
+import com.songly.android.communities.CommunitiesScreen
+import com.songly.android.communities.CommunitiesViewModel
+import com.songly.android.communities.CommunityDetailScreen
+import com.songly.android.communities.CommunityDetailViewModel
 import com.songly.android.feed.FeedScreen
 import com.songly.android.feed.FeedViewModel
 import com.songly.android.friends.FriendsScreen
@@ -147,8 +151,38 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	var showFriends by remember { mutableStateOf(false) }
 	var showNowPlaying by remember { mutableStateOf(false) }
 	var showNotifications by remember { mutableStateOf(false) }
+	var showCommunities by remember { mutableStateOf(false) }
+	var communityDetailId by remember { mutableStateOf<String?>(null) }
 
 	when {
+		communityDetailId != null -> {
+			val id = communityDetailId!!
+			// Klucz per społeczność — inaczej viewModel() oddałby dane innej.
+			val detailViewModel: CommunityDetailViewModel = viewModel(
+				key = "community-$id",
+				factory = viewModelFactory {
+					initializer { CommunityDetailViewModel(client, id) }
+				},
+			)
+			CommunityDetailScreen(
+				viewModel = detailViewModel,
+				onBack = { communityDetailId = null },
+			)
+		}
+
+		showCommunities -> {
+			val communitiesViewModel: CommunitiesViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { CommunitiesViewModel(client) }
+				},
+			)
+			CommunitiesScreen(
+				viewModel = communitiesViewModel,
+				onBack = { showCommunities = false },
+				onOpenCommunity = { communityDetailId = it },
+			)
+		}
+
 		showNotifications -> {
 			val notificationsViewModel: NotificationsViewModel = viewModel(
 				factory = viewModelFactory {
@@ -243,6 +277,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onOpenFriends = { showFriends = true },
 				onOpenNowPlaying = { showNowPlaying = true },
 				onOpenNotifications = { showNotifications = true },
+				onOpenCommunities = { showCommunities = true },
 			)
 		}
 	}

@@ -6,6 +6,9 @@ import com.songly.shared.model.AuthTokens
 import com.songly.shared.model.Comment
 import com.songly.shared.model.ConnectResponse
 import com.songly.shared.model.CreateCommentRequest
+import com.songly.shared.model.Community
+import com.songly.shared.model.CommunityMember
+import com.songly.shared.model.CreateCommunityRequest
 import com.songly.shared.model.CreatePostRequest
 import com.songly.shared.model.DeleteAccountRequest
 import com.songly.shared.model.ManualNowPlayingRequest
@@ -285,6 +288,48 @@ class SonglyApiClient(
 	/** Oznacza wszystkie powiadomienia jako przeczytane. */
 	suspend fun markAllNotificationsRead() =
 		http.post("$base/api/v1/notifications/read-all").ensureSuccessOrThrow()
+
+	// --- Społeczności (moduł community) ---
+
+	/** Wszystkie społeczności, stronicowane. [Community.myRole] mówi, czy jesteś członkiem. */
+	suspend fun communities(page: Int = 0, size: Int = 20): Page<Community> =
+		http.get("$base/api/v1/communities") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/** Społeczności, do których należy zalogowany użytkownik. */
+	suspend fun myCommunities(page: Int = 0, size: Int = 20): Page<Community> =
+		http.get("$base/api/v1/communities/mine") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/** Szczegóły jednej społeczności. */
+	suspend fun community(communityId: String): Community =
+		http.get("$base/api/v1/communities/$communityId").decodeOrThrow()
+
+	/** Tworzy nową społeczność (zakładający zostaje jej właścicielem). */
+	suspend fun createCommunity(name: String, description: String?): Community =
+		http.post("$base/api/v1/communities") {
+			contentType(ContentType.Application.Json)
+			setBody(CreateCommunityRequest(name, description))
+		}.decodeOrThrow()
+
+	/** Dołącza do społeczności (idempotentne po stronie serwera). */
+	suspend fun joinCommunity(communityId: String) =
+		http.put("$base/api/v1/communities/$communityId/membership").ensureSuccessOrThrow()
+
+	/** Opuszcza społeczność (właściciel nie może — serwer zwróci błąd). */
+	suspend fun leaveCommunity(communityId: String) =
+		http.delete("$base/api/v1/communities/$communityId/membership").ensureSuccessOrThrow()
+
+	/** Członkowie społeczności, stronicowane. */
+	suspend fun communityMembers(communityId: String, page: Int = 0, size: Int = 20): Page<CommunityMember> =
+		http.get("$base/api/v1/communities/$communityId/members") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
 
 	fun close() = http.close()
 
