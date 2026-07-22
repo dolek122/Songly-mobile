@@ -21,6 +21,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.songly.android.auth.LoginScreen
 import com.songly.android.auth.LoginViewModel
+import com.songly.android.auth.RegisterScreen
+import com.songly.android.auth.RegisterViewModel
 import com.songly.android.comments.CommentsScreen
 import com.songly.android.comments.CommentsViewModel
 import com.songly.android.feed.FeedScreen
@@ -89,14 +91,41 @@ private fun AppRoot(client: SonglyApiClient) {
 
 		true -> LoggedInNav(client = client, onLoggedOut = { loggedIn = false })
 
-		false -> {
-			val loginViewModel: LoginViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { LoginViewModel(client) }
-				},
-			)
-			LoginScreen(viewModel = loginViewModel, onLoggedIn = { loggedIn = true })
-		}
+		false -> AuthNav(client = client, onAuthenticated = { loggedIn = true })
+	}
+}
+
+/**
+ * Nawigacja przed zalogowaniem: logowanie ↔ rejestracja. Oba ekrany po sukcesie
+ * wywołują [onAuthenticated] (sesja jest już założona w `shared`). Prosty stan
+ * zamiast Navigation-Compose — wystarcza na dwa ekrany, jak w [LoggedInNav].
+ */
+@Composable
+private fun AuthNav(client: SonglyApiClient, onAuthenticated: () -> Unit) {
+	var registering by remember { mutableStateOf(false) }
+
+	if (registering) {
+		val registerViewModel: RegisterViewModel = viewModel(
+			factory = viewModelFactory {
+				initializer { RegisterViewModel(client) }
+			},
+		)
+		RegisterScreen(
+			viewModel = registerViewModel,
+			onRegistered = onAuthenticated,
+			onNavigateToLogin = { registering = false },
+		)
+	} else {
+		val loginViewModel: LoginViewModel = viewModel(
+			factory = viewModelFactory {
+				initializer { LoginViewModel(client) }
+			},
+		)
+		LoginScreen(
+			viewModel = loginViewModel,
+			onLoggedIn = onAuthenticated,
+			onNavigateToRegister = { registering = true },
+		)
 	}
 }
 
@@ -154,6 +183,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			ProfileScreen(
 				viewModel = profileViewModel,
 				onBack = { showProfile = false },
+				onAccountDeleted = { showProfile = false; onLoggedOut() },
 			)
 		}
 

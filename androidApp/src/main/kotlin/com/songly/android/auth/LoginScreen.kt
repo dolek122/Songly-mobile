@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 fun LoginScreen(
 	viewModel: LoginViewModel,
 	onLoggedIn: () -> Unit,
+	onNavigateToRegister: () -> Unit,
 ) {
 	val state = viewModel.uiState
 
@@ -101,6 +103,14 @@ fun LoginScreen(
 				)
 			}
 			Text(if (state.isSubmitting) "Logowanie…" else "Zaloguj się")
+		}
+
+		TextButton(
+			onClick = onNavigateToRegister,
+			enabled = !state.isSubmitting,
+			modifier = Modifier.padding(top = 8.dp),
+		) {
+			Text("Nie masz konta? Zarejestruj się")
 		}
 	}
 }

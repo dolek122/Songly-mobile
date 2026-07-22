@@ -7,6 +7,7 @@ import com.songly.shared.model.Comment
 import com.songly.shared.model.ConnectResponse
 import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.CreatePostRequest
+import com.songly.shared.model.DeleteAccountRequest
 import com.songly.shared.model.ManualNowPlayingRequest
 import com.songly.shared.model.Notification
 import com.songly.shared.model.NowPlayingStatus
@@ -88,6 +89,19 @@ class SonglyApiClient(
 				}
 			}
 		}
+		endSession()
+	}
+
+	/**
+	 * Trwale usuwa konto zalogowanego użytkownika (hard delete, RODO — Claude.md §9).
+	 * Wymaga ponownego podania hasła. Po sukcesie czyści lokalną sesję, więc UI wraca
+	 * do ekranu logowania. Błędne hasło zwraca [SonglyApiException] (serwer: 4xx).
+	 */
+	suspend fun deleteAccount(password: String) {
+		http.delete("$base/api/v1/auth/me") {
+			contentType(ContentType.Application.Json)
+			setBody(DeleteAccountRequest(password))
+		}.ensureSuccessOrThrow()
 		endSession()
 	}
 

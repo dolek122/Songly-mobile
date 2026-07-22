@@ -22,6 +22,12 @@ data class ProfileUiState(
 	val selectedGenreIds: Set<String> = emptySet(),
 	val isSavingGenres: Boolean = false,
 	val statusMessage: String? = null,
+	// Usuwanie konta (RODO, hard delete — wymaga potwierdzenia hasłem).
+	val showDeleteDialog: Boolean = false,
+	val deletePassword: String = "",
+	val isDeleting: Boolean = false,
+	val deleteError: String? = null,
+	val accountDeleted: Boolean = false,
 ) {
 	val canSaveProfile: Boolean
 		get() = displayName.isNotBlank() && !isSavingProfile
@@ -29,6 +35,9 @@ data class ProfileUiState(
 	// Backend wymaga zbioru niepustego (@NotEmpty).
 	val canSaveGenres: Boolean
 		get() = selectedGenreIds.isNotEmpty() && !isSavingGenres
+
+	val canConfirmDelete: Boolean
+		get() = deletePassword.isNotBlank() && !isDeleting
 }
 
 /**
@@ -112,6 +121,39 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 				uiState = uiState.copy(isSavingGenres = false, statusMessage = "Zapisano gatunki")
 			} catch (e: Exception) {
 				uiState = uiState.copy(isSavingGenres = false, statusMessage = errorText(e, "zapisać gatunków"))
+			}
+		}
+	}
+
+	// --- Usuwanie konta (RODO, Claude.md §9) ---
+
+	fun openDeleteDialog() {
+		uiState = uiState.copy(showDeleteDialog = true, deletePassword = "", deleteError = null)
+	}
+
+	fun dismissDeleteDialog() {
+		if (uiState.isDeleting) return // nie zamykaj w trakcie kasowania
+		uiState = uiState.copy(showDeleteDialog = false, deletePassword = "", deleteError = null)
+	}
+
+	fun onDeletePasswordChange(value: String) {
+		uiState = uiState.copy(deletePassword = value, deleteError = null)
+	}
+
+	/**
+	 * Trwale usuwa konto po potwierdzeniu hasłem. Sukces czyści sesję w `shared`
+	 * i ustawia [accountDeleted], co ekran przekłada na powrót do logowania. Błędne
+	 * hasło zostaje w dialogu jako [deleteError].
+	 */
+	fun confirmDelete() {
+		if (!uiState.canConfirmDelete) return
+		uiState = uiState.copy(isDeleting = true, deleteError = null)
+		viewModelScope.launch {
+			try {
+				client.deleteAccount(uiState.deletePassword)
+				uiState = uiState.copy(isDeleting = false, showDeleteDialog = false, accountDeleted = true)
+			} catch (e: Exception) {
+				uiState = uiState.copy(isDeleting = false, deleteError = errorText(e, "usunąć konta"))
 			}
 		}
 	}

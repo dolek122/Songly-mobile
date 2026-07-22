@@ -9,13 +9,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -25,6 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
 /**
@@ -37,11 +45,29 @@ import androidx.compose.ui.unit.dp
 fun ProfileScreen(
 	viewModel: ProfileViewModel,
 	onBack: () -> Unit,
+	onAccountDeleted: () -> Unit,
 ) {
 	val state = viewModel.uiState
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
+	}
+
+	// Po usunięciu konta sesja jest już wyczyszczona — wróć do ekranu logowania.
+	LaunchedEffect(state.accountDeleted) {
+		if (state.accountDeleted) onAccountDeleted()
+	}
+
+	if (state.showDeleteDialog) {
+		DeleteAccountDialog(
+			password = state.deletePassword,
+			isDeleting = state.isDeleting,
+			canConfirm = state.canConfirmDelete,
+			errorMessage = state.deleteError,
+			onPasswordChange = viewModel::onDeletePasswordChange,
+			onConfirm = viewModel::confirmDelete,
+			onDismiss = viewModel::dismissDeleteDialog,
+		)
 	}
 
 	Scaffold(
@@ -130,8 +156,88 @@ fun ProfileScreen(
 					) {
 						Text(if (state.isSavingGenres) "Zapisywanie…" else "Zapisz gatunki")
 					}
+
+					HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+					Text(
+						"Strefa niebezpieczna",
+						style = MaterialTheme.typography.titleMedium,
+						color = MaterialTheme.colorScheme.error,
+					)
+					Text(
+						"Usunięcie konta jest nieodwracalne — trwale kasuje Twoje dane " +
+							"(profil, posty, znajomych i pozostałe).",
+						style = MaterialTheme.typography.bodyMedium,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+					)
+					OutlinedButton(
+						onClick = viewModel::openDeleteDialog,
+						colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+						modifier = Modifier.align(Alignment.End),
+					) {
+						Text("Usuń konto")
+					}
 				}
 			}
 		}
 	}
+}
+
+/** Dialog potwierdzenia usunięcia konta — wymusza ponowne podanie hasła (§9). */
+@Composable
+private fun DeleteAccountDialog(
+	password: String,
+	isDeleting: Boolean,
+	canConfirm: Boolean,
+	errorMessage: String?,
+	onPasswordChange: (String) -> Unit,
+	onConfirm: () -> Unit,
+	onDismiss: () -> Unit,
+) {
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text("Usunąć konto?") },
+		text = {
+			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+				Text(
+					"Ta operacja jest nieodwracalna. Potwierdź hasłem, aby trwale usunąć konto.",
+					style = MaterialTheme.typography.bodyMedium,
+				)
+				OutlinedTextField(
+					value = password,
+					onValueChange = onPasswordChange,
+					label = { Text("Hasło") },
+					singleLine = true,
+					enabled = !isDeleting,
+					isError = errorMessage != null,
+					visualTransformation = PasswordVisualTransformation(),
+					keyboardOptions = KeyboardOptions(
+						keyboardType = KeyboardType.Password,
+						imeAction = ImeAction.Done,
+					),
+					keyboardActions = KeyboardActions(onDone = { onConfirm() }),
+					modifier = Modifier.fillMaxWidth(),
+				)
+				if (errorMessage != null) {
+					Text(
+						text = errorMessage,
+						color = MaterialTheme.colorScheme.error,
+						style = MaterialTheme.typography.bodySmall,
+					)
+				}
+			}
+		},
+		confirmButton = {
+			TextButton(
+				onClick = onConfirm,
+				enabled = canConfirm,
+				colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+			) {
+				Text(if (isDeleting) "Usuwanie…" else "Usuń konto")
+			}
+		},
+		dismissButton = {
+			TextButton(onClick = onDismiss, enabled = !isDeleting) { Text("Anuluj") }
+		},
+	)
 }

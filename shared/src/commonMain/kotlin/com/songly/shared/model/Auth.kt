@@ -16,6 +16,14 @@ data class LoginRequest(val email: String, val password: String)
 @Serializable
 data class RefreshRequest(val refreshToken: String)
 
+/**
+ * Potwierdzenie usunięcia konta (backend: identity.dto.DeleteAccountRequest).
+ * Ponowne hasło jest wymagane — sam ważny access token nie wystarcza na akcję
+ * nieodwracalną (Claude.md §9, hard delete + RODO).
+ */
+@Serializable
+data class DeleteAccountRequest(val password: String)
+
 /** Odpowiedź backendu na register/login/refresh (AuthTokensResponse). */
 @Serializable
 data class AuthTokens(
