@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 import com.songly.shared.model.Post
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.util.RelativeTime
@@ -270,13 +271,23 @@ private fun PostCard(
 ) {
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(16.dp)) {
-			Row(verticalAlignment = Alignment.CenterVertically) {
-				Text(
-					text = post.authorDisplayName,
-					style = MaterialTheme.typography.titleSmall,
-					fontWeight = FontWeight.SemiBold,
-					modifier = Modifier.weight(1f),
-				)
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.spacedBy(10.dp),
+			) {
+				Avatar(displayName = post.authorDisplayName, avatarUrl = post.authorAvatarUrl, size = 40.dp)
+				Column(modifier = Modifier.weight(1f)) {
+					Text(
+						text = post.authorDisplayName,
+						style = MaterialTheme.typography.titleSmall,
+						fontWeight = FontWeight.SemiBold,
+					)
+					Text(
+						text = RelativeTime.format(post.createdAt),
+						style = MaterialTheme.typography.labelSmall,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+					)
+				}
 				// Kosz tylko na własnych postach.
 				if (canDelete) {
 					Text(
@@ -287,12 +298,6 @@ private fun PostCard(
 					)
 				}
 			}
-			Text(
-				text = RelativeTime.format(post.createdAt),
-				style = MaterialTheme.typography.labelSmall,
-				color = MaterialTheme.colorScheme.onSurfaceVariant,
-				modifier = Modifier.padding(top = 2.dp),
-			)
 			Text(
 				text = post.content,
 				style = MaterialTheme.typography.bodyMedium,

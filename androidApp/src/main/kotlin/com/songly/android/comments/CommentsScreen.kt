@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 import com.songly.shared.model.Comment
 import com.songly.shared.util.RelativeTime
 
@@ -113,34 +114,40 @@ fun CommentsScreen(
 
 @Composable
 private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Unit) {
-	Column(modifier = Modifier.fillMaxWidth()) {
-		Row(verticalAlignment = Alignment.CenterVertically) {
-			Text(
-				text = comment.authorDisplayName,
-				style = MaterialTheme.typography.titleSmall,
-				fontWeight = FontWeight.SemiBold,
-			)
-			Text(
-				text = RelativeTime.format(comment.createdAt),
-				style = MaterialTheme.typography.labelSmall,
-				color = MaterialTheme.colorScheme.onSurfaceVariant,
-				modifier = Modifier.weight(1f).padding(start = 8.dp),
-			)
-			// Kosz tylko na własnych komentarzach.
-			if (canDelete) {
+	Row(
+		modifier = Modifier.fillMaxWidth(),
+		horizontalArrangement = Arrangement.spacedBy(10.dp),
+	) {
+		Avatar(displayName = comment.authorDisplayName, avatarUrl = comment.authorAvatarUrl, size = 36.dp)
+		Column(modifier = Modifier.weight(1f)) {
+			Row(verticalAlignment = Alignment.CenterVertically) {
 				Text(
-					text = "Usuń",
-					style = MaterialTheme.typography.labelMedium,
-					color = MaterialTheme.colorScheme.error,
-					modifier = Modifier.clickable(onClick = onDelete),
+					text = comment.authorDisplayName,
+					style = MaterialTheme.typography.titleSmall,
+					fontWeight = FontWeight.SemiBold,
 				)
+				Text(
+					text = RelativeTime.format(comment.createdAt),
+					style = MaterialTheme.typography.labelSmall,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+					modifier = Modifier.weight(1f).padding(start = 8.dp),
+				)
+				// Kosz tylko na własnych komentarzach.
+				if (canDelete) {
+					Text(
+						text = "Usuń",
+						style = MaterialTheme.typography.labelMedium,
+						color = MaterialTheme.colorScheme.error,
+						modifier = Modifier.clickable(onClick = onDelete),
+					)
+				}
 			}
+			Text(
+				text = comment.content,
+				style = MaterialTheme.typography.bodyMedium,
+				modifier = Modifier.padding(top = 2.dp),
+			)
 		}
-		Text(
-			text = comment.content,
-			style = MaterialTheme.typography.bodyMedium,
-			modifier = Modifier.padding(top = 2.dp),
-		)
 	}
 }
 

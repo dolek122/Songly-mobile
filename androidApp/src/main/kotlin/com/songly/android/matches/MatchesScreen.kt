@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 import com.songly.shared.model.Match
 
 /**
@@ -141,7 +142,11 @@ private fun MatchCard(
 ) {
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(16.dp)) {
-			Row(verticalAlignment = Alignment.CenterVertically) {
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.spacedBy(10.dp),
+			) {
+				Avatar(displayName = match.displayName, avatarUrl = match.avatarUrl, size = 40.dp)
 				Text(
 					text = match.displayName,
 					style = MaterialTheme.typography.titleSmall,

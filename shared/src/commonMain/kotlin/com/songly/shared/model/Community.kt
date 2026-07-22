@@ -30,6 +30,7 @@ data class Community(
 data class CommunityMember(
 	val userId: String,
 	val displayName: String,
+	val avatarUrl: String? = null,
 	val role: String,
 	val joinedAt: String,
 ) {

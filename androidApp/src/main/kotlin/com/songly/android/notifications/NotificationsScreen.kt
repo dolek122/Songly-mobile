@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 import com.songly.shared.model.Notification
 import com.songly.shared.util.RelativeTime
 
@@ -141,6 +142,11 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit) {
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.spacedBy(12.dp),
 		) {
+			Avatar(
+				displayName = notification.actorDisplayName ?: "?",
+				avatarUrl = notification.actorAvatarUrl,
+				size = 40.dp,
+			)
 			Column(modifier = Modifier.weight(1f)) {
 				Text(
 					text = notificationText(notification),

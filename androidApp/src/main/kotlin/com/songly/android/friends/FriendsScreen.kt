@@ -221,7 +221,12 @@ private fun IncomingRequestRow(
 	onAccept: () -> Unit,
 	onDecline: () -> Unit,
 ) {
-	PersonRow(name = request.requesterDisplayName) {
+	PersonRow(
+		name = request.requesterDisplayName,
+		leading = {
+			Avatar(displayName = request.requesterDisplayName, avatarUrl = request.requesterAvatarUrl, size = 36.dp)
+		},
+	) {
 		Button(onClick = onAccept, enabled = enabled) { Text("Akceptuj") }
 		OutlinedButton(onClick = onDecline, enabled = enabled) { Text("Odrzuć") }
 	}
@@ -229,14 +234,22 @@ private fun IncomingRequestRow(
 
 @Composable
 private fun OutgoingRequestRow(request: FriendRequest, enabled: Boolean, onCancel: () -> Unit) {
-	PersonRow(name = request.addresseeDisplayName) {
+	PersonRow(
+		name = request.addresseeDisplayName,
+		leading = {
+			Avatar(displayName = request.addresseeDisplayName, avatarUrl = request.addresseeAvatarUrl, size = 36.dp)
+		},
+	) {
 		OutlinedButton(onClick = onCancel, enabled = enabled) { Text("Anuluj") }
 	}
 }
 
 @Composable
 private fun FriendRow(friend: Friend, enabled: Boolean, onRemove: () -> Unit, onBlock: () -> Unit) {
-	PersonRow(name = friend.displayName) {
+	PersonRow(
+		name = friend.displayName,
+		leading = { Avatar(displayName = friend.displayName, avatarUrl = friend.avatarUrl, size = 36.dp) },
+	) {
 		OutlinedButton(onClick = onRemove, enabled = enabled) { Text("Usuń") }
 		OutlinedButton(onClick = onBlock, enabled = enabled) { Text("Blokuj") }
 	}

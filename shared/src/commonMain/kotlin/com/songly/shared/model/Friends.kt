@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 data class Friend(
 	val userId: String,
 	val displayName: String,
+	val avatarUrl: String? = null,
 	val friendsSince: String,
 )
 
@@ -16,8 +17,10 @@ data class FriendRequest(
 	val id: String,
 	val requesterId: String,
 	val requesterDisplayName: String,
+	val requesterAvatarUrl: String? = null,
 	val addresseeId: String,
 	val addresseeDisplayName: String,
+	val addresseeAvatarUrl: String? = null,
 	val status: String,
 	val createdAt: String,
 )

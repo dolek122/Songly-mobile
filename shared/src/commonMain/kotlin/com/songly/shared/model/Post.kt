@@ -12,6 +12,7 @@ data class Post(
 	val id: String,
 	val authorId: String,
 	val authorDisplayName: String,
+	val authorAvatarUrl: String? = null,
 	val content: String,
 	val createdAt: String,
 	val likeCount: Long,

@@ -9,6 +9,7 @@ data class Comment(
 	val postId: String,
 	val authorId: String,
 	val authorDisplayName: String,
+	val authorAvatarUrl: String? = null,
 	val content: String,
 	val createdAt: String,
 )

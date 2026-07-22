@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 import com.songly.shared.model.Community
 import com.songly.shared.model.CommunityMember
 
@@ -211,8 +212,9 @@ private fun MemberRow(member: CommunityMember) {
 	Row(
 		modifier = Modifier.fillMaxWidth(),
 		verticalAlignment = Alignment.CenterVertically,
-		horizontalArrangement = Arrangement.spacedBy(8.dp),
+		horizontalArrangement = Arrangement.spacedBy(10.dp),
 	) {
+		Avatar(displayName = member.displayName, avatarUrl = member.avatarUrl, size = 36.dp)
 		Text(
 			text = member.displayName,
 			style = MaterialTheme.typography.bodyLarge,

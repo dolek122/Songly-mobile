@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 data class Match(
 	val userId: String,
 	val displayName: String,
+	val avatarUrl: String? = null,
 	val score: Double,
 	val sharedGenreIds: List<String> = emptyList(),
 ) {

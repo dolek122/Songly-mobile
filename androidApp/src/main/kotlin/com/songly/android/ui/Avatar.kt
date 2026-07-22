@@ -17,9 +17,10 @@ import coil.compose.AsyncImage
 
 /**
  * Okrągły awatar użytkownika. Gdy [avatarUrl] jest ustawiony, ładuje obraz przez
- * Coil; w przeciwnym razie pokazuje fallback z inicjałami z [displayName]. Awatary
- * mamy tylko tam, gdzie backend zwraca `avatarUrl` (profil, wyszukiwarka) — reszta
- * DTO go nie niesie.
+ * Coil; w przeciwnym razie pokazuje fallback z inicjałami z [displayName]. Backend
+ * niesie `avatarUrl` w większości DTO odczytowych (posty, komentarze, znajomi,
+ * powiadomienia, społeczności, dopasowania), więc `null` jest normalnym przypadkiem
+ * — po prostu wtedy renderujemy inicjały.
  */
 @Composable
 fun Avatar(

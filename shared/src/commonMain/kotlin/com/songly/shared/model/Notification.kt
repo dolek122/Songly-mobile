@@ -17,6 +17,7 @@ data class Notification(
 	val type: String,
 	val actorId: String,
 	val actorDisplayName: String? = null,
+	val actorAvatarUrl: String? = null,
 	val resourceId: String,
 	val createdAt: String,
 	val readAt: String? = null,
