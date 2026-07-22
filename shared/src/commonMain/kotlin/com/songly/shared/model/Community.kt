@@ -40,3 +40,7 @@ data class CommunityMember(
 /** Utworzenie społeczności (backend: community.dto.CreateCommunityRequest; nazwa max 100, opis max 500). */
 @Serializable
 data class CreateCommunityRequest(val name: String, val description: String? = null)
+
+/** Edycja społeczności (backend: community.dto.UpdateCommunityRequest; nazwa max 100, opis max 500). */
+@Serializable
+data class UpdateCommunityRequest(val name: String, val description: String? = null)

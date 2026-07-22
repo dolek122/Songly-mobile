@@ -23,7 +23,21 @@ data class CommunityDetailUiState(
 	val membersEndReached: Boolean = false,
 	val isBusy: Boolean = false, // dołączanie/opuszczanie w toku
 	val statusMessage: String? = null,
-)
+	// Zarządzanie właścicielskie: edycja i usuwanie.
+	val showEditDialog: Boolean = false,
+	val editName: String = "",
+	val editDescription: String = "",
+	val isSaving: Boolean = false,
+	val editError: String? = null,
+	val showDeleteDialog: Boolean = false,
+	val isDeleting: Boolean = false,
+	val deleteError: String? = null,
+	val deleted: Boolean = false, // po usunięciu — ekran wraca do listy
+) {
+	// Backend: nazwa @NotBlank, max 100 znaków.
+	val canSaveEdit: Boolean
+		get() = editName.isNotBlank() && editName.length <= 100 && !isSaving
+}
 
 /**
  * Logika ekranu szczegółów jednej społeczności (moduł community przez `shared`).
@@ -109,6 +123,80 @@ class CommunityDetailViewModel(
 				uiState = uiState.copy(isBusy = false, statusMessage = "Brak połączenia z serwerem.")
 			}
 		}
+	}
+
+	// --- Zarządzanie właścicielskie (edycja / usuwanie) ---
+
+	fun openEditDialog() {
+		val community = uiState.community ?: return
+		uiState = uiState.copy(
+			showEditDialog = true,
+			editName = community.name,
+			editDescription = community.description.orEmpty(),
+			editError = null,
+		)
+	}
+
+	fun dismissEditDialog() {
+		if (uiState.isSaving) return
+		uiState = uiState.copy(showEditDialog = false, editError = null)
+	}
+
+	fun onEditNameChange(value: String) {
+		uiState = uiState.copy(editName = value, editError = null)
+	}
+
+	fun onEditDescriptionChange(value: String) {
+		uiState = uiState.copy(editDescription = value, editError = null)
+	}
+
+	fun confirmEdit() {
+		if (!uiState.canSaveEdit) return
+		uiState = uiState.copy(isSaving = true, editError = null)
+		viewModelScope.launch {
+			try {
+				val updated = client.updateCommunity(
+					communityId = communityId,
+					name = uiState.editName.trim(),
+					description = uiState.editDescription.trim().ifBlank { null },
+				)
+				uiState = uiState.copy(
+					isSaving = false,
+					showEditDialog = false,
+					community = updated,
+					statusMessage = "Zapisano zmiany",
+				)
+			} catch (e: Exception) {
+				uiState = uiState.copy(isSaving = false, editError = errorText(e, "zapisać zmian"))
+			}
+		}
+	}
+
+	fun openDeleteDialog() {
+		uiState = uiState.copy(showDeleteDialog = true, deleteError = null)
+	}
+
+	fun dismissDeleteDialog() {
+		if (uiState.isDeleting) return
+		uiState = uiState.copy(showDeleteDialog = false, deleteError = null)
+	}
+
+	fun confirmDelete() {
+		if (uiState.isDeleting) return
+		uiState = uiState.copy(isDeleting = true, deleteError = null)
+		viewModelScope.launch {
+			try {
+				client.deleteCommunity(communityId)
+				uiState = uiState.copy(isDeleting = false, showDeleteDialog = false, deleted = true)
+			} catch (e: Exception) {
+				uiState = uiState.copy(isDeleting = false, deleteError = errorText(e, "usunąć społeczności"))
+			}
+		}
+	}
+
+	private fun errorText(e: Exception, action: String): String = when (e) {
+		is SonglyApiException -> e.error?.message ?: "Nie udało się $action (HTTP ${e.status})"
+		else -> "Brak połączenia z serwerem."
 	}
 
 	private suspend fun reload() {

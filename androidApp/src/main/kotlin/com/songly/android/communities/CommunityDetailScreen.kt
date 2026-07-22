@@ -12,12 +12,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,12 +46,41 @@ import com.songly.shared.model.CommunityMember
 fun CommunityDetailScreen(
 	viewModel: CommunityDetailViewModel,
 	onBack: () -> Unit,
+	onDeleted: () -> Unit,
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
+	}
+
+	// Po usunięciu społeczności wróć do listy (i pozwól jej się odświeżyć).
+	LaunchedEffect(state.deleted) {
+		if (state.deleted) onDeleted()
+	}
+
+	if (state.showEditDialog) {
+		EditCommunityDialog(
+			name = state.editName,
+			description = state.editDescription,
+			isSaving = state.isSaving,
+			canSave = state.canSaveEdit,
+			errorMessage = state.editError,
+			onNameChange = viewModel::onEditNameChange,
+			onDescriptionChange = viewModel::onEditDescriptionChange,
+			onConfirm = viewModel::confirmEdit,
+			onDismiss = viewModel::dismissEditDialog,
+		)
+	}
+
+	if (state.showDeleteDialog) {
+		DeleteCommunityDialog(
+			isDeleting = state.isDeleting,
+			errorMessage = state.deleteError,
+			onConfirm = viewModel::confirmDelete,
+			onDismiss = viewModel::dismissDeleteDialog,
+		)
 	}
 
 	val shouldLoadMore by remember {
@@ -67,6 +99,16 @@ fun CommunityDetailScreen(
 			TopAppBar(
 				title = { Text(state.community?.name ?: "Społeczność") },
 				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				actions = {
+					// Zarządzanie widoczne tylko dla właściciela.
+					if (state.community?.isOwner == true) {
+						TextButton(onClick = viewModel::openEditDialog) { Text("Edytuj") }
+						TextButton(
+							onClick = viewModel::openDeleteDialog,
+							colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+						) { Text("Usuń") }
+					}
+				},
 			)
 		},
 	) { padding ->
@@ -184,4 +226,98 @@ private fun MemberRow(member: CommunityMember) {
 			)
 		}
 	}
+}
+
+@Composable
+private fun EditCommunityDialog(
+	name: String,
+	description: String,
+	isSaving: Boolean,
+	canSave: Boolean,
+	errorMessage: String?,
+	onNameChange: (String) -> Unit,
+	onDescriptionChange: (String) -> Unit,
+	onConfirm: () -> Unit,
+	onDismiss: () -> Unit,
+) {
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text("Edytuj społeczność") },
+		text = {
+			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+				OutlinedTextField(
+					value = name,
+					onValueChange = onNameChange,
+					label = { Text("Nazwa") },
+					singleLine = true,
+					enabled = !isSaving,
+					isError = errorMessage != null,
+					modifier = Modifier.fillMaxWidth(),
+				)
+				OutlinedTextField(
+					value = description,
+					onValueChange = onDescriptionChange,
+					label = { Text("Opis (opcjonalny)") },
+					enabled = !isSaving,
+					minLines = 2,
+					modifier = Modifier.fillMaxWidth(),
+				)
+				if (errorMessage != null) {
+					Text(
+						text = errorMessage,
+						color = MaterialTheme.colorScheme.error,
+						style = MaterialTheme.typography.bodySmall,
+					)
+				}
+			}
+		},
+		confirmButton = {
+			TextButton(onClick = onConfirm, enabled = canSave) {
+				Text(if (isSaving) "Zapisywanie…" else "Zapisz")
+			}
+		},
+		dismissButton = {
+			TextButton(onClick = onDismiss, enabled = !isSaving) { Text("Anuluj") }
+		},
+	)
+}
+
+@Composable
+private fun DeleteCommunityDialog(
+	isDeleting: Boolean,
+	errorMessage: String?,
+	onConfirm: () -> Unit,
+	onDismiss: () -> Unit,
+) {
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text("Usunąć społeczność?") },
+		text = {
+			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+				Text(
+					"Ta operacja jest nieodwracalna — społeczność i członkostwa zostaną trwale usunięte.",
+					style = MaterialTheme.typography.bodyMedium,
+				)
+				if (errorMessage != null) {
+					Text(
+						text = errorMessage,
+						color = MaterialTheme.colorScheme.error,
+						style = MaterialTheme.typography.bodySmall,
+					)
+				}
+			}
+		},
+		confirmButton = {
+			TextButton(
+				onClick = onConfirm,
+				enabled = !isDeleting,
+				colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+			) {
+				Text(if (isDeleting) "Usuwanie…" else "Usuń")
+			}
+		},
+		dismissButton = {
+			TextButton(onClick = onDismiss, enabled = !isDeleting) { Text("Anuluj") }
+		},
+	)
 }

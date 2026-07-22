@@ -182,6 +182,8 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			CommunityDetailScreen(
 				viewModel = detailViewModel,
 				onBack = { communityDetailId = null },
+				// Po usunięciu wróć do listy — CommunitiesScreen odświeży się sam przy wejściu.
+				onDeleted = { communityDetailId = null },
 			)
 		}
 

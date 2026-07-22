@@ -10,6 +10,7 @@ import com.songly.shared.model.Community
 import com.songly.shared.model.CommunityMember
 import com.songly.shared.model.CreateCommunityRequest
 import com.songly.shared.model.CreatePostRequest
+import com.songly.shared.model.UpdateCommunityRequest
 import com.songly.shared.model.DeleteAccountRequest
 import com.songly.shared.model.ManualNowPlayingRequest
 import com.songly.shared.model.Notification
@@ -335,6 +336,17 @@ class SonglyApiClient(
 			contentType(ContentType.Application.Json)
 			setBody(CreateCommunityRequest(name, description))
 		}.decodeOrThrow()
+
+	/** Edytuje społeczność (tylko właściciel — serwer waliduje). Zwraca zaktualizowaną wersję. */
+	suspend fun updateCommunity(communityId: String, name: String, description: String?): Community =
+		http.put("$base/api/v1/communities/$communityId") {
+			contentType(ContentType.Application.Json)
+			setBody(UpdateCommunityRequest(name, description))
+		}.decodeOrThrow()
+
+	/** Usuwa społeczność (tylko właściciel — serwer waliduje). */
+	suspend fun deleteCommunity(communityId: String) =
+		http.delete("$base/api/v1/communities/$communityId").ensureSuccessOrThrow()
 
 	/** Dołącza do społeczności (idempotentne po stronie serwera). */
 	suspend fun joinCommunity(communityId: String) =
