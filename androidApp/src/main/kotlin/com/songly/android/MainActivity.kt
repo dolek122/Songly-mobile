@@ -279,6 +279,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				viewModel = commentsViewModel,
 				onBack = { commentsPostId = null },
 				onCommentAdded = { feedViewModel.incrementCommentCount(postId) },
+				onCommentDeleted = { feedViewModel.decrementCommentCount(postId) },
 			)
 		}
 

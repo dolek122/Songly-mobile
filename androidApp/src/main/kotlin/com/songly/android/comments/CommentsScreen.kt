@@ -1,5 +1,6 @@
 package com.songly.android.comments
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ fun CommentsScreen(
 	viewModel: CommentsViewModel,
 	onBack: () -> Unit,
 	onCommentAdded: () -> Unit,
+	onCommentDeleted: () -> Unit,
 ) {
 	val state = viewModel.uiState
 
@@ -86,8 +88,21 @@ fun CommentsScreen(
 					verticalArrangement = Arrangement.spacedBy(12.dp),
 					modifier = Modifier.fillMaxSize(),
 				) {
+					if (state.actionError != null) {
+						item(key = "action-error") {
+							Text(
+								text = state.actionError,
+								color = MaterialTheme.colorScheme.error,
+								style = MaterialTheme.typography.bodySmall,
+							)
+						}
+					}
 					items(state.comments, key = { it.id }) { comment ->
-						CommentRow(comment)
+						CommentRow(
+							comment = comment,
+							canDelete = comment.authorId == state.currentUserId,
+							onDelete = { viewModel.delete(comment, onCommentDeleted) },
+						)
 					}
 				}
 			}
@@ -96,13 +111,25 @@ fun CommentsScreen(
 }
 
 @Composable
-private fun CommentRow(comment: Comment) {
+private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Unit) {
 	Column(modifier = Modifier.fillMaxWidth()) {
-		Text(
-			text = comment.authorDisplayName,
-			style = MaterialTheme.typography.titleSmall,
-			fontWeight = FontWeight.SemiBold,
-		)
+		Row(verticalAlignment = Alignment.CenterVertically) {
+			Text(
+				text = comment.authorDisplayName,
+				style = MaterialTheme.typography.titleSmall,
+				fontWeight = FontWeight.SemiBold,
+				modifier = Modifier.weight(1f),
+			)
+			// Kosz tylko na własnych komentarzach.
+			if (canDelete) {
+				Text(
+					text = "Usuń",
+					style = MaterialTheme.typography.labelMedium,
+					color = MaterialTheme.colorScheme.error,
+					modifier = Modifier.clickable(onClick = onDelete),
+				)
+			}
+		}
 		Text(
 			text = comment.content,
 			style = MaterialTheme.typography.bodyMedium,

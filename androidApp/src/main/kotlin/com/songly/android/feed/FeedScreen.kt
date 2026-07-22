@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -92,6 +94,14 @@ fun FeedScreen(
 	}
 	LaunchedEffect(shouldLoadMore) {
 		if (shouldLoadMore) viewModel.loadNextPage()
+	}
+
+	if (state.pendingDeletePostId != null) {
+		DeletePostDialog(
+			isDeleting = state.isDeleting,
+			onConfirm = viewModel::confirmDeletePost,
+			onDismiss = viewModel::cancelDeletePost,
+		)
 	}
 
 	Scaffold(
@@ -188,9 +198,11 @@ fun FeedScreen(
 						items(state.posts, key = { it.id }) { post ->
 							PostCard(
 								post = post,
+								canDelete = post.authorId == state.currentUserId,
 								onToggleLike = { viewModel.toggleLike(post) },
 								onOpenComments = { onOpenComments(post.id) },
 								onToggleShare = { viewModel.toggleShare(post) },
+								onDelete = { viewModel.requestDeletePost(post.id) },
 							)
 						}
 						if (state.isLoadingMore || state.appendErrorMessage != null) {
@@ -213,6 +225,27 @@ fun FeedScreen(
 private fun badgeLabel(count: Long): String = if (count > 99) "99+" else count.toString()
 
 @Composable
+private fun DeletePostDialog(isDeleting: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text("Usunąć post?") },
+		text = { Text("Tej operacji nie można cofnąć.") },
+		confirmButton = {
+			TextButton(
+				onClick = onConfirm,
+				enabled = !isDeleting,
+				colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+			) {
+				Text(if (isDeleting) "Usuwanie…" else "Usuń")
+			}
+		},
+		dismissButton = {
+			TextButton(onClick = onDismiss, enabled = !isDeleting) { Text("Anuluj") }
+		},
+	)
+}
+
+@Composable
 private fun FeedFooter(isLoading: Boolean, errorMessage: String?, onRetry: () -> Unit) {
 	Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
 		when {
@@ -228,17 +261,31 @@ private fun FeedFooter(isLoading: Boolean, errorMessage: String?, onRetry: () ->
 @Composable
 private fun PostCard(
 	post: Post,
+	canDelete: Boolean,
 	onToggleLike: () -> Unit,
 	onOpenComments: () -> Unit,
 	onToggleShare: () -> Unit,
+	onDelete: () -> Unit,
 ) {
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(16.dp)) {
-			Text(
-				text = post.authorDisplayName,
-				style = MaterialTheme.typography.titleSmall,
-				fontWeight = FontWeight.SemiBold,
-			)
+			Row(verticalAlignment = Alignment.CenterVertically) {
+				Text(
+					text = post.authorDisplayName,
+					style = MaterialTheme.typography.titleSmall,
+					fontWeight = FontWeight.SemiBold,
+					modifier = Modifier.weight(1f),
+				)
+				// Kosz tylko na własnych postach.
+				if (canDelete) {
+					Text(
+						text = "Usuń",
+						style = MaterialTheme.typography.labelMedium,
+						color = MaterialTheme.colorScheme.error,
+						modifier = Modifier.clickable(onClick = onDelete),
+					)
+				}
+			}
 			Text(
 				text = post.content,
 				style = MaterialTheme.typography.bodyMedium,

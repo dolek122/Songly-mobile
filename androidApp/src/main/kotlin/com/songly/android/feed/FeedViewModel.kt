@@ -21,6 +21,9 @@ data class FeedUiState(
 	val appendErrorMessage: String? = null, // błąd doczytywania (lista zostaje)
 	val endReached: Boolean = false, // ostatnia strona wczytana
 	val unreadNotifications: Long = 0, // do badge'a w menu (best-effort, nie blokuje feedu)
+	val currentUserId: String? = null, // do rozpoznania własnych postów (usuwanie)
+	val pendingDeletePostId: String? = null, // post czekający na potwierdzenie usunięcia
+	val isDeleting: Boolean = false,
 	// Odświeżanie zwróciło 401 mimo auto-refreshu = refresh token też wygasł.
 	val sessionExpired: Boolean = false,
 ) {
@@ -106,6 +109,50 @@ class FeedViewModel(private val client: SonglyApiClient) : ViewModel() {
 		updatePost(postId) { it.copy(commentCount = it.commentCount + 1) }
 	}
 
+	/** Obniża licznik komentarzy posta po usunięciu komentarza (nie schodzi poniżej zera). */
+	fun decrementCommentCount(postId: String) {
+		updatePost(postId) { it.copy(commentCount = (it.commentCount - 1).coerceAtLeast(0)) }
+	}
+
+	/** Prosi o potwierdzenie usunięcia posta (dialog). */
+	fun requestDeletePost(postId: String) {
+		uiState = uiState.copy(pendingDeletePostId = postId)
+	}
+
+	fun cancelDeletePost() {
+		if (uiState.isDeleting) return
+		uiState = uiState.copy(pendingDeletePostId = null)
+	}
+
+	/** Usuwa post po potwierdzeniu; po sukcesie znika z listy. */
+	fun confirmDeletePost() {
+		val postId = uiState.pendingDeletePostId ?: return
+		if (uiState.isDeleting) return
+		uiState = uiState.copy(isDeleting = true)
+		viewModelScope.launch {
+			try {
+				client.deletePost(postId)
+				uiState = uiState.copy(
+					isDeleting = false,
+					pendingDeletePostId = null,
+					posts = uiState.posts.filterNot { it.id == postId },
+				)
+			} catch (e: SonglyApiException) {
+				uiState = uiState.copy(
+					isDeleting = false,
+					pendingDeletePostId = null,
+					appendErrorMessage = e.error?.message ?: "Nie udało się usunąć posta (HTTP ${e.status})",
+				)
+			} catch (e: Exception) {
+				uiState = uiState.copy(
+					isDeleting = false,
+					pendingDeletePostId = null,
+					appendErrorMessage = "Brak połączenia z serwerem.",
+				)
+			}
+		}
+	}
+
 	private fun updatePost(postId: String, transform: (Post) -> Post) {
 		uiState = uiState.copy(
 			posts = uiState.posts.map { if (it.id == postId) transform(it) else it },
@@ -126,12 +173,16 @@ class FeedViewModel(private val client: SonglyApiClient) : ViewModel() {
 				} else {
 					uiState.unreadNotifications
 				}
+				// Id usera potrzebne tylko do pokazania usuwania własnych postów — best-effort.
+				val userId = uiState.currentUserId
+					?: runCatching { client.currentUserId() }.getOrNull()
 				uiState = uiState.copy(
 					isLoading = false,
 					isLoadingMore = false,
 					posts = merged,
 					endReached = page.last,
 					unreadNotifications = unread,
+					currentUserId = userId,
 					errorMessage = null,
 					appendErrorMessage = null,
 				)

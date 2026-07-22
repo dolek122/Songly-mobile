@@ -21,6 +21,8 @@ data class CommentsUiState(
 	val draft: String = "",
 	val isSubmitting: Boolean = false,
 	val submitError: String? = null,
+	val currentUserId: String? = null, // do rozpoznania własnych komentarzy (usuwanie)
+	val actionError: String? = null, // błąd usuwania komentarza
 ) {
 	val isEmpty: Boolean
 		get() = !isLoading && errorMessage == null && comments.isEmpty()
@@ -47,7 +49,9 @@ class CommentsViewModel(
 		viewModelScope.launch {
 			try {
 				val page = client.comments(postId)
-				uiState = uiState.copy(isLoading = false, comments = page.content)
+				// Id usera best-effort — służy tylko do pokazania usuwania własnych komentarzy.
+				val userId = uiState.currentUserId ?: runCatching { client.currentUserId() }.getOrNull()
+				uiState = uiState.copy(isLoading = false, comments = page.content, currentUserId = userId)
 			} catch (e: SonglyApiException) {
 				uiState = uiState.copy(
 					isLoading = false,
@@ -61,6 +65,28 @@ class CommentsViewModel(
 
 	fun onDraftChange(value: String) {
 		uiState = uiState.copy(draft = value, submitError = null)
+	}
+
+	/**
+	 * Usuwa własny komentarz optymistycznie: znika od razu, a przy błędzie wraca na
+	 * miejsce. Po sukcesie [onDeleted] pozwala feedowi obniżyć licznik komentarzy.
+	 */
+	fun delete(comment: Comment, onDeleted: () -> Unit) {
+		val snapshot = uiState.comments
+		uiState = uiState.copy(comments = uiState.comments.filterNot { it.id == comment.id }, actionError = null)
+		viewModelScope.launch {
+			try {
+				client.deleteComment(postId, comment.id)
+				onDeleted()
+			} catch (e: SonglyApiException) {
+				uiState = uiState.copy(
+					comments = snapshot,
+					actionError = e.error?.message ?: "Nie udało się usunąć komentarza (HTTP ${e.status})",
+				)
+			} catch (e: Exception) {
+				uiState = uiState.copy(comments = snapshot, actionError = "Brak połączenia z serwerem.")
+			}
+		}
 	}
 
 	fun submit(onAdded: () -> Unit) {

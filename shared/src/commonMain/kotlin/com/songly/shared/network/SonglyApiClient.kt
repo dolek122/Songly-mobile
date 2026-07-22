@@ -66,8 +66,20 @@ class SonglyApiClient(
 	private val http = createHttpClient(config, storage)
 	private val base = config.baseUrl.trimEnd('/')
 
+	// Id zalogowanego użytkownika — cache, żeby UI mógł tanio rozpoznać własne
+	// treści (np. pokazać usuwanie tylko autorowi). Czyszczone przy końcu sesji.
+	private var cachedUserId: String? = null
+
 	/** Czy istnieje zapisana sesja (są tokeny). Nie gwarantuje ich ważności. */
 	suspend fun isLoggedIn(): Boolean = storage.getTokens() != null
+
+	/**
+	 * Id zalogowanego użytkownika (z profilu `/me`). Pobierane raz i cache'owane —
+	 * UI używa go do rozpoznania własnych postów/komentarzy. Rzuca [SonglyApiException]
+	 * jak każde inne żądanie, gdy sesja jest nieważna.
+	 */
+	suspend fun currentUserId(): String =
+		cachedUserId ?: myProfile().userId.also { cachedUserId = it }
 
 	suspend fun register(email: String, password: String): AuthTokens =
 		http.post("$base/api/v1/auth/register") {
@@ -124,6 +136,10 @@ class SonglyApiClient(
 			setBody(CreatePostRequest(content))
 		}.decodeOrThrow()
 
+	/** Usuwa własny post (backend: tylko autor; obcym zwraca błąd). */
+	suspend fun deletePost(postId: String) =
+		http.delete("$base/api/v1/posts/$postId").ensureSuccessOrThrow()
+
 	/** Polubienie posta (idempotentne po stronie serwera). */
 	suspend fun likePost(postId: String) =
 		http.put("$base/api/v1/posts/$postId/likes").ensureSuccessOrThrow()
@@ -153,6 +169,10 @@ class SonglyApiClient(
 			contentType(ContentType.Application.Json)
 			setBody(CreateCommentRequest(content))
 		}.decodeOrThrow()
+
+	/** Usuwa własny komentarz (backend: tylko autor; obcym zwraca błąd). */
+	suspend fun deleteComment(postId: String, commentId: String) =
+		http.delete("$base/api/v1/posts/$postId/comments/$commentId").ensureSuccessOrThrow()
 
 	// --- Profil i ulubione gatunki (moduł profile) ---
 
@@ -383,6 +403,7 @@ class SonglyApiClient(
 
 	private suspend fun endSession() {
 		storage.clear()
+		cachedUserId = null
 		http.authProvider<BearerAuthProvider>()?.clearToken()
 	}
 
