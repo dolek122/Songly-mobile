@@ -4,6 +4,7 @@ agp = "8.7.3"
 ktor = "3.0.3"
 coroutines = "1.10.1"
 serialization = "1.8.0"
+datetime = "0.6.1"
 
 # Android
 androidxCore = "1.15.0"
@@ -18,6 +19,7 @@ targetSdk = "35"
 # KMP shared: sieć + serializacja + korutyny
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }

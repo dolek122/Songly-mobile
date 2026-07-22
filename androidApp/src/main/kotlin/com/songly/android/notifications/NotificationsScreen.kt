@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.shared.model.Notification
+import com.songly.shared.util.RelativeTime
 
 /**
  * Ekran powiadomień (Compose, natywny UI — §14): lista najnowszych zdarzeń
@@ -140,12 +141,19 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit) {
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.spacedBy(12.dp),
 		) {
-			Text(
-				text = notificationText(notification),
-				style = MaterialTheme.typography.bodyMedium,
-				fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
-				modifier = Modifier.weight(1f),
-			)
+			Column(modifier = Modifier.weight(1f)) {
+				Text(
+					text = notificationText(notification),
+					style = MaterialTheme.typography.bodyMedium,
+					fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
+				)
+				Text(
+					text = RelativeTime.format(notification.createdAt),
+					style = MaterialTheme.typography.labelSmall,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+					modifier = Modifier.padding(top = 2.dp),
+				)
+			}
 			// Kropka „nieprzeczytane".
 			if (unread) {
 				Box(

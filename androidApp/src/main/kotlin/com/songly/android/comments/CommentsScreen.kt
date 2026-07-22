@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.shared.model.Comment
+import com.songly.shared.util.RelativeTime
 
 /**
  * Ekran komentarzy jednego posta (Compose, natywny UI — §14). Stan z
@@ -118,7 +119,12 @@ private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Uni
 				text = comment.authorDisplayName,
 				style = MaterialTheme.typography.titleSmall,
 				fontWeight = FontWeight.SemiBold,
-				modifier = Modifier.weight(1f),
+			)
+			Text(
+				text = RelativeTime.format(comment.createdAt),
+				style = MaterialTheme.typography.labelSmall,
+				color = MaterialTheme.colorScheme.onSurfaceVariant,
+				modifier = Modifier.weight(1f).padding(start = 8.dp),
 			)
 			// Kosz tylko na własnych komentarzach.
 			if (canDelete) {

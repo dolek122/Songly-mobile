@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.shared.model.Post
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.util.RelativeTime
 import kotlinx.coroutines.launch
 
 /**
@@ -286,6 +287,12 @@ private fun PostCard(
 					)
 				}
 			}
+			Text(
+				text = RelativeTime.format(post.createdAt),
+				style = MaterialTheme.typography.labelSmall,
+				color = MaterialTheme.colorScheme.onSurfaceVariant,
+				modifier = Modifier.padding(top = 2.dp),
+			)
 			Text(
 				text = post.content,
 				style = MaterialTheme.typography.bodyMedium,
