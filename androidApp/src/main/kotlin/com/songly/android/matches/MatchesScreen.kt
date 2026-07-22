@@ -1,5 +1,6 @@
 package com.songly.android.matches
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import com.songly.shared.model.Match
 fun MatchesScreen(
 	viewModel: MatchesViewModel,
 	onBack: () -> Unit,
+	onOpenUserProfile: (String) -> Unit,
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
@@ -114,6 +116,7 @@ fun MatchesScreen(
 							invited = match.userId in state.invitedIds,
 							enabled = !state.isBusy,
 							onInvite = { viewModel.invite(match.userId) },
+							onOpenProfile = { onOpenUserProfile(match.userId) },
 						)
 					}
 					if (state.isLoadingMore || state.appendErrorMessage != null) {
@@ -139,6 +142,7 @@ private fun MatchCard(
 	invited: Boolean,
 	enabled: Boolean,
 	onInvite: () -> Unit,
+	onOpenProfile: () -> Unit,
 ) {
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(16.dp)) {
@@ -146,13 +150,19 @@ private fun MatchCard(
 				verticalAlignment = Alignment.CenterVertically,
 				horizontalArrangement = Arrangement.spacedBy(10.dp),
 			) {
-				Avatar(displayName = match.displayName, avatarUrl = match.avatarUrl, size = 40.dp)
-				Text(
-					text = match.displayName,
-					style = MaterialTheme.typography.titleSmall,
-					fontWeight = FontWeight.SemiBold,
-					modifier = Modifier.weight(1f),
-				)
+				// Avatar + nazwa prowadzą do profilu; wskaźnik dopasowania zostaje osobno.
+				Row(
+					modifier = Modifier.weight(1f).clickable(onClick = onOpenProfile),
+					verticalAlignment = Alignment.CenterVertically,
+					horizontalArrangement = Arrangement.spacedBy(10.dp),
+				) {
+					Avatar(displayName = match.displayName, avatarUrl = match.avatarUrl, size = 40.dp)
+					Text(
+						text = match.displayName,
+						style = MaterialTheme.typography.titleSmall,
+						fontWeight = FontWeight.SemiBold,
+					)
+				}
 				Text(
 					text = "${match.scorePercent}% dopasowania",
 					style = MaterialTheme.typography.labelLarge,

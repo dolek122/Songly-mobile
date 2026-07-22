@@ -1,5 +1,6 @@
 package com.songly.android.communities
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ fun CommunityDetailScreen(
 	viewModel: CommunityDetailViewModel,
 	onBack: () -> Unit,
 	onDeleted: () -> Unit,
+	onOpenUserProfile: (String) -> Unit,
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
@@ -152,7 +154,7 @@ fun CommunityDetailScreen(
 						)
 					}
 					items(state.members, key = { it.userId }) { member ->
-						MemberRow(member)
+						MemberRow(member, onOpenProfile = { onOpenUserProfile(member.userId) })
 					}
 					if (state.isLoadingMoreMembers) {
 						item(key = "members-footer") {
@@ -208,18 +210,24 @@ private fun CommunityHeader(
 }
 
 @Composable
-private fun MemberRow(member: CommunityMember) {
+private fun MemberRow(member: CommunityMember, onOpenProfile: () -> Unit) {
 	Row(
 		modifier = Modifier.fillMaxWidth(),
 		verticalAlignment = Alignment.CenterVertically,
 		horizontalArrangement = Arrangement.spacedBy(10.dp),
 	) {
-		Avatar(displayName = member.displayName, avatarUrl = member.avatarUrl, size = 36.dp)
-		Text(
-			text = member.displayName,
-			style = MaterialTheme.typography.bodyLarge,
-			modifier = Modifier.weight(1f),
-		)
+		// Avatar + nazwa prowadzą do profilu członka; etykieta „Właściciel" zostaje osobno.
+		Row(
+			modifier = Modifier.weight(1f).clickable(onClick = onOpenProfile),
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(10.dp),
+		) {
+			Avatar(displayName = member.displayName, avatarUrl = member.avatarUrl, size = 36.dp)
+			Text(
+				text = member.displayName,
+				style = MaterialTheme.typography.bodyLarge,
+			)
+		}
 		if (member.isOwner) {
 			Text(
 				text = "Właściciel",

@@ -24,6 +24,7 @@ import com.songly.shared.model.Genre
 import com.songly.shared.model.Page
 import com.songly.shared.model.Post
 import com.songly.shared.model.Profile
+import com.songly.shared.model.PublicProfile
 import com.songly.shared.model.RefreshRequest
 import com.songly.shared.model.RegisterRequest
 import com.songly.shared.model.SendFriendRequestRequest
@@ -179,6 +180,10 @@ class SonglyApiClient(
 	/** Profil zalogowanego użytkownika. */
 	suspend fun myProfile(): Profile =
 		http.get("$base/api/v1/profiles/me").decodeOrThrow()
+
+	/** Publiczny profil innego użytkownika (dane profilowe + ulubione gatunki). */
+	suspend fun profile(userId: String): PublicProfile =
+		http.get("$base/api/v1/profiles/$userId").decodeOrThrow()
 
 	/** Aktualizuje profil i zwraca zaktualizowaną wersję. */
 	suspend fun updateProfile(displayName: String, bio: String?, avatarUrl: String?): Profile =

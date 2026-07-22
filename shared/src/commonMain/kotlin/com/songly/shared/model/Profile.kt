@@ -19,6 +19,20 @@ data class Genre(
 )
 
 /**
+ * Publiczny profil innego użytkownika (backend: profile.dto.PublicProfileResponse).
+ * Do oglądania cudzego profilu — niesie dane profilowe i ulubione gatunki, ale nie
+ * dane o zachowaniu (co teraz słucha) — te mają osobny model prywatności.
+ */
+@Serializable
+data class PublicProfile(
+	val userId: String,
+	val displayName: String,
+	val bio: String? = null,
+	val avatarUrl: String? = null,
+	val favoriteGenres: List<Genre> = emptyList(),
+)
+
+/**
  * Aktualizacja profilu (backend: profile.dto.UpdateProfileRequest).
  * displayName wymagany (max 80), bio max 500, avatarUrl max 2048.
  */

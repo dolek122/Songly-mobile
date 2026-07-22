@@ -50,6 +50,7 @@ import com.songly.shared.util.RelativeTime
 fun NotificationsScreen(
 	viewModel: NotificationsViewModel,
 	onBack: () -> Unit,
+	onOpenUserProfile: (String) -> Unit,
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
@@ -109,6 +110,7 @@ fun NotificationsScreen(
 						NotificationCard(
 							notification = notification,
 							onClick = { viewModel.markRead(notification) },
+							onOpenProfile = { onOpenUserProfile(notification.actorId) },
 						)
 					}
 					if (state.isLoadingMore || state.appendErrorMessage != null) {
@@ -127,7 +129,7 @@ fun NotificationsScreen(
 }
 
 @Composable
-private fun NotificationCard(notification: Notification, onClick: () -> Unit) {
+private fun NotificationCard(notification: Notification, onClick: () -> Unit, onOpenProfile: () -> Unit) {
 	val unread = notification.isUnread
 	Card(
 		modifier = Modifier.fillMaxWidth().clickable(enabled = unread, onClick = onClick),
@@ -142,10 +144,12 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit) {
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.spacedBy(12.dp),
 		) {
+			// Avatar aktora prowadzi do jego profilu (osobny tap-target nad kliknięciem karty).
 			Avatar(
 				displayName = notification.actorDisplayName ?: "?",
 				avatarUrl = notification.actorAvatarUrl,
 				size = 40.dp,
+				modifier = Modifier.clickable(onClick = onOpenProfile),
 			)
 			Column(modifier = Modifier.weight(1f)) {
 				Text(

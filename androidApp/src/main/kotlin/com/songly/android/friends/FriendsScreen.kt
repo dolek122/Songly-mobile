@@ -1,5 +1,6 @@
 package com.songly.android.friends
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,7 @@ import com.songly.shared.model.FriendRequest
 fun FriendsScreen(
 	viewModel: FriendsViewModel,
 	onBack: () -> Unit,
+	onOpenUserProfile: (String) -> Unit,
 ) {
 	val state = viewModel.uiState
 
@@ -106,6 +108,7 @@ fun FriendsScreen(
 								enabled = !state.isBusy,
 								onSend = { viewModel.sendRequestTo(result.userId) },
 								onBlock = { viewModel.block(result.userId) },
+								onOpenProfile = { onOpenUserProfile(result.userId) },
 							)
 						}
 					} else if (state.searched && !state.isSearching) {
@@ -122,6 +125,7 @@ fun FriendsScreen(
 								enabled = !state.isBusy,
 								onAccept = { viewModel.accept(request.id) },
 								onDecline = { viewModel.decline(request.id) },
+								onOpenProfile = { onOpenUserProfile(request.requesterId) },
 							)
 						}
 					}
@@ -135,6 +139,7 @@ fun FriendsScreen(
 								request = request,
 								enabled = !state.isBusy,
 								onCancel = { viewModel.cancel(request.id) },
+								onOpenProfile = { onOpenUserProfile(request.addresseeId) },
 							)
 						}
 					}
@@ -149,6 +154,7 @@ fun FriendsScreen(
 								enabled = !state.isBusy,
 								onRemove = { viewModel.removeFriend(friend.userId) },
 								onBlock = { viewModel.block(friend.userId) },
+								onOpenProfile = { onOpenUserProfile(friend.userId) },
 							)
 						}
 					}
@@ -204,10 +210,12 @@ private fun SearchResultRow(
 	enabled: Boolean,
 	onSend: () -> Unit,
 	onBlock: () -> Unit,
+	onOpenProfile: () -> Unit,
 ) {
 	PersonRow(
 		name = name,
 		leading = { Avatar(displayName = name, avatarUrl = avatarUrl, size = 36.dp) },
+		onClick = onOpenProfile,
 	) {
 		Button(onClick = onSend, enabled = enabled) { Text("Zaproś") }
 		OutlinedButton(onClick = onBlock, enabled = enabled) { Text("Blokuj") }
@@ -220,12 +228,14 @@ private fun IncomingRequestRow(
 	enabled: Boolean,
 	onAccept: () -> Unit,
 	onDecline: () -> Unit,
+	onOpenProfile: () -> Unit,
 ) {
 	PersonRow(
 		name = request.requesterDisplayName,
 		leading = {
 			Avatar(displayName = request.requesterDisplayName, avatarUrl = request.requesterAvatarUrl, size = 36.dp)
 		},
+		onClick = onOpenProfile,
 	) {
 		Button(onClick = onAccept, enabled = enabled) { Text("Akceptuj") }
 		OutlinedButton(onClick = onDecline, enabled = enabled) { Text("Odrzuć") }
@@ -233,22 +243,35 @@ private fun IncomingRequestRow(
 }
 
 @Composable
-private fun OutgoingRequestRow(request: FriendRequest, enabled: Boolean, onCancel: () -> Unit) {
+private fun OutgoingRequestRow(
+	request: FriendRequest,
+	enabled: Boolean,
+	onCancel: () -> Unit,
+	onOpenProfile: () -> Unit,
+) {
 	PersonRow(
 		name = request.addresseeDisplayName,
 		leading = {
 			Avatar(displayName = request.addresseeDisplayName, avatarUrl = request.addresseeAvatarUrl, size = 36.dp)
 		},
+		onClick = onOpenProfile,
 	) {
 		OutlinedButton(onClick = onCancel, enabled = enabled) { Text("Anuluj") }
 	}
 }
 
 @Composable
-private fun FriendRow(friend: Friend, enabled: Boolean, onRemove: () -> Unit, onBlock: () -> Unit) {
+private fun FriendRow(
+	friend: Friend,
+	enabled: Boolean,
+	onRemove: () -> Unit,
+	onBlock: () -> Unit,
+	onOpenProfile: () -> Unit,
+) {
 	PersonRow(
 		name = friend.displayName,
 		leading = { Avatar(displayName = friend.displayName, avatarUrl = friend.avatarUrl, size = 36.dp) },
+		onClick = onOpenProfile,
 	) {
 		OutlinedButton(onClick = onRemove, enabled = enabled) { Text("Usuń") }
 		OutlinedButton(onClick = onBlock, enabled = enabled) { Text("Blokuj") }
@@ -263,18 +286,29 @@ private fun BlockedRow(blocked: BlockedUser, enabled: Boolean, onUnblock: () -> 
 }
 
 @Composable
-private fun PersonRow(name: String, leading: (@Composable () -> Unit)? = null, actions: @Composable () -> Unit) {
+private fun PersonRow(
+	name: String,
+	leading: (@Composable () -> Unit)? = null,
+	onClick: (() -> Unit)? = null,
+	actions: @Composable () -> Unit,
+) {
 	Row(
 		modifier = Modifier.fillMaxWidth(),
 		verticalAlignment = Alignment.CenterVertically,
 		horizontalArrangement = Arrangement.spacedBy(8.dp),
 	) {
-		leading?.invoke()
-		Text(
-			text = name,
-			style = MaterialTheme.typography.bodyLarge,
-			modifier = Modifier.weight(1f),
-		)
+		// Avatar + nazwa prowadzą do profilu osoby (gdy onClick ustawiony); akcje osobno.
+		Row(
+			modifier = Modifier.weight(1f).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(8.dp),
+		) {
+			leading?.invoke()
+			Text(
+				text = name,
+				style = MaterialTheme.typography.bodyLarge,
+			)
+		}
 		actions()
 	}
 }

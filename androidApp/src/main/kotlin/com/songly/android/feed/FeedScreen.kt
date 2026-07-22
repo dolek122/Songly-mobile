@@ -62,6 +62,7 @@ fun FeedScreen(
 	onSessionExpired: () -> Unit,
 	onCreatePost: () -> Unit,
 	onOpenComments: (String) -> Unit,
+	onOpenUserProfile: (String) -> Unit,
 	onOpenProfile: () -> Unit,
 	onOpenFriends: () -> Unit,
 	onOpenNowPlaying: () -> Unit,
@@ -205,6 +206,7 @@ fun FeedScreen(
 								onOpenComments = { onOpenComments(post.id) },
 								onToggleShare = { viewModel.toggleShare(post) },
 								onDelete = { viewModel.requestDeletePost(post.id) },
+								onOpenAuthor = { onOpenUserProfile(post.authorId) },
 							)
 						}
 						if (state.isLoadingMore || state.appendErrorMessage != null) {
@@ -268,6 +270,7 @@ private fun PostCard(
 	onOpenComments: () -> Unit,
 	onToggleShare: () -> Unit,
 	onDelete: () -> Unit,
+	onOpenAuthor: () -> Unit,
 ) {
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(16.dp)) {
@@ -275,18 +278,25 @@ private fun PostCard(
 				verticalAlignment = Alignment.CenterVertically,
 				horizontalArrangement = Arrangement.spacedBy(10.dp),
 			) {
-				Avatar(displayName = post.authorDisplayName, avatarUrl = post.authorAvatarUrl, size = 40.dp)
-				Column(modifier = Modifier.weight(1f)) {
-					Text(
-						text = post.authorDisplayName,
-						style = MaterialTheme.typography.titleSmall,
-						fontWeight = FontWeight.SemiBold,
-					)
-					Text(
-						text = RelativeTime.format(post.createdAt),
-						style = MaterialTheme.typography.labelSmall,
-						color = MaterialTheme.colorScheme.onSurfaceVariant,
-					)
+				// Avatar + nazwa autora prowadzą do jego profilu; kosz zostaje osobno.
+				Row(
+					modifier = Modifier.weight(1f).clickable(onClick = onOpenAuthor),
+					verticalAlignment = Alignment.CenterVertically,
+					horizontalArrangement = Arrangement.spacedBy(10.dp),
+				) {
+					Avatar(displayName = post.authorDisplayName, avatarUrl = post.authorAvatarUrl, size = 40.dp)
+					Column {
+						Text(
+							text = post.authorDisplayName,
+							style = MaterialTheme.typography.titleSmall,
+							fontWeight = FontWeight.SemiBold,
+						)
+						Text(
+							text = RelativeTime.format(post.createdAt),
+							style = MaterialTheme.typography.labelSmall,
+							color = MaterialTheme.colorScheme.onSurfaceVariant,
+						)
+					}
 				}
 				// Kosz tylko na własnych postach.
 				if (canDelete) {

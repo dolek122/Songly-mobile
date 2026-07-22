@@ -42,6 +42,7 @@ fun CommentsScreen(
 	onBack: () -> Unit,
 	onCommentAdded: () -> Unit,
 	onCommentDeleted: () -> Unit,
+	onOpenUserProfile: (String) -> Unit,
 ) {
 	val state = viewModel.uiState
 
@@ -104,6 +105,7 @@ fun CommentsScreen(
 							comment = comment,
 							canDelete = comment.authorId == state.currentUserId,
 							onDelete = { viewModel.delete(comment, onCommentDeleted) },
+							onOpenProfile = { onOpenUserProfile(comment.authorId) },
 						)
 					}
 				}
@@ -113,18 +115,25 @@ fun CommentsScreen(
 }
 
 @Composable
-private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Unit) {
+private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Unit, onOpenProfile: () -> Unit) {
 	Row(
 		modifier = Modifier.fillMaxWidth(),
 		horizontalArrangement = Arrangement.spacedBy(10.dp),
 	) {
-		Avatar(displayName = comment.authorDisplayName, avatarUrl = comment.authorAvatarUrl, size = 36.dp)
+		// Avatar i nazwa autora prowadzą do jego profilu.
+		Avatar(
+			displayName = comment.authorDisplayName,
+			avatarUrl = comment.authorAvatarUrl,
+			size = 36.dp,
+			modifier = Modifier.clickable(onClick = onOpenProfile),
+		)
 		Column(modifier = Modifier.weight(1f)) {
 			Row(verticalAlignment = Alignment.CenterVertically) {
 				Text(
 					text = comment.authorDisplayName,
 					style = MaterialTheme.typography.titleSmall,
 					fontWeight = FontWeight.SemiBold,
+					modifier = Modifier.clickable(onClick = onOpenProfile),
 				)
 				Text(
 					text = RelativeTime.format(comment.createdAt),

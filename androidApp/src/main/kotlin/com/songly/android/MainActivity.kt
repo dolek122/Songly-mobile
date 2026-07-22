@@ -43,6 +43,8 @@ import com.songly.android.post.CreatePostScreen
 import com.songly.android.post.CreatePostViewModel
 import com.songly.android.profile.ProfileScreen
 import com.songly.android.profile.ProfileViewModel
+import com.songly.android.profile.UserProfileScreen
+import com.songly.android.profile.UserProfileViewModel
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.session.AndroidKeystoreTokenStorage
@@ -156,8 +158,26 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	var showCommunities by remember { mutableStateOf(false) }
 	var communityDetailId by remember { mutableStateOf<String?>(null) }
 	var showMatches by remember { mutableStateOf(false) }
+	// Profil innego użytkownika — nakładka nad dowolnym ekranem (feed, znajomi…);
+	// po powrocie (viewUserId = null) wracamy do ekranu spod spodu.
+	var viewUserId by remember { mutableStateOf<String?>(null) }
 
 	when {
+		viewUserId != null -> {
+			val id = viewUserId!!
+			// Klucz per użytkownik — inaczej viewModel() oddałby profil innej osoby.
+			val userProfileViewModel: UserProfileViewModel = viewModel(
+				key = "user-profile-$id",
+				factory = viewModelFactory {
+					initializer { UserProfileViewModel(client, id) }
+				},
+			)
+			UserProfileScreen(
+				viewModel = userProfileViewModel,
+				onBack = { viewUserId = null },
+			)
+		}
+
 		showMatches -> {
 			val matchesViewModel: MatchesViewModel = viewModel(
 				factory = viewModelFactory {
@@ -167,6 +187,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			MatchesScreen(
 				viewModel = matchesViewModel,
 				onBack = { showMatches = false },
+				onOpenUserProfile = { viewUserId = it },
 			)
 		}
 
@@ -184,6 +205,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onBack = { communityDetailId = null },
 				// Po usunięciu wróć do listy — CommunitiesScreen odświeży się sam przy wejściu.
 				onDeleted = { communityDetailId = null },
+				onOpenUserProfile = { viewUserId = it },
 			)
 		}
 
@@ -210,6 +232,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				viewModel = notificationsViewModel,
 				// Powrót odświeża feed, żeby badge nieprzeczytanych zszedł po lekturze.
 				onBack = { showNotifications = false; feedViewModel.refresh() },
+				onOpenUserProfile = { viewUserId = it },
 			)
 		}
 
@@ -247,6 +270,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			FriendsScreen(
 				viewModel = friendsViewModel,
 				onBack = { showFriends = false },
+				onOpenUserProfile = { viewUserId = it },
 			)
 		}
 
@@ -280,6 +304,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onBack = { commentsPostId = null },
 				onCommentAdded = { feedViewModel.incrementCommentCount(postId) },
 				onCommentDeleted = { feedViewModel.decrementCommentCount(postId) },
+				onOpenUserProfile = { viewUserId = it },
 			)
 		}
 
@@ -291,6 +316,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onSessionExpired = onLoggedOut,
 				onCreatePost = { creatingPost = true },
 				onOpenComments = { commentsPostId = it },
+				onOpenUserProfile = { viewUserId = it },
 				onOpenProfile = { showProfile = true },
 				onOpenFriends = { showFriends = true },
 				onOpenNowPlaying = { showNowPlaying = true },
