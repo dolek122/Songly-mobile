@@ -23,6 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -94,8 +96,21 @@ fun CommunitiesScreen(
 			}
 		},
 	) { padding ->
-		Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-			when {
+		Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+			TabRow(selectedTabIndex = state.tab.ordinal) {
+				Tab(
+					selected = state.tab == CommunitiesTab.ALL,
+					onClick = { viewModel.selectTab(CommunitiesTab.ALL) },
+					text = { Text("Wszystkie") },
+				)
+				Tab(
+					selected = state.tab == CommunitiesTab.MINE,
+					onClick = { viewModel.selectTab(CommunitiesTab.MINE) },
+					text = { Text("Moje") },
+				)
+			}
+			Box(modifier = Modifier.fillMaxSize()) {
+				when {
 				state.isLoading && state.communities.isEmpty() ->
 					CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
@@ -107,7 +122,14 @@ fun CommunitiesScreen(
 				}
 
 				state.isEmpty -> CenteredMessage {
-					Text("Brak społeczności. Załóż pierwszą!", style = MaterialTheme.typography.bodyMedium)
+					Text(
+						text = if (state.tab == CommunitiesTab.MINE) {
+							"Nie należysz jeszcze do żadnej społeczności."
+						} else {
+							"Brak społeczności. Załóż pierwszą!"
+						},
+						style = MaterialTheme.typography.bodyMedium,
+					)
 				}
 
 				else -> LazyColumn(
@@ -144,6 +166,7 @@ fun CommunitiesScreen(
 				}
 			}
 		}
+	}
 	}
 }
 

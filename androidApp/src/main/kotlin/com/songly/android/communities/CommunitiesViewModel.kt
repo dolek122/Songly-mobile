@@ -12,8 +12,12 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
 
+/** Która lista społeczności jest pokazywana. */
+enum class CommunitiesTab { ALL, MINE }
+
 /** Stan ekranu listy społeczności (paginacja) + dialog tworzenia. */
 data class CommunitiesUiState(
+	val tab: CommunitiesTab = CommunitiesTab.ALL,
 	val isLoading: Boolean = true,
 	val isLoadingMore: Boolean = false,
 	val communities: List<Community> = emptyList(),
@@ -57,6 +61,22 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loadPage(reset = true)
 	}
 
+	/** Przełącza zakładkę (Wszystkie / Moje) i ładuje odpowiednią listę od nowa. */
+	fun selectTab(tab: CommunitiesTab) {
+		if (tab == uiState.tab || loading) return
+		nextPage = 0
+		uiState = uiState.copy(
+			tab = tab,
+			isLoading = true,
+			communities = emptyList(),
+			errorMessage = null,
+			appendErrorMessage = null,
+			endReached = false,
+			statusMessage = null,
+		)
+		loadPage(reset = true)
+	}
+
 	fun loadNextPage() {
 		if (loading || uiState.endReached || uiState.isLoading || uiState.appendErrorMessage != null) return
 		uiState = uiState.copy(isLoadingMore = true)
@@ -69,19 +89,39 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loadPage(reset = false)
 	}
 
-	/** Dołącza/opuszcza optymistycznie; przy błędzie cofa. Właściciel nie może opuścić (serwer odrzuci). */
+	/**
+	 * Dołącza/opuszcza optymistycznie; przy błędzie cofa cały stan listy. Na zakładce
+	 * „Moje" opuszczona społeczność znika z listy (nie jest już Twoja). Właściciel nie
+	 * może opuścić (serwer odrzuci).
+	 */
 	fun toggleMembership(community: Community) {
 		val join = !community.isMember
-		applyMembership(community.id, join)
+		val snapshot = uiState.communities
+		uiState = uiState.copy(communities = optimisticToggle(snapshot, community.id, join), statusMessage = null)
 		viewModelScope.launch {
 			try {
 				if (join) client.joinCommunity(community.id) else client.leaveCommunity(community.id)
 			} catch (e: Exception) {
-				// Rollback do stanu sprzed kliknięcia.
-				updateCommunity(community.id) {
-					it.copy(myRole = community.myRole, memberCount = community.memberCount)
-				}
-				uiState = uiState.copy(statusMessage = membershipError(e, join))
+				// Rollback całej listy do stanu sprzed kliknięcia.
+				uiState = uiState.copy(communities = snapshot, statusMessage = membershipError(e, join))
+			}
+		}
+	}
+
+	private fun optimisticToggle(list: List<Community>, communityId: String, join: Boolean): List<Community> {
+		// Na „Moje" opuszczenie usuwa wiersz — po opuszczeniu społeczność nie jest już Twoja.
+		if (uiState.tab == CommunitiesTab.MINE && !join) {
+			return list.filterNot { it.id == communityId }
+		}
+		return list.map {
+			if (it.id != communityId) {
+				it
+			} else {
+				it.copy(
+					// Po dołączeniu jesteś MEMBER; po opuszczeniu przestajesz być członkiem.
+					myRole = if (join) "MEMBER" else null,
+					memberCount = (it.memberCount + if (join) 1 else -1).coerceAtLeast(0),
+				)
 			}
 		}
 	}
@@ -124,27 +164,16 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	private fun applyMembership(communityId: String, join: Boolean) {
-		updateCommunity(communityId) {
-			it.copy(
-				// Po dołączeniu jesteś MEMBER; po opuszczeniu przestajesz być członkiem.
-				myRole = if (join) "MEMBER" else null,
-				memberCount = (it.memberCount + if (join) 1 else -1).coerceAtLeast(0),
-			)
-		}
-	}
-
-	private fun updateCommunity(communityId: String, transform: (Community) -> Community) {
-		uiState = uiState.copy(
-			communities = uiState.communities.map { if (it.id == communityId) transform(it) else it },
-		)
-	}
-
 	private fun loadPage(reset: Boolean) {
 		loading = true
+		val tab = uiState.tab
 		viewModelScope.launch {
 			try {
-				val page = client.communities(page = nextPage, size = PAGE_SIZE)
+				val page = if (tab == CommunitiesTab.MINE) {
+					client.myCommunities(page = nextPage, size = PAGE_SIZE)
+				} else {
+					client.communities(page = nextPage, size = PAGE_SIZE)
+				}
 				val merged = if (reset) page.content else uiState.communities + page.content
 				nextPage = page.number + 1
 				uiState = uiState.copy(
