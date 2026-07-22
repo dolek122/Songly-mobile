@@ -16,7 +16,7 @@ data class ProfileUiState(
 	val errorMessage: String? = null,
 	val displayName: String = "",
 	val bio: String = "",
-	val avatarUrl: String? = null, // przenoszony bez edycji w UI
+	val avatarUrl: String? = null, // URL avatara (edytowalny, pusty = brak)
 	val isSavingProfile: Boolean = false,
 	val allGenres: List<Genre> = emptyList(),
 	val selectedGenreIds: Set<String> = emptySet(),
@@ -82,6 +82,11 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	fun onBioChange(value: String) {
 		uiState = uiState.copy(bio = value, statusMessage = null)
+	}
+
+	/** Pusty URL zapisujemy jako brak avatara (null). */
+	fun onAvatarUrlChange(value: String) {
+		uiState = uiState.copy(avatarUrl = value.ifBlank { null }, statusMessage = null)
 	}
 
 	fun toggleGenre(id: String) {

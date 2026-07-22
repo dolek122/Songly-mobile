@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 
 /**
  * Ekran profilu (Compose, natywny UI — §14): edycja danych profilowych i wybór
@@ -108,10 +109,24 @@ fun ProfileScreen(
 					}
 
 					Text("Twoje dane", style = MaterialTheme.typography.titleMedium)
+					Avatar(
+						displayName = state.displayName,
+						avatarUrl = state.avatarUrl,
+						size = 88.dp,
+						modifier = Modifier.align(Alignment.CenterHorizontally),
+					)
 					OutlinedTextField(
 						value = state.displayName,
 						onValueChange = viewModel::onDisplayNameChange,
 						label = { Text("Nazwa wyświetlana") },
+						singleLine = true,
+						enabled = !state.isSavingProfile,
+						modifier = Modifier.fillMaxWidth(),
+					)
+					OutlinedTextField(
+						value = state.avatarUrl.orEmpty(),
+						onValueChange = viewModel::onAvatarUrlChange,
+						label = { Text("URL avatara") },
 						singleLine = true,
 						enabled = !state.isSavingProfile,
 						modifier = Modifier.fillMaxWidth(),

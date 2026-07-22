@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
@@ -101,6 +102,7 @@ fun FriendsScreen(
 						items(state.searchResults, key = { "sr-${it.userId}" }) { result ->
 							SearchResultRow(
 								name = result.displayName,
+								avatarUrl = result.avatarUrl,
 								enabled = !state.isBusy,
 								onSend = { viewModel.sendRequestTo(result.userId) },
 								onBlock = { viewModel.block(result.userId) },
@@ -196,8 +198,17 @@ private fun SearchSection(
 }
 
 @Composable
-private fun SearchResultRow(name: String, enabled: Boolean, onSend: () -> Unit, onBlock: () -> Unit) {
-	PersonRow(name = name) {
+private fun SearchResultRow(
+	name: String,
+	avatarUrl: String?,
+	enabled: Boolean,
+	onSend: () -> Unit,
+	onBlock: () -> Unit,
+) {
+	PersonRow(
+		name = name,
+		leading = { Avatar(displayName = name, avatarUrl = avatarUrl, size = 36.dp) },
+	) {
 		Button(onClick = onSend, enabled = enabled) { Text("Zaproś") }
 		OutlinedButton(onClick = onBlock, enabled = enabled) { Text("Blokuj") }
 	}
@@ -239,12 +250,13 @@ private fun BlockedRow(blocked: BlockedUser, enabled: Boolean, onUnblock: () -> 
 }
 
 @Composable
-private fun PersonRow(name: String, actions: @Composable () -> Unit) {
+private fun PersonRow(name: String, leading: (@Composable () -> Unit)? = null, actions: @Composable () -> Unit) {
 	Row(
 		modifier = Modifier.fillMaxWidth(),
 		verticalAlignment = Alignment.CenterVertically,
 		horizontalArrangement = Arrangement.spacedBy(8.dp),
 	) {
+		leading?.invoke()
 		Text(
 			text = name,
 			style = MaterialTheme.typography.bodyLarge,

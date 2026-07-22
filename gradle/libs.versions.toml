@@ -11,6 +11,7 @@ androidxCore = "1.15.0"
 activityCompose = "1.9.3"
 lifecycle = "2.8.7"
 composeBom = "2025.01.00"
+coil = "2.7.0"
 compileSdk = "35"
 minSdk = "26"
 targetSdk = "35"
@@ -37,6 +38,7 @@ androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
