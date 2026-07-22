@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
 import com.songly.shared.model.SonglyApiException
@@ -19,6 +20,7 @@ data class FriendsUiState(
 	val friends: List<Friend> = emptyList(),
 	val incoming: List<FriendRequest> = emptyList(),
 	val outgoing: List<FriendRequest> = emptyList(),
+	val blocked: List<BlockedUser> = emptyList(),
 	val searchQuery: String = "",
 	val isSearching: Boolean = false,
 	val searchResults: List<UserSearchResult> = emptyList(),
@@ -53,6 +55,7 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 					friends = client.friends().content,
 					incoming = client.friendRequests(direction = "INCOMING").content,
 					outgoing = client.friendRequests(direction = "OUTGOING").content,
+					blocked = client.blockedUsers().content,
 				)
 			} catch (e: SonglyApiException) {
 				uiState = uiState.copy(
@@ -109,6 +112,17 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 	fun removeFriend(userId: String) =
 		runAction("Usunięto znajomego", "usunąć znajomego") { client.removeFriend(userId) }
 
+	/** Blokuje użytkownika (usuwa też znajomość i zaproszenia — stąd przeładowanie list). */
+	fun block(userId: String) =
+		runAction("Zablokowano", "zablokować użytkownika") {
+			client.blockUser(userId)
+			// Zablokowany znika z ewentualnych wyników wyszukiwania.
+			uiState = uiState.copy(searchResults = uiState.searchResults.filterNot { it.userId == userId })
+		}
+
+	fun unblock(userId: String) =
+		runAction("Odblokowano", "odblokować użytkownika") { client.unblockUser(userId) }
+
 	/**
 	 * Wykonuje akcję mutującą, potem przeładowuje listy. [isBusy] blokuje
 	 * równoległe akcje; komunikat sukcesu/błędu ląduje w [FriendsUiState.statusMessage].
@@ -137,6 +151,7 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 			friends = client.friends().content,
 			incoming = client.friendRequests(direction = "INCOMING").content,
 			outgoing = client.friendRequests(direction = "OUTGOING").content,
+			blocked = client.blockedUsers().content,
 		)
 	}
 }

@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
 
@@ -102,6 +103,7 @@ fun FriendsScreen(
 								name = result.displayName,
 								enabled = !state.isBusy,
 								onSend = { viewModel.sendRequestTo(result.userId) },
+								onBlock = { viewModel.block(result.userId) },
 							)
 						}
 					} else if (state.searched && !state.isSearching) {
@@ -144,6 +146,20 @@ fun FriendsScreen(
 								friend = friend,
 								enabled = !state.isBusy,
 								onRemove = { viewModel.removeFriend(friend.userId) },
+								onBlock = { viewModel.block(friend.userId) },
+							)
+						}
+					}
+
+					item(key = "h-blocked") { SectionHeader("Zablokowani") }
+					if (state.blocked.isEmpty()) {
+						item(key = "e-blocked") { EmptyHint("Nie masz zablokowanych użytkowników.") }
+					} else {
+						items(state.blocked, key = { "bl-${it.userId}" }) { blocked ->
+							BlockedRow(
+								blocked = blocked,
+								enabled = !state.isBusy,
+								onUnblock = { viewModel.unblock(blocked.userId) },
 							)
 						}
 					}
@@ -180,9 +196,10 @@ private fun SearchSection(
 }
 
 @Composable
-private fun SearchResultRow(name: String, enabled: Boolean, onSend: () -> Unit) {
+private fun SearchResultRow(name: String, enabled: Boolean, onSend: () -> Unit, onBlock: () -> Unit) {
 	PersonRow(name = name) {
 		Button(onClick = onSend, enabled = enabled) { Text("Zaproś") }
+		OutlinedButton(onClick = onBlock, enabled = enabled) { Text("Blokuj") }
 	}
 }
 
@@ -207,9 +224,17 @@ private fun OutgoingRequestRow(request: FriendRequest, enabled: Boolean, onCance
 }
 
 @Composable
-private fun FriendRow(friend: Friend, enabled: Boolean, onRemove: () -> Unit) {
+private fun FriendRow(friend: Friend, enabled: Boolean, onRemove: () -> Unit, onBlock: () -> Unit) {
 	PersonRow(name = friend.displayName) {
 		OutlinedButton(onClick = onRemove, enabled = enabled) { Text("Usuń") }
+		OutlinedButton(onClick = onBlock, enabled = enabled) { Text("Blokuj") }
+	}
+}
+
+@Composable
+private fun BlockedRow(blocked: BlockedUser, enabled: Boolean, onUnblock: () -> Unit) {
+	PersonRow(name = blocked.displayName) {
+		OutlinedButton(onClick = onUnblock, enabled = enabled) { Text("Odblokuj") }
 	}
 }
 

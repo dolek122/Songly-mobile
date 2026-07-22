@@ -16,6 +16,7 @@ import com.songly.shared.model.Notification
 import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.Match
+import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
 import com.songly.shared.model.Genre
@@ -227,6 +228,24 @@ class SonglyApiClient(
 	suspend fun searchUsers(query: String, page: Int = 0, size: Int = 20): Page<UserSearchResult> =
 		http.get("$base/api/v1/profiles/search") {
 			parameter("query", query)
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/**
+	 * Blokuje użytkownika (idempotentne). Po stronie serwera usuwa też znajomość
+	 * i anuluje zaproszenia w obie strony — dlatego UI po blokadzie przeładowuje listy.
+	 */
+	suspend fun blockUser(userId: String) =
+		http.put("$base/api/v1/blocks/$userId").ensureSuccessOrThrow()
+
+	/** Odblokowuje użytkownika. */
+	suspend fun unblockUser(userId: String) =
+		http.delete("$base/api/v1/blocks/$userId").ensureSuccessOrThrow()
+
+	/** Lista zablokowanych użytkowników, stronicowana. */
+	suspend fun blockedUsers(page: Int = 0, size: Int = 20): Page<BlockedUser> =
+		http.get("$base/api/v1/blocks") {
 			parameter("page", page)
 			parameter("size", size)
 		}.decodeOrThrow()

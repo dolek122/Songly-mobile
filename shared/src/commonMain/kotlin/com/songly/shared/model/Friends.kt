@@ -26,6 +26,14 @@ data class FriendRequest(
 @Serializable
 data class SendFriendRequestRequest(val addresseeId: String)
 
+/** Zablokowany użytkownik (backend: social.dto.BlockedUserResponse). */
+@Serializable
+data class BlockedUser(
+	val userId: String,
+	val displayName: String,
+	val blockedAt: String,
+)
+
 /** Wynik wyszukiwania użytkownika (backend: profile.dto.UserSearchResponse). */
 @Serializable
 data class UserSearchResult(
