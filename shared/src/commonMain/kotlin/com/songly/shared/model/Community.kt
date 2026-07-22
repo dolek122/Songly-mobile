@@ -14,6 +14,8 @@ data class Community(
 	val name: String,
 	val description: String? = null,
 	val ownerId: String,
+	val ownerDisplayName: String? = null,
+	val ownerAvatarUrl: String? = null,
 	val memberCount: Long,
 	val myRole: String? = null,
 	val createdAt: String,

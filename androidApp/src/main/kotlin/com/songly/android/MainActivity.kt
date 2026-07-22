@@ -219,6 +219,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				viewModel = communitiesViewModel,
 				onBack = { showCommunities = false },
 				onOpenCommunity = { communityDetailId = it },
+				onOpenUserProfile = { viewUserId = it },
 			)
 		}
 

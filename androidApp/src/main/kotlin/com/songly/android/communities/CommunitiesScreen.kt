@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 import com.songly.shared.model.Community
 
 /**
@@ -50,6 +51,7 @@ fun CommunitiesScreen(
 	viewModel: CommunitiesViewModel,
 	onBack: () -> Unit,
 	onOpenCommunity: (String) -> Unit,
+	onOpenUserProfile: (String) -> Unit,
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
@@ -152,6 +154,7 @@ fun CommunitiesScreen(
 							community = community,
 							onToggleMembership = { viewModel.toggleMembership(community) },
 							onOpen = { onOpenCommunity(community.id) },
+							onOpenOwner = { onOpenUserProfile(community.ownerId) },
 						)
 					}
 					if (state.isLoadingMore || state.appendErrorMessage != null) {
@@ -171,7 +174,12 @@ fun CommunitiesScreen(
 }
 
 @Composable
-private fun CommunityCard(community: Community, onToggleMembership: () -> Unit, onOpen: () -> Unit) {
+private fun CommunityCard(
+	community: Community,
+	onToggleMembership: () -> Unit,
+	onOpen: () -> Unit,
+	onOpenOwner: () -> Unit,
+) {
 	Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
 		Row(
 			modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -197,6 +205,25 @@ private fun CommunityCard(community: Community, onToggleMembership: () -> Unit, 
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 					modifier = Modifier.padding(top = 4.dp),
 				)
+				// Założyciel — osobny tap-target nad kliknięciem karty, prowadzi do jego profilu.
+				if (community.ownerDisplayName != null) {
+					Row(
+						modifier = Modifier.padding(top = 6.dp).clickable(onClick = onOpenOwner),
+						verticalAlignment = Alignment.CenterVertically,
+						horizontalArrangement = Arrangement.spacedBy(6.dp),
+					) {
+						Avatar(
+							displayName = community.ownerDisplayName!!,
+							avatarUrl = community.ownerAvatarUrl,
+							size = 24.dp,
+						)
+						Text(
+							text = "Założyciel: ${community.ownerDisplayName}",
+							style = MaterialTheme.typography.labelMedium,
+							color = MaterialTheme.colorScheme.onSurfaceVariant,
+						)
+					}
+				}
 			}
 			// Właściciel nie może opuścić społeczności — nie pokazujemy mu przycisku.
 			when {
