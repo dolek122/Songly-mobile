@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
-import com.songly.shared.model.PublicProfile
 
 /**
  * Ekran cudzego profilu (read-only, §14 natywny UI): avatar, nazwa, bio i ulubione
@@ -71,7 +70,7 @@ fun UserProfileScreen(
 					}
 				}
 
-				state.profile != null -> ProfileContent(state.profile)
+				state.profile != null -> ProfileContent(state, onInvite = viewModel::invite)
 			}
 		}
 	}
@@ -79,7 +78,8 @@ fun UserProfileScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileContent(profile: PublicProfile) {
+private fun ProfileContent(state: UserProfileUiState, onInvite: () -> Unit) {
+	val profile = state.profile ?: return
 	Column(
 		modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
 		verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -96,11 +96,35 @@ private fun ProfileContent(profile: PublicProfile) {
 		)
 		if (!profile.bio.isNullOrBlank()) {
 			Text(
-				text = profile.bio,
+				text = profile.bio!!,
 				style = MaterialTheme.typography.bodyMedium,
 				color = MaterialTheme.colorScheme.onSurfaceVariant,
 				textAlign = TextAlign.Center,
 			)
+		}
+
+		// Zaproszenie do znajomych — nie na własnym profilu. Status znajomości nie jest
+		// znany z góry, więc ewentualne odrzucenie pokazujemy po kliknięciu.
+		if (!state.isSelf) {
+			if (state.inviteSent) {
+				Text(
+					text = "Zaproszenie wysłane",
+					style = MaterialTheme.typography.labelLarge,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+				)
+			} else {
+				Button(onClick = onInvite, enabled = !state.isInviting) {
+					Text(if (state.isInviting) "Wysyłanie…" else "Wyślij zaproszenie")
+				}
+				if (state.inviteMessage != null) {
+					Text(
+						text = state.inviteMessage,
+						style = MaterialTheme.typography.bodySmall,
+						color = MaterialTheme.colorScheme.error,
+						textAlign = TextAlign.Center,
+					)
+				}
+			}
 		}
 
 		HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
