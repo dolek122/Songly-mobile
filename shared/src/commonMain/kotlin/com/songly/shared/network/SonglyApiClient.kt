@@ -8,6 +8,7 @@ import com.songly.shared.model.ConnectResponse
 import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.CreatePostRequest
 import com.songly.shared.model.ManualNowPlayingRequest
+import com.songly.shared.model.Notification
 import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.Friend
@@ -21,6 +22,7 @@ import com.songly.shared.model.RegisterRequest
 import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.SonglyApiException
+import com.songly.shared.model.UnreadCount
 import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.model.UserSearchResult
 import com.songly.shared.session.InMemoryTokenStorage
@@ -248,6 +250,27 @@ class SonglyApiClient(
 	/** Czyści ręczny status. */
 	suspend fun clearManualNowPlaying() =
 		http.delete("$base/api/v1/now-playing/manual").ensureSuccessOrThrow()
+
+	// --- Powiadomienia (moduł notification) ---
+
+	/** Powiadomienia zalogowanego użytkownika, najnowsze pierwsze, stronicowane. */
+	suspend fun notifications(page: Int = 0, size: Int = 20): Page<Notification> =
+		http.get("$base/api/v1/notifications") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/** Liczba nieprzeczytanych powiadomień (do badge'a). */
+	suspend fun unreadNotificationCount(): Long =
+		http.get("$base/api/v1/notifications/unread-count").decodeOrThrow<UnreadCount>().count
+
+	/** Oznacza pojedyncze powiadomienie jako przeczytane (idempotentne po stronie serwera). */
+	suspend fun markNotificationRead(notificationId: String) =
+		http.post("$base/api/v1/notifications/$notificationId/read").ensureSuccessOrThrow()
+
+	/** Oznacza wszystkie powiadomienia jako przeczytane. */
+	suspend fun markAllNotificationsRead() =
+		http.post("$base/api/v1/notifications/read-all").ensureSuccessOrThrow()
 
 	fun close() = http.close()
 

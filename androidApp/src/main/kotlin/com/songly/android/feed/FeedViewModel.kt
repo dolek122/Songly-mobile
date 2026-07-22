@@ -20,6 +20,7 @@ data class FeedUiState(
 	val errorMessage: String? = null, // błąd pierwszego wczytania (pusta lista)
 	val appendErrorMessage: String? = null, // błąd doczytywania (lista zostaje)
 	val endReached: Boolean = false, // ostatnia strona wczytana
+	val unreadNotifications: Long = 0, // do badge'a w menu (best-effort, nie blokuje feedu)
 	// Odświeżanie zwróciło 401 mimo auto-refreshu = refresh token też wygasł.
 	val sessionExpired: Boolean = false,
 ) {
@@ -118,11 +119,19 @@ class FeedViewModel(private val client: SonglyApiClient) : ViewModel() {
 				val page = client.feed(page = nextPage, size = PAGE_SIZE)
 				val merged = if (reset) page.content else uiState.posts + page.content
 				nextPage = page.number + 1
+				// Licznik nieprzeczytanych odświeżamy tylko przy pełnym odświeżeniu i
+				// best-effort — jego błąd nie może wywalić feedu.
+				val unread = if (reset) {
+					runCatching { client.unreadNotificationCount() }.getOrDefault(uiState.unreadNotifications)
+				} else {
+					uiState.unreadNotifications
+				}
 				uiState = uiState.copy(
 					isLoading = false,
 					isLoadingMore = false,
 					posts = merged,
 					endReached = page.last,
+					unreadNotifications = unread,
 					errorMessage = null,
 					appendErrorMessage = null,
 				)

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -59,6 +61,7 @@ fun FeedScreen(
 	onOpenProfile: () -> Unit,
 	onOpenFriends: () -> Unit,
 	onOpenNowPlaying: () -> Unit,
+	onOpenNotifications: () -> Unit,
 ) {
 	val state = viewModel.uiState
 	val scope = rememberCoroutineScope()
@@ -95,9 +98,30 @@ fun FeedScreen(
 				title = { Text("Songly") },
 				actions = {
 					IconButton(onClick = { menuOpen = true }) {
-						Text(text = "⋮", style = MaterialTheme.typography.titleLarge)
+						// Kropka na ikonie menu sygnalizuje nieprzeczytane powiadomienia.
+						BadgedBox(
+							badge = {
+								if (state.unreadNotifications > 0) {
+									Badge { Text(badgeLabel(state.unreadNotifications)) }
+								}
+							},
+						) {
+							Text(text = "⋮", style = MaterialTheme.typography.titleLarge)
+						}
 					}
 					DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+						DropdownMenuItem(
+							text = {
+								Text(
+									if (state.unreadNotifications > 0) {
+										"Powiadomienia (${state.unreadNotifications})"
+									} else {
+										"Powiadomienia"
+									},
+								)
+							},
+							onClick = { menuOpen = false; onOpenNotifications() },
+						)
 						DropdownMenuItem(
 							text = { Text("Teraz gram") },
 							onClick = { menuOpen = false; onOpenNowPlaying() },
@@ -174,6 +198,9 @@ fun FeedScreen(
 		}
 	}
 }
+
+/** Etykieta badge'a — powyżej 99 nieprzeczytanych pokazujemy „99+", żeby nie rozpychać ikony. */
+private fun badgeLabel(count: Long): String = if (count > 99) "99+" else count.toString()
 
 @Composable
 private fun FeedFooter(isLoading: Boolean, errorMessage: String?, onRetry: () -> Unit) {

@@ -27,6 +27,8 @@ import com.songly.android.feed.FeedScreen
 import com.songly.android.feed.FeedViewModel
 import com.songly.android.friends.FriendsScreen
 import com.songly.android.friends.FriendsViewModel
+import com.songly.android.notifications.NotificationsScreen
+import com.songly.android.notifications.NotificationsViewModel
 import com.songly.android.nowplaying.NowPlayingScreen
 import com.songly.android.nowplaying.NowPlayingViewModel
 import com.songly.android.post.CreatePostScreen
@@ -115,8 +117,22 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	var showProfile by remember { mutableStateOf(false) }
 	var showFriends by remember { mutableStateOf(false) }
 	var showNowPlaying by remember { mutableStateOf(false) }
+	var showNotifications by remember { mutableStateOf(false) }
 
 	when {
+		showNotifications -> {
+			val notificationsViewModel: NotificationsViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { NotificationsViewModel(client) }
+				},
+			)
+			NotificationsScreen(
+				viewModel = notificationsViewModel,
+				// Powrót odświeża feed, żeby badge nieprzeczytanych zszedł po lekturze.
+				onBack = { showNotifications = false; feedViewModel.refresh() },
+			)
+		}
+
 		showNowPlaying -> {
 			val nowPlayingViewModel: NowPlayingViewModel = viewModel(
 				factory = viewModelFactory {
@@ -196,6 +212,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onOpenProfile = { showProfile = true },
 				onOpenFriends = { showFriends = true },
 				onOpenNowPlaying = { showNowPlaying = true },
+				onOpenNotifications = { showNotifications = true },
 			)
 		}
 	}
