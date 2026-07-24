@@ -23,17 +23,31 @@ data class Post(
 )
 
 /**
- * Strona wyników — backend paginuje wszystkie listy (Claude.md §6: `?page=&size=`)
- * w standardowym kształcie Spring Data `Page`. Tu tylko pola, których realnie
- * używa UI; resztę Ktor zignoruje dzięki `ignoreUnknownKeys`.
+ * Strona wyników — backend paginuje wszystkie listy (Claude.md §6: `?page=&size=`).
+ * Backend serializuje strony jako stabilne `PagedModel` (VIA_DTO): lista pod
+ * [content], a metadane w zagnieżdżonym obiekcie [page]. `first`/`last` nie ma
+ * w kontrakcie — wyliczamy je lokalnie z numeru strony i liczby stron.
  */
 @Serializable
 data class Page<T>(
 	val content: List<T>,
-	val number: Int,
+	val page: PageMetadata,
+) {
+	val number: Int get() = page.number
+	val size: Int get() = page.size
+	val totalElements: Long get() = page.totalElements
+	val totalPages: Int get() = page.totalPages
+	val first: Boolean get() = page.number == 0
+	// Odwzorowuje Spring: last = brak następnej strony. Dla pustego wyniku
+	// (totalPages = 0) daje true, tak samo jak `PageImpl`.
+	val last: Boolean get() = page.number + 1 >= page.totalPages
+}
+
+/** Metadane strony z `PagedModel` backendu (klucz `page`). */
+@Serializable
+data class PageMetadata(
 	val size: Int,
+	val number: Int,
 	val totalElements: Long,
 	val totalPages: Int,
-	val first: Boolean,
-	val last: Boolean,
 )
