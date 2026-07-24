@@ -1,5 +1,6 @@
 package com.songly.shared.contract
 
+import com.songly.shared.model.ApiError
 import com.songly.shared.model.AuthTokens
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Comment
@@ -85,10 +86,7 @@ class OpenApiContractTest {
 		NowPlayingStatus.serializer() to "NowPlayingStatusResponse",
 		ManualNowPlayingRequest.serializer() to "ManualNowPlayingRequest",
 		ConnectResponse.serializer() to "ConnectResponse",
-		// ApiError świadomie pominięty: backendowy format błędu (@ControllerAdvice)
-		// nie jest zarejestrowany jako schemat w components/schemas OpenAPI, więc nie
-		// ma go z czym porównać. Udokumentowanie go w kontrakcie to osobna zmiana
-		// backendu; do tego czasu model ApiError pozostaje poza detekcją dryfu.
+		ApiError.serializer() to "ApiError",
 	)
 
 	@Test
