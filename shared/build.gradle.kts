@@ -33,6 +33,10 @@ kotlin {
 			implementation(libs.ktor.serialization.kotlinx.json)
 			implementation(libs.ktor.client.logging)
 		}
+		commonTest.dependencies {
+			implementation(libs.kotlin.test)
+			implementation(libs.kotlinx.coroutines.test)
+		}
 		androidMain.dependencies {
 			implementation(libs.ktor.client.okhttp)
 		}

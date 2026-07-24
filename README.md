@@ -45,7 +45,7 @@ opiera się na jednym parserze.
 
 ## Uruchomienie
 
-**Wymagania:** JDK 17+, Android Studio (z wtyczką KMP), Xcode (dla iOS, tylko na macOS).
+**Wymagania:** JDK 17–21 (nowsze, np. 26, psują build — najprościej użyć JBR wbudowanego w Android Studio), Android Studio (z wtyczką KMP), Xcode (dla iOS, tylko na macOS).
 
 1. **Wrapper Gradle:** repo nie zawiera binarki `gradle-wrapper.jar`. Wygeneruj ją raz:
    ```
