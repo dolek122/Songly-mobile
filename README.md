@@ -65,3 +65,25 @@ opiera się na jednym parserze.
 `ApiConfig` (w `shared`) trzyma URL backendu per środowisko: `LOCAL_ANDROID_EMULATOR`,
 `LOCAL_HOST`, `STAGING`. Staging działa pod `https://songly-backend-q7zm.onrender.com`
 (Render free tier — usypia po ~15 min, pierwszy request po przebudzeniu trwa ~30–60 s).
+
+## Testy i kontrakt API
+
+Testy współdzielonej logiki (`shared`) uruchamiasz na targecie Android/JVM:
+
+```
+./gradlew :shared:testDebugUnitTest
+```
+
+CI (GitHub Actions) odpala je razem z buildem aplikacji na każdy push/PR do `main`.
+
+**Detekcja dryfu względem backendu.** `OpenApiContractTest` porównuje ręcznie pisane
+modele (`shared/model`) z kontraktem OpenAPI backendu, którego kopię trzymamy w
+`shared/contract/openapi.json`. Reguła: każde pole modelu musi istnieć w schemacie
+backendu (modelom wolno pomijać pola nieużywane w UI, ale nie czytać pól, których
+backend już nie ma). Gdy backend zmieni DTO, **odśwież snapshot** i uruchom testy —
+wskażą, które modele wymagają dostosowania:
+
+```
+cp ../Songly-backend/docs/api/openapi.json shared/contract/openapi.json
+./gradlew :shared:testDebugUnitTest
+```
