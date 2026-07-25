@@ -21,6 +21,7 @@ data class NowPlayingUiState(
 	val source: String = "",
 	val isBusy: Boolean = false,
 	val statusMessage: String? = null,
+	val shareWithFriends: Boolean = true,
 ) {
 	val canSetManual: Boolean
 		get() = title.isNotBlank() && !isBusy
@@ -41,7 +42,11 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 		uiState = uiState.copy(isLoading = true, errorMessage = null)
 		viewModelScope.launch {
 			try {
-				uiState = uiState.copy(isLoading = false, status = client.nowPlaying())
+				uiState = uiState.copy(
+					isLoading = false,
+					status = client.nowPlaying(),
+					shareWithFriends = client.nowPlayingSettings().shareWithFriends,
+				)
 			} catch (e: SonglyApiException) {
 				uiState = uiState.copy(
 					isLoading = false,
@@ -94,6 +99,32 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	fun clearManual() =
 		runAction("Wyczyszczono status", "wyczyścić statusu") { client.clearManualNowPlaying() }
+
+	/**
+	 * Przełącza widoczność statusu dla znajomych (ADR 0007 backendu, Etap 4).
+	 * Przełącznik przestawiamy od razu, żeby nie klikał się z opóźnieniem sieci, i
+	 * cofamy, gdy serwer odmówi — inaczej UI kłamałby o stanie prywatności.
+	 */
+	fun onShareWithFriendsChange(share: Boolean) {
+		if (uiState.isBusy) return
+		val previous = uiState.shareWithFriends
+		uiState = uiState.copy(shareWithFriends = share, isBusy = true, statusMessage = null)
+		viewModelScope.launch {
+			try {
+				client.updateNowPlayingSettings(share)
+				uiState = uiState.copy(
+					isBusy = false,
+					statusMessage = if (share) "Znajomi widzą Twój status" else "Status ukryty przed znajomymi",
+				)
+			} catch (e: Exception) {
+				uiState = uiState.copy(
+					isBusy = false,
+					shareWithFriends = previous,
+					statusMessage = errorText(e, "zmienić widoczności"),
+				)
+			}
+		}
+	}
 
 	private fun runAction(successMessage: String, actionLabel: String, action: suspend () -> Unit) {
 		if (uiState.isBusy) return

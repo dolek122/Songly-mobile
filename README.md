@@ -31,6 +31,25 @@ przy zmianie API po stronie serwera zaktualizuj modele tutaj. Format błędów j
 spójny (`ApiError`: `code`, `message`, `timestamp`, `path`), więc obsługa błędów
 opiera się na jednym parserze.
 
+## Presence na żywo (co grają znajomi)
+
+`SonglyApiClient.friendsPresence()` zwraca `Flow<FriendsPresence>` napędzany strumieniem
+SSE `GET /api/v1/now-playing/stream` (ADR 0007 backendu). Całość — podłączenie, migawka
+startowa z `GET /now-playing/friends`, scalanie zmian, reconnect z backoffem 1→30 s —
+siedzi w `shared`, więc iOS dostanie to samo zachowanie bez przepisywania logiki. UI tylko
+zbiera kolejne migawki.
+
+Rzeczy, o które łatwo się potknąć przy zmianach:
+- `status == null` w zdarzeniu znaczy **„przestał słuchać"**, czyli zdejmij znajomego z
+  listy (a nie „brak danych"),
+- strumień leci z dłuższym socket timeoutem niż zwykłe REST-y — domyślne 10 s OkHttpa jest
+  krótsze niż 20-sekundowy heartbeat backendu, więc bez tego zdrowe, tylko ciche połączenie
+  zrywałoby się w kółko,
+- rozłączenie **nie czyści listy** — ostatnio znane statusy zostają z oznaczeniem „offline",
+  bo pusty ekran przy chwilowej utracie sieci wygląda jak „nikt nic nie słucha",
+- backend limituje liczbę równoległych strumieni na użytkownika (429 `TOO_MANY_STREAMS`),
+  więc trzymamy jeden na sesję i zamykamy go razem z ekranem.
+
 ## Sesja i tokeny
 
 `SonglyApiClient` (w `shared`) obsługuje pełną sesję:

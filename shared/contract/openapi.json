@@ -230,6 +230,24 @@
         "required" : [ "password" ],
         "type" : "object"
       },
+      "FriendNowPlayingResponse" : {
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/NowPlayingStatusResponse"
+          },
+          "userId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "FriendRequestResponse" : {
         "properties" : {
           "addresseeAvatarUrl" : {
@@ -396,6 +414,14 @@
           "type" : {
             "enum" : [ "POST_LIKED", "POST_COMMENTED", "POST_SHARED", "FRIEND_REQUEST_RECEIVED", "FRIEND_REQUEST_ACCEPTED", "COMMUNITY_MEMBER_JOINED" ],
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "NowPlayingSettingsResponse" : {
+        "properties" : {
+          "shareWithFriends" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -760,6 +786,15 @@
         "required" : [ "genreIds" ],
         "type" : "object"
       },
+      "SseEmitter" : {
+        "properties" : {
+          "timeout" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "UnreadCountResponse" : {
         "properties" : {
           "count" : {
@@ -783,6 +818,15 @@
           }
         },
         "required" : [ "name" ],
+        "type" : "object"
+      },
+      "UpdateNowPlayingSettingsRequest" : {
+        "properties" : {
+          "shareWithFriends" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "shareWithFriends" ],
         "type" : "object"
       },
       "UpdateProfileRequest" : {
@@ -1703,6 +1747,30 @@
         "tags" : [ "notification-controller" ]
       }
     },
+    "/api/v1/now-playing/friends" : {
+      "get" : {
+        "operationId" : "friendsNowPlaying",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/FriendNowPlayingResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "now-playing-controller" ]
+      }
+    },
     "/api/v1/now-playing/manual" : {
       "delete" : {
         "operationId" : "clearManualStatus",
@@ -1751,6 +1819,49 @@
                 }
               }
             },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "now-playing-controller" ]
+      }
+    },
+    "/api/v1/now-playing/settings" : {
+      "get" : {
+        "operationId" : "settings",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NowPlayingSettingsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "now-playing-controller" ]
+      },
+      "put" : {
+        "operationId" : "updateSettings",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateNowPlayingSettingsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
             "description" : "OK"
           }
         },
@@ -1809,6 +1920,27 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ConnectResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "now-playing-controller" ]
+      }
+    },
+    "/api/v1/now-playing/stream" : {
+      "get" : {
+        "operationId" : "stream",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/event-stream" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SseEmitter"
                 }
               }
             },

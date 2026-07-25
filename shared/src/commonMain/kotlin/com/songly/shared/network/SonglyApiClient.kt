@@ -14,11 +14,13 @@ import com.songly.shared.model.UpdateCommunityRequest
 import com.songly.shared.model.DeleteAccountRequest
 import com.songly.shared.model.ManualNowPlayingRequest
 import com.songly.shared.model.Notification
+import com.songly.shared.model.NowPlayingSettings
 import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.Match
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
+import com.songly.shared.model.FriendNowPlaying
 import com.songly.shared.model.FriendRequest
 import com.songly.shared.model.Genre
 import com.songly.shared.model.Page
@@ -31,13 +33,20 @@ import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.model.UnreadCount
+import com.songly.shared.model.UpdateNowPlayingSettingsRequest
 import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.model.UserSearchResult
+import com.songly.shared.presence.FriendsPresence
+import com.songly.shared.presence.applyPresenceChange
+import com.songly.shared.presence.reconnectDelayMillis
 import com.songly.shared.session.InMemoryTokenStorage
 import com.songly.shared.session.TokenStorage
 import io.ktor.client.call.body
 import io.ktor.client.plugins.auth.authProvider
 import io.ktor.client.plugins.auth.providers.BearerAuthProvider
+import io.ktor.client.plugins.HttpTimeoutConfig
+import io.ktor.client.plugins.timeout
+import io.ktor.client.plugins.sse.sse
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -48,6 +57,12 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.isActive
+import kotlinx.serialization.json.Json
 
 /**
  * Jedyny punkt styku mobilki z REST API Songly. Trzyma warstwę sieciową i sesji
@@ -66,6 +81,10 @@ class SonglyApiClient(
 
 	private val http = createHttpClient(config, storage)
 	private val base = config.baseUrl.trimEnd('/')
+
+	// Ramki SSE to czysty tekst poza ContentNegotiation, więc strumień presence
+	// potrzebuje własnego parsera — z tą samą tolerancją na nieznane pola.
+	private val presenceJson = Json { ignoreUnknownKeys = true; isLenient = true }
 
 	// Id zalogowanego użytkownika — cache, żeby UI mógł tanio rozpoznać własne
 	// treści (np. pokazać usuwanie tylko autorowi). Czyszczone przy końcu sesji.
@@ -314,6 +333,74 @@ class SonglyApiClient(
 	suspend fun clearManualNowPlaying() =
 		http.delete("$base/api/v1/now-playing/manual").ensureSuccessOrThrow()
 
+	/**
+	 * Statusy znajomych „teraz". Backend zwraca tylko tych, którzy coś grają i nie
+	 * wyłączyli widoczności — lista bywa krótsza niż lista znajomych.
+	 */
+	suspend fun friendsNowPlaying(): List<FriendNowPlaying> =
+		http.get("$base/api/v1/now-playing/friends").decodeOrThrow()
+
+	/** Czy własny status jest pokazywany znajomym. */
+	suspend fun nowPlayingSettings(): NowPlayingSettings =
+		http.get("$base/api/v1/now-playing/settings").decodeOrThrow()
+
+	/** Włącza/wyłącza pokazywanie własnego statusu znajomym. */
+	suspend fun updateNowPlayingSettings(shareWithFriends: Boolean) =
+		http.put("$base/api/v1/now-playing/settings") {
+			contentType(ContentType.Application.Json)
+			setBody(UpdateNowPlayingSettingsRequest(shareWithFriends))
+		}.ensureSuccessOrThrow()
+
+	/**
+	 * Statusy znajomych na żywo (ADR 0007 backendu): strumień SSE zamiast pollingu,
+	 * bo odpytywanie o stan wszystkich znajomych co kilka sekund to ruch N×M, w
+	 * większości bez żadnej zmiany.
+	 *
+	 * Każde podłączenie zaczyna się od pełnej migawki przez [friendsNowPlaying] —
+	 * SSE niesie wyłącznie zmiany, więc bez tego po reconnekcie ekran zostałby ze
+	 * stanem sprzed rozłączenia. Zerwane połączenie wraca z backoffem
+	 * ([reconnectDelayMillis]); flow żyje aż do anulowania korutyny, więc UI zbiera
+	 * go przez cały czas życia ekranu.
+	 */
+	fun friendsPresence(): Flow<FriendsPresence> = channelFlow {
+		var friends = emptyList<FriendNowPlaying>()
+		var attempt = 0
+		while (isActive) {
+			try {
+				friends = friendsNowPlaying()
+				send(FriendsPresence(friends, live = true))
+				attempt = 0
+				http.sse(
+					"$base/api/v1/now-playing/stream",
+					request = {
+						// Domyślny read timeout silników (OkHttp: 10 s) jest krótszy niż
+						// heartbeat backendu (20 s), więc bez tego zdrowy, tylko cichy
+						// strumień zrywałby się w kółko. Zapas 3× heartbeat: dłuższa cisza
+						// naprawdę znaczy, że połączenie umarło.
+						timeout {
+							socketTimeoutMillis = STREAM_SOCKET_TIMEOUT_MILLIS
+							requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+						}
+					},
+				) {
+					incoming.collect { event ->
+						val data = event.data ?: return@collect
+						friends = friends.applyPresenceChange(presenceJson.decodeFromString(data))
+						send(FriendsPresence(friends, live = true))
+					}
+				}
+			} catch (e: CancellationException) {
+				throw e
+			} catch (e: Exception) {
+				// Zerwana sieć, 429 przy limicie strumieni, restart backendu — dla ekranu
+				// to jedno i to samo: nie ma świeżych danych, spróbujemy za chwilę.
+			}
+			send(FriendsPresence(friends, live = false))
+			delay(reconnectDelayMillis(attempt))
+			attempt++
+		}
+	}
+
 	// --- Powiadomienia (moduł notification) ---
 
 	/** Powiadomienia zalogowanego użytkownika, najnowsze pierwsze, stronicowane. */
@@ -435,3 +522,6 @@ class SonglyApiClient(
 		)
 	}
 }
+
+// Trzykrotność heartbeatu presence z backendu (20 s) — patrz [SonglyApiClient.friendsPresence].
+private const val STREAM_SOCKET_TIMEOUT_MILLIS = 60_000L
