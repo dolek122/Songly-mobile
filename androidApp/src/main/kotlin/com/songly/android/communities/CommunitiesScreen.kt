@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -111,7 +112,11 @@ fun CommunitiesScreen(
 					text = { Text("Moje") },
 				)
 			}
-			Box(modifier = Modifier.fillMaxSize()) {
+			PullToRefreshBox(
+				isRefreshing = state.isRefreshing,
+				onRefresh = viewModel::pullToRefresh,
+				modifier = Modifier.fillMaxSize(),
+			) {
 				when {
 				state.isLoading && state.communities.isEmpty() ->
 					CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))

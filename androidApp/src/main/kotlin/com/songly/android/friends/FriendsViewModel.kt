@@ -20,6 +20,7 @@ private const val PAGE_SIZE = 20
 /** Stan ekranu znajomych: lista znajomych + zaproszenia otrzymane i wysłane + wyszukiwarka. */
 data class FriendsUiState(
 	val isLoading: Boolean = true,
+	val isRefreshing: Boolean = false, // odświeżanie gestem (listy zostają na ekranie)
 	val errorMessage: String? = null,
 	val friends: PagedSection<Friend> = PagedSection(),
 	val incoming: PagedSection<FriendRequest> = PagedSection(),
@@ -65,6 +66,30 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 				)
 			} catch (e: Exception) {
 				uiState = uiState.copy(isLoading = false, errorMessage = "Brak połączenia z serwerem.")
+			}
+		}
+	}
+
+	/**
+	 * Odświeżenie gestem: te same cztery żądania co przy wejściu, ale bez chowania
+	 * list za spinnerem — przy pull-to-refresh użytkownik ma widzieć zawartość,
+	 * którą właśnie ściąga w dół. Doczytane wcześniej strony wracają do pierwszej,
+	 * tak samo jak po każdej mutacji.
+	 */
+	fun pullToRefresh() {
+		if (uiState.isRefreshing) return
+		uiState = uiState.copy(isRefreshing = true, errorMessage = null)
+		viewModelScope.launch {
+			try {
+				reloadLists()
+			} catch (e: SonglyApiException) {
+				uiState = uiState.copy(
+					statusMessage = e.error?.message ?: "Nie udało się odświeżyć (HTTP ${e.status})",
+				)
+			} catch (e: Exception) {
+				uiState = uiState.copy(statusMessage = "Brak połączenia z serwerem.")
+			} finally {
+				uiState = uiState.copy(isRefreshing = false)
 			}
 		}
 	}
