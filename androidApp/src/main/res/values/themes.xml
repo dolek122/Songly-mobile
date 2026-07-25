@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Motyw okna (nie Compose'owy): decyduje o tle okna startowego i kolorze paska
+  statusu, zanim Compose cokolwiek narysuje. Bez wariantu nocnego aplikacja w
+  ciemnym motywie mrugała białym ekranem przy każdym uruchomieniu.
+-->
+<resources>
+    <style name="Theme.Songly" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@color/window_background</item>
+        <item name="android:navigationBarColor">@color/window_background</item>
+    </style>
+</resources>

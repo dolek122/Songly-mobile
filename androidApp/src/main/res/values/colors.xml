@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Musi zgadzać się z SonglyPalette.Background, żeby okno startowe nie
+         różniło się od pierwszego narysowanego ekranu. -->
+    <color name="window_background">#FDFCFF</color>
+</resources>

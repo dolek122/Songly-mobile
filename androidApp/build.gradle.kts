@@ -48,4 +48,7 @@ dependencies {
 	implementation(libs.androidx.compose.ui.tooling.preview)
 	implementation(libs.coil.compose)
 	debugImplementation(libs.androidx.compose.ui.tooling)
+
+	// Testy jednostkowe UI-owe bez urządzenia: na razie kontrast palety motywu.
+	testImplementation(libs.kotlin.test)
 }
