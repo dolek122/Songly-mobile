@@ -2,6 +2,7 @@ package com.songly.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -114,6 +115,9 @@ private fun AppRoot(client: SonglyApiClient) {
 private fun AuthNav(client: SonglyApiClient, onAuthenticated: () -> Unit) {
 	var registering by remember { mutableStateOf(false) }
 
+	// Wstecz z rejestracji wraca do logowania, a nie zamyka aplikację.
+	BackHandler(enabled = registering) { registering = false }
+
 	if (registering) {
 		val registerViewModel: RegisterViewModel = viewModel(
 			factory = viewModelFactory {
@@ -164,6 +168,33 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	// Profil innego użytkownika — nakładka nad dowolnym ekranem (feed, znajomi…);
 	// po powrocie (viewUserId = null) wracamy do ekranu spod spodu.
 	var viewUserId by remember { mutableStateOf<String?>(null) }
+
+	// Systemowy Wstecz (przycisk i gest) musi robić to samo co „Wróć" na ekranie —
+	// bez tego zamyka aplikację, co na Androidzie jest po prostu zepsute.
+	//
+	// Kolejność MUSI odpowiadać kolejności gałęzi `when` poniżej: zamykamy ekran,
+	// który jest naprawdę na wierzchu, a nie pierwszą podniesioną flagę. Gdy
+	// ekranów będzie więcej, ta duplikacja jest sygnałem, że czas na
+	// Navigation-Compose z prawdziwym back stackiem.
+	val closeTopScreen: (() -> Unit)? = when {
+		viewUserId != null -> ({ viewUserId = null })
+		showMatches -> ({ showMatches = false })
+		communityDetailId != null -> ({ communityDetailId = null })
+		showCommunities -> ({ showCommunities = false })
+		// Powrót z powiadomień odświeża feed tak samo jak „Wróć" — inaczej badge
+		// nieprzeczytanych zostawałby po lekturze.
+		showNotifications -> ({ showNotifications = false; feedViewModel.refresh() })
+		showFriendsPresence -> ({ showFriendsPresence = false })
+		showNowPlaying -> ({ showNowPlaying = false })
+		showProfile -> ({ showProfile = false })
+		showFriends -> ({ showFriends = false })
+		creatingPost -> ({ creatingPost = false })
+		commentsPostId != null -> ({ commentsPostId = null })
+		// Na feedzie zostawiamy Wstecz systemowi — tam wyjście z aplikacji jest
+		// zachowaniem oczekiwanym.
+		else -> null
+	}
+	BackHandler(enabled = closeTopScreen != null) { closeTopScreen?.invoke() }
 
 	when {
 		viewUserId != null -> {
