@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +24,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -45,9 +50,23 @@ fun CommentsScreen(
 	onOpenUserProfile: (String) -> Unit,
 ) {
 	val state = viewModel.uiState
+	val listState = rememberLazyListState()
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
+	}
+
+	// Infinite scroll jak w feedzie: jedna lista, więc doczytywanie może być
+	// automatyczne. Warunki (koniec, żądanie w toku, błąd) pilnuje ViewModel.
+	val shouldLoadMore by remember {
+		derivedStateOf {
+			val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+			val total = listState.layoutInfo.totalItemsCount
+			total > 0 && lastVisible >= total - 3
+		}
+	}
+	LaunchedEffect(shouldLoadMore) {
+		if (shouldLoadMore) viewModel.loadNextPage()
 	}
 
 	Scaffold(
@@ -87,6 +106,7 @@ fun CommentsScreen(
 				)
 
 				else -> LazyColumn(
+					state = listState,
 					contentPadding = PaddingValues(16.dp),
 					verticalArrangement = Arrangement.spacedBy(12.dp),
 					modifier = Modifier.fillMaxSize(),
@@ -107,6 +127,15 @@ fun CommentsScreen(
 							onDelete = { viewModel.delete(comment, onCommentDeleted) },
 							onOpenProfile = { onOpenUserProfile(comment.authorId) },
 						)
+					}
+					if (state.isLoadingMore || state.appendErrorMessage != null) {
+						item(key = "footer") {
+							CommentsFooter(
+								isLoading = state.isLoadingMore,
+								errorMessage = state.appendErrorMessage,
+								onRetry = viewModel::retryNextPage,
+							)
+						}
 					}
 				}
 			}
@@ -199,6 +228,24 @@ private fun CommentInput(
 				} else {
 					Text(text = "Wyślij")
 				}
+			}
+		}
+	}
+}
+
+/** Stopka listy: kręciołek doczytywania albo błąd z ponowieniem. */
+@Composable
+private fun CommentsFooter(isLoading: Boolean, errorMessage: String?, onRetry: () -> Unit) {
+	Box(modifier = Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
+		when {
+			isLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp))
+			errorMessage != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+				Text(
+					text = errorMessage,
+					style = MaterialTheme.typography.bodySmall,
+					color = MaterialTheme.colorScheme.error,
+				)
+				TextButton(onClick = onRetry) { Text("Ponów") }
 			}
 		}
 	}

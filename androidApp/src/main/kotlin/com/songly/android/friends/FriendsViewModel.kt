@@ -8,19 +8,23 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendRequest
+import com.songly.shared.model.Page
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.model.UserSearchResult
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.paging.PagedSection
 import kotlinx.coroutines.launch
+
+private const val PAGE_SIZE = 20
 
 /** Stan ekranu znajomych: lista znajomych + zaproszenia otrzymane i wysłane + wyszukiwarka. */
 data class FriendsUiState(
 	val isLoading: Boolean = true,
 	val errorMessage: String? = null,
-	val friends: List<Friend> = emptyList(),
-	val incoming: List<FriendRequest> = emptyList(),
-	val outgoing: List<FriendRequest> = emptyList(),
-	val blocked: List<BlockedUser> = emptyList(),
+	val friends: PagedSection<Friend> = PagedSection(),
+	val incoming: PagedSection<FriendRequest> = PagedSection(),
+	val outgoing: PagedSection<FriendRequest> = PagedSection(),
+	val blocked: PagedSection<BlockedUser> = PagedSection(),
 	val searchQuery: String = "",
 	val isSearching: Boolean = false,
 	val searchResults: List<UserSearchResult> = emptyList(),
@@ -50,13 +54,10 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		uiState = uiState.copy(isLoading = true, errorMessage = null)
 		viewModelScope.launch {
 			try {
-				uiState = uiState.copy(
-					isLoading = false,
-					friends = client.friends().content,
-					incoming = client.friendRequests(direction = "INCOMING").content,
-					outgoing = client.friendRequests(direction = "OUTGOING").content,
-					blocked = client.blockedUsers().content,
-				)
+				// Najpierw dane, potem zgaszenie spinnera — odwrotna kolejność mrugałaby
+				// pustym ekranem przez czas trwania czterech żądań.
+				reloadLists()
+				uiState = uiState.copy(isLoading = false)
 			} catch (e: SonglyApiException) {
 				uiState = uiState.copy(
 					isLoading = false,
@@ -146,12 +147,85 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
+	fun loadMoreFriends() = loadMoreSection({ uiState.friends }, { uiState = uiState.copy(friends = it) }) { page ->
+		client.friends(page, PAGE_SIZE)
+	}
+
+	fun retryMoreFriends() =
+		loadMoreSection({ uiState.friends }, { uiState = uiState.copy(friends = it) }, retry = true) { page ->
+			client.friends(page, PAGE_SIZE)
+		}
+
+	fun loadMoreIncoming() = loadMoreSection({ uiState.incoming }, { uiState = uiState.copy(incoming = it) }) { page ->
+		client.friendRequests("INCOMING", page, PAGE_SIZE)
+	}
+
+	fun retryMoreIncoming() =
+		loadMoreSection({ uiState.incoming }, { uiState = uiState.copy(incoming = it) }, retry = true) { page ->
+			client.friendRequests("INCOMING", page, PAGE_SIZE)
+		}
+
+	fun loadMoreOutgoing() = loadMoreSection({ uiState.outgoing }, { uiState = uiState.copy(outgoing = it) }) { page ->
+		client.friendRequests("OUTGOING", page, PAGE_SIZE)
+	}
+
+	fun retryMoreOutgoing() =
+		loadMoreSection({ uiState.outgoing }, { uiState = uiState.copy(outgoing = it) }, retry = true) { page ->
+			client.friendRequests("OUTGOING", page, PAGE_SIZE)
+		}
+
+	fun loadMoreBlocked() = loadMoreSection({ uiState.blocked }, { uiState = uiState.copy(blocked = it) }) { page ->
+		client.blockedUsers(page, PAGE_SIZE)
+	}
+
+	fun retryMoreBlocked() =
+		loadMoreSection({ uiState.blocked }, { uiState = uiState.copy(blocked = it) }, retry = true) { page ->
+			client.blockedUsers(page, PAGE_SIZE)
+		}
+
+	/**
+	 * Doczytywanie jednej z czterech list. Getter i setter zamiast identyfikatora
+	 * sekcji, bo listy trzymają różne typy — inaczej trzeba by czterech kopii tej
+	 * samej obsługi błędów i blokad.
+	 *
+	 * Stan czytamy przez [get] również po powrocie z sieci: w międzyczasie mogła
+	 * przejść mutacja (akceptacja zaproszenia przeładowuje listy), więc dokładamy do
+	 * tego, co jest teraz, a nie do zapamiętanej kopii.
+	 */
+	private fun <T> loadMoreSection(
+		get: () -> PagedSection<T>,
+		set: (PagedSection<T>) -> Unit,
+		retry: Boolean = false,
+		fetch: suspend (page: Int) -> Page<T>,
+	) {
+		val current = get()
+		// Ponowienie startuje wprost z błędu (canLoadMore jest wtedy false), zwykłe
+		// doczytywanie tylko wtedy, gdy jest co i kiedy dobierać.
+		if (if (retry) current.isLoadingMore else !current.canLoadMore) return
+		set(if (retry) current.retrying() else current.loadingMore())
+		viewModelScope.launch {
+			try {
+				set(get().append(fetch(get().nextPage)))
+			} catch (e: SonglyApiException) {
+				set(get().failed(e.error?.message ?: "Nie udało się doczytać (HTTP ${e.status})"))
+			} catch (e: Exception) {
+				set(get().failed("Brak połączenia z serwerem."))
+			}
+		}
+	}
+
+	/**
+	 * Po mutacji ładujemy każdą listę od pierwszej strony. Doczytane wcześniej
+	 * strony przepadają celowo: po akceptacji zaproszenia pozycje przeskakują
+	 * między listami, więc sklejanie starej zawartości z nową dałoby duplikaty
+	 * albo dziury.
+	 */
 	private suspend fun reloadLists() {
 		uiState = uiState.copy(
-			friends = client.friends().content,
-			incoming = client.friendRequests(direction = "INCOMING").content,
-			outgoing = client.friendRequests(direction = "OUTGOING").content,
-			blocked = client.blockedUsers().content,
+			friends = uiState.friends.replaceWith(client.friends(size = PAGE_SIZE)),
+			incoming = uiState.incoming.replaceWith(client.friendRequests("INCOMING", size = PAGE_SIZE)),
+			outgoing = uiState.outgoing.replaceWith(client.friendRequests("OUTGOING", size = PAGE_SIZE)),
+			blocked = uiState.blocked.replaceWith(client.blockedUsers(size = PAGE_SIZE)),
 		)
 	}
 }
