@@ -31,4 +31,4 @@ jobs:
       - name: Build & test
         run: |
           chmod +x gradlew
-          ./gradlew :shared:testDebugUnitTest :androidApp:assembleDebug --console=plain
+          ./gradlew :shared:testDebugUnitTest :androidApp:testDebugUnitTest :androidApp:assembleDebug --console=plain

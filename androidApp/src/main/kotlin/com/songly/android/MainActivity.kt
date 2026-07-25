@@ -7,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +47,7 @@ import com.songly.android.profile.ProfileScreen
 import com.songly.android.profile.ProfileViewModel
 import com.songly.android.profile.UserProfileScreen
 import com.songly.android.profile.UserProfileViewModel
+import com.songly.android.ui.theme.SonglyTheme
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.session.AndroidKeystoreTokenStorage
@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		setContent {
-			MaterialTheme {
+			SonglyTheme {
 				Surface(modifier = Modifier.fillMaxSize()) {
 					AppRoot(apiClient)
 				}
