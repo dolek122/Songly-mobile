@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
+import com.songly.shared.paging.PagedSection
 import com.songly.shared.model.FriendRequest
 
 /**
@@ -116,10 +118,10 @@ fun FriendsScreen(
 					}
 
 					item(key = "h-incoming") { SectionHeader("Zaproszenia otrzymane") }
-					if (state.incoming.isEmpty()) {
+					if (state.incoming.items.isEmpty()) {
 						item(key = "e-incoming") { EmptyHint("Brak nowych zaproszeń.") }
 					} else {
-						items(state.incoming, key = { "in-${it.id}" }) { request ->
+						items(state.incoming.items, key = { "in-${it.id}" }) { request ->
 							IncomingRequestRow(
 								request = request,
 								enabled = !state.isBusy,
@@ -130,11 +132,15 @@ fun FriendsScreen(
 						}
 					}
 
+					item(key = "f-incoming") {
+						SectionFooter(state.incoming, viewModel::loadMoreIncoming, viewModel::retryMoreIncoming)
+					}
+
 					item(key = "h-outgoing") { SectionHeader("Zaproszenia wysłane") }
-					if (state.outgoing.isEmpty()) {
+					if (state.outgoing.items.isEmpty()) {
 						item(key = "e-outgoing") { EmptyHint("Brak wysłanych zaproszeń.") }
 					} else {
-						items(state.outgoing, key = { "out-${it.id}" }) { request ->
+						items(state.outgoing.items, key = { "out-${it.id}" }) { request ->
 							OutgoingRequestRow(
 								request = request,
 								enabled = !state.isBusy,
@@ -144,11 +150,15 @@ fun FriendsScreen(
 						}
 					}
 
+					item(key = "f-outgoing") {
+						SectionFooter(state.outgoing, viewModel::loadMoreOutgoing, viewModel::retryMoreOutgoing)
+					}
+
 					item(key = "h-friends") { SectionHeader("Znajomi") }
-					if (state.friends.isEmpty()) {
+					if (state.friends.items.isEmpty()) {
 						item(key = "e-friends") { EmptyHint("Nie masz jeszcze znajomych.") }
 					} else {
-						items(state.friends, key = { "fr-${it.userId}" }) { friend ->
+						items(state.friends.items, key = { "fr-${it.userId}" }) { friend ->
 							FriendRow(
 								friend = friend,
 								enabled = !state.isBusy,
@@ -159,17 +169,25 @@ fun FriendsScreen(
 						}
 					}
 
+					item(key = "f-friends") {
+						SectionFooter(state.friends, viewModel::loadMoreFriends, viewModel::retryMoreFriends)
+					}
+
 					item(key = "h-blocked") { SectionHeader("Zablokowani") }
-					if (state.blocked.isEmpty()) {
+					if (state.blocked.items.isEmpty()) {
 						item(key = "e-blocked") { EmptyHint("Nie masz zablokowanych użytkowników.") }
 					} else {
-						items(state.blocked, key = { "bl-${it.userId}" }) { blocked ->
+						items(state.blocked.items, key = { "bl-${it.userId}" }) { blocked ->
 							BlockedRow(
 								blocked = blocked,
 								enabled = !state.isBusy,
 								onUnblock = { viewModel.unblock(blocked.userId) },
 							)
 						}
+					}
+
+					item(key = "f-blocked") {
+						SectionFooter(state.blocked, viewModel::loadMoreBlocked, viewModel::retryMoreBlocked)
 					}
 				}
 			}
@@ -326,4 +344,39 @@ private fun SectionHeader(title: String) {
 @Composable
 private fun EmptyHint(text: String) {
 	Text(text = text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/**
+ * Stopka sekcji: „Pokaż więcej", kręciołek albo błąd z ponowieniem. Nic nie
+ * renderuje, gdy nie ma czego doczytywać.
+ *
+ * Doczytywanie na przycisk, nie na przewinięcie: cztery sekcje dzielą jedną
+ * przewijaną listę, więc automat nie miałby jak zgadnąć, którą z nich użytkownik
+ * właśnie czyta — i po dojechaniu na dół dobierałby strony do wszystkich naraz.
+ */
+@Composable
+private fun <T> SectionFooter(section: PagedSection<T>, onLoadMore: () -> Unit, onRetry: () -> Unit) {
+	// Lokalna kopia, bo pole z innego modułu nie podlega smart castowi.
+	val appendError = section.appendError
+	when {
+		appendError != null -> Row(
+			modifier = Modifier.fillMaxWidth(),
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(8.dp),
+		) {
+			Text(
+				text = appendError,
+				style = MaterialTheme.typography.bodySmall,
+				color = MaterialTheme.colorScheme.error,
+				modifier = Modifier.weight(1f),
+			)
+			TextButton(onClick = onRetry) { Text("Ponów") }
+		}
+
+		section.isLoadingMore -> Box(modifier = Modifier.fillMaxWidth().padding(8.dp), Alignment.Center) {
+			CircularProgressIndicator(modifier = Modifier.size(20.dp))
+		}
+
+		!section.endReached -> TextButton(onClick = onLoadMore) { Text("Pokaż więcej") }
+	}
 }
