@@ -39,6 +39,8 @@ import com.songly.android.notifications.NotificationsScreen
 import com.songly.android.notifications.NotificationsViewModel
 import com.songly.android.nowplaying.NowPlayingScreen
 import com.songly.android.nowplaying.NowPlayingViewModel
+import com.songly.android.presence.FriendsPresenceScreen
+import com.songly.android.presence.FriendsPresenceViewModel
 import com.songly.android.post.CreatePostScreen
 import com.songly.android.post.CreatePostViewModel
 import com.songly.android.profile.ProfileScreen
@@ -154,6 +156,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	var showProfile by remember { mutableStateOf(false) }
 	var showFriends by remember { mutableStateOf(false) }
 	var showNowPlaying by remember { mutableStateOf(false) }
+	var showFriendsPresence by remember { mutableStateOf(false) }
 	var showNotifications by remember { mutableStateOf(false) }
 	var showCommunities by remember { mutableStateOf(false) }
 	var communityDetailId by remember { mutableStateOf<String?>(null) }
@@ -237,6 +240,19 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			)
 		}
 
+		showFriendsPresence -> {
+			val presenceViewModel: FriendsPresenceViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { FriendsPresenceViewModel(client) }
+				},
+			)
+			FriendsPresenceScreen(
+				viewModel = presenceViewModel,
+				onBack = { showFriendsPresence = false },
+				onOpenUserProfile = { viewUserId = it },
+			)
+		}
+
 		showNowPlaying -> {
 			val nowPlayingViewModel: NowPlayingViewModel = viewModel(
 				factory = viewModelFactory {
@@ -246,6 +262,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			NowPlayingScreen(
 				viewModel = nowPlayingViewModel,
 				onBack = { showNowPlaying = false },
+				onOpenFriendsPresence = { showFriendsPresence = true },
 			)
 		}
 
@@ -321,6 +338,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onOpenProfile = { showProfile = true },
 				onOpenFriends = { showFriends = true },
 				onOpenNowPlaying = { showNowPlaying = true },
+				onOpenFriendsPresence = { showFriendsPresence = true },
 				onOpenNotifications = { showNotifications = true },
 				onOpenCommunities = { showCommunities = true },
 				onOpenMatches = { showMatches = true },

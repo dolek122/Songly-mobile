@@ -66,6 +66,7 @@ fun FeedScreen(
 	onOpenProfile: () -> Unit,
 	onOpenFriends: () -> Unit,
 	onOpenNowPlaying: () -> Unit,
+	onOpenFriendsPresence: () -> Unit,
 	onOpenNotifications: () -> Unit,
 	onOpenCommunities: () -> Unit,
 	onOpenMatches: () -> Unit,
@@ -140,6 +141,10 @@ fun FeedScreen(
 						DropdownMenuItem(
 							text = { Text("Teraz gram") },
 							onClick = { menuOpen = false; onOpenNowPlaying() },
+						)
+						DropdownMenuItem(
+							text = { Text("Znajomi teraz") },
+							onClick = { menuOpen = false; onOpenFriendsPresence() },
 						)
 						DropdownMenuItem(
 							text = { Text("Znajomi") },

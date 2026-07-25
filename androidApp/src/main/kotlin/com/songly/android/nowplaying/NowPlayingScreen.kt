@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,6 +43,7 @@ import com.songly.shared.model.NowPlayingStatus
 fun NowPlayingScreen(
 	viewModel: NowPlayingViewModel,
 	onBack: () -> Unit,
+	onOpenFriendsPresence: () -> Unit,
 ) {
 	val state = viewModel.uiState
 	val context = LocalContext.current
@@ -86,7 +88,37 @@ fun NowPlayingScreen(
 					}
 
 					CurrentStatusCard(status = state.status)
-					OutlinedButton(onClick = viewModel::load, enabled = !state.isBusy) { Text("Odśwież") }
+					Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+						OutlinedButton(onClick = viewModel::load, enabled = !state.isBusy) { Text("Odśwież") }
+						OutlinedButton(onClick = onOpenFriendsPresence) { Text("Znajomi teraz") }
+					}
+
+					HorizontalDivider()
+
+					Row(
+						modifier = Modifier.fillMaxWidth(),
+						verticalAlignment = Alignment.CenterVertically,
+						horizontalArrangement = Arrangement.SpaceBetween,
+					) {
+						Column(modifier = Modifier.weight(1f)) {
+							Text(
+								text = "Pokazuj status znajomym",
+								style = MaterialTheme.typography.titleMedium,
+								fontWeight = FontWeight.SemiBold,
+							)
+							Text(
+								text = "Wyłączenie chowa Twój status wszędzie: na liście znajomych i w ich " +
+									"strumieniu na żywo.",
+								style = MaterialTheme.typography.bodySmall,
+								color = MaterialTheme.colorScheme.onSurfaceVariant,
+							)
+						}
+						Switch(
+							checked = state.shareWithFriends,
+							onCheckedChange = viewModel::onShareWithFriendsChange,
+							enabled = !state.isBusy,
+						)
+					}
 
 					HorizontalDivider()
 

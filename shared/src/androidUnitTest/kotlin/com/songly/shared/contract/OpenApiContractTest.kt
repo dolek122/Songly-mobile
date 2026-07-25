@@ -12,12 +12,14 @@ import com.songly.shared.model.CreateCommunityRequest
 import com.songly.shared.model.CreatePostRequest
 import com.songly.shared.model.DeleteAccountRequest
 import com.songly.shared.model.Friend
+import com.songly.shared.model.FriendNowPlaying
 import com.songly.shared.model.FriendRequest
 import com.songly.shared.model.Genre
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.ManualNowPlayingRequest
 import com.songly.shared.model.Match
 import com.songly.shared.model.Notification
+import com.songly.shared.model.NowPlayingSettings
 import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.model.PageMetadata
 import com.songly.shared.model.Post
@@ -29,6 +31,7 @@ import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.UnreadCount
 import com.songly.shared.model.UpdateCommunityRequest
+import com.songly.shared.model.UpdateNowPlayingSettingsRequest
 import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.model.UserSearchResult
 import kotlinx.serialization.KSerializer
@@ -84,6 +87,9 @@ class OpenApiContractTest {
 		CreateCommunityRequest.serializer() to "CreateCommunityRequest",
 		UpdateCommunityRequest.serializer() to "UpdateCommunityRequest",
 		NowPlayingStatus.serializer() to "NowPlayingStatusResponse",
+		FriendNowPlaying.serializer() to "FriendNowPlayingResponse",
+		NowPlayingSettings.serializer() to "NowPlayingSettingsResponse",
+		UpdateNowPlayingSettingsRequest.serializer() to "UpdateNowPlayingSettingsRequest",
 		ManualNowPlayingRequest.serializer() to "ManualNowPlayingRequest",
 		ConnectResponse.serializer() to "ConnectResponse",
 		ApiError.serializer() to "ApiError",

@@ -13,6 +13,8 @@ import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.sse.SSE
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -49,6 +51,12 @@ internal fun createHttpClient(config: ApiConfig, storage: TokenStorage): HttpCli
 				},
 			)
 		}
+		// Strumień presence (ADR 0007) — wtyczka SSE parsuje ramki i komentarze
+		// (heartbeat backendu) za nas, na obu silnikach: OkHttp i Darwin.
+		install(SSE)
+		// Bez tej wtyczki nie da się ustawić timeoutów per żądanie, a strumień presence
+		// potrzebuje dłuższego okna niż zwykłe REST-y (cisza między heartbeatami).
+		install(HttpTimeout)
 		if (config.enableNetworkLogging) {
 			install(Logging) {
 				level = LogLevel.INFO

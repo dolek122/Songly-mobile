@@ -32,3 +32,30 @@ data class ManualNowPlayingRequest(
 /** Odpowiedź na rozpoczęcie łączenia ze Spotify (backend: nowplaying.dto.ConnectResponse). */
 @Serializable
 data class ConnectResponse(val authorizeUrl: String)
+
+/**
+ * Status znajomego na liście „co słuchają znajomi" i w strumieniu presence
+ * (backend: nowplaying.dto.FriendNowPlayingResponse, ADR 0007).
+ *
+ * [status] `null` znaczy **przestał słuchać** — w strumieniu SSE to sygnał, żeby
+ * zdjąć znajomego z listy grających, a nie „brak danych".
+ */
+@Serializable
+data class FriendNowPlaying(
+	val userId: String,
+	val displayName: String? = null,
+	val avatarUrl: String? = null,
+	val status: NowPlayingStatus? = null,
+)
+
+/**
+ * Widoczność własnego statusu dla znajomych (backend:
+ * nowplaying.dto.NowPlayingSettingsResponse). Domyślnie włączona — wyłączenie
+ * chowa status wszędzie: na liście znajomych, w strumieniu i w serwerowym pollu.
+ */
+@Serializable
+data class NowPlayingSettings(val shareWithFriends: Boolean)
+
+/** Zmiana widoczności statusu (backend: nowplaying.dto.UpdateNowPlayingSettingsRequest). */
+@Serializable
+data class UpdateNowPlayingSettingsRequest(val shareWithFriends: Boolean)
