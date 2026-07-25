@@ -37,7 +37,9 @@ import com.songly.shared.model.UpdateNowPlayingSettingsRequest
 import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.model.UserSearchResult
 import com.songly.shared.presence.FriendsPresence
+import com.songly.shared.presence.PresenceProblem
 import com.songly.shared.presence.applyPresenceChange
+import com.songly.shared.presence.presenceProblemFor
 import com.songly.shared.presence.reconnectDelayMillis
 import com.songly.shared.session.InMemoryTokenStorage
 import com.songly.shared.session.TokenStorage
@@ -46,6 +48,7 @@ import io.ktor.client.plugins.auth.authProvider
 import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
+import io.ktor.client.plugins.sse.SSEClientException
 import io.ktor.client.plugins.sse.sse
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -365,6 +368,7 @@ class SonglyApiClient(
 	fun friendsPresence(): Flow<FriendsPresence> = channelFlow {
 		var friends = emptyList<FriendNowPlaying>()
 		var attempt = 0
+		var problem: PresenceProblem = PresenceProblem.CONNECTION
 		while (isActive) {
 			try {
 				friends = friendsNowPlaying()
@@ -391,11 +395,16 @@ class SonglyApiClient(
 				}
 			} catch (e: CancellationException) {
 				throw e
+			} catch (e: SSEClientException) {
+				// Backend odrzucił samo połączenie — status mówi, czy to limit strumieni
+				// (wtedy nie ma sensu udawać, że to problem z siecią), czy coś innego.
+				problem = presenceProblemFor(e.response?.status?.value)
 			} catch (e: Exception) {
-				// Zerwana sieć, 429 przy limicie strumieni, restart backendu — dla ekranu
-				// to jedno i to samo: nie ma świeżych danych, spróbujemy za chwilę.
+				// Zerwana sieć, restart backendu, padnięty parser — dla ekranu to jedno
+				// i to samo: nie ma świeżych danych, spróbujemy za chwilę.
+				problem = PresenceProblem.CONNECTION
 			}
-			send(FriendsPresence(friends, live = false))
+			send(FriendsPresence(friends, live = false, problem = problem))
 			delay(reconnectDelayMillis(attempt))
 			attempt++
 		}

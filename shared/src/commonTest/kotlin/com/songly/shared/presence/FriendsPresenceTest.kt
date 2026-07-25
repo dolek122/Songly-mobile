@@ -82,4 +82,21 @@ class FriendsPresenceTest {
 	fun reconnectDelayIsNeverNegative_forNonsenseInput() {
 		assertTrue(reconnectDelayMillis(-1) > 0)
 	}
+
+	/**
+	 * Limit strumieni to nie awaria sieci: ponawianie w nieskończoność pod
+	 * komunikatem „offline" kazałoby userowi szukać problemu z internetem, którego
+	 * nie ma.
+	 */
+	@Test
+	fun streamLimitIsDistinguishedFromNetworkTrouble() {
+		assertEquals(PresenceProblem.TOO_MANY_STREAMS, presenceProblemFor(429))
+	}
+
+	@Test
+	fun otherFailuresFallBackToConnectionProblem() {
+		assertEquals(PresenceProblem.CONNECTION, presenceProblemFor(null))
+		assertEquals(PresenceProblem.CONNECTION, presenceProblemFor(500))
+		assertEquals(PresenceProblem.CONNECTION, presenceProblemFor(401))
+	}
 }
