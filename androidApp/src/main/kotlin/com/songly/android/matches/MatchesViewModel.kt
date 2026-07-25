@@ -16,6 +16,7 @@ private const val PAGE_SIZE = 20
 data class MatchesUiState(
 	val isLoading: Boolean = true,
 	val isLoadingMore: Boolean = false,
+	val isRefreshing: Boolean = false, // odświeżanie gestem (lista zostaje na ekranie)
 	val matches: List<Match> = emptyList(),
 	val genreNames: Map<String, String> = emptyMap(), // id gatunku -> nazwa (do etykiet)
 	val errorMessage: String? = null,
@@ -48,6 +49,18 @@ class MatchesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		if (loading) return
 		nextPage = 0
 		uiState = uiState.copy(isLoading = true, errorMessage = null, appendErrorMessage = null, endReached = false)
+		loadPage(reset = true)
+	}
+
+	/**
+	 * Odświeżenie gestem: to samo żądanie co [refresh], ale bez chowania listy za
+	 * spinnerem — przy pull-to-refresh użytkownik ma widzieć zawartość, którą
+	 * właśnie ściąga w dół.
+	 */
+	fun pullToRefresh() {
+		if (loading) return
+		nextPage = 0
+		uiState = uiState.copy(isRefreshing = true, errorMessage = null, appendErrorMessage = null, endReached = false)
 		loadPage(reset = true)
 	}
 
@@ -116,6 +129,7 @@ class MatchesViewModel(private val client: SonglyApiClient) : ViewModel() {
 				uiState = failure(reset, "Brak połączenia z serwerem. Spróbuj ponownie.")
 			} finally {
 				loading = false
+				uiState = uiState.copy(isRefreshing = false)
 			}
 		}
 	}

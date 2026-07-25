@@ -16,6 +16,7 @@ private const val PAGE_SIZE = 20
 data class NotificationsUiState(
 	val isLoading: Boolean = true, // pierwsze wczytanie / odświeżenie (cała lista)
 	val isLoadingMore: Boolean = false, // doczytywanie kolejnej strony
+	val isRefreshing: Boolean = false, // odświeżanie gestem (lista zostaje na ekranie)
 	val notifications: List<Notification> = emptyList(),
 	val unreadCount: Long = 0,
 	val errorMessage: String? = null, // błąd pierwszego wczytania (pusta lista)
@@ -49,6 +50,18 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 		if (loading) return
 		nextPage = 0
 		uiState = uiState.copy(isLoading = true, errorMessage = null, appendErrorMessage = null, endReached = false)
+		loadPage(reset = true)
+	}
+
+	/**
+	 * Odświeżenie gestem: to samo żądanie co [refresh], ale bez chowania listy za
+	 * spinnerem — przy pull-to-refresh użytkownik ma widzieć zawartość, którą
+	 * właśnie ściąga w dół.
+	 */
+	fun pullToRefresh() {
+		if (loading) return
+		nextPage = 0
+		uiState = uiState.copy(isRefreshing = true, errorMessage = null, appendErrorMessage = null, endReached = false)
 		loadPage(reset = true)
 	}
 
@@ -140,6 +153,7 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 				uiState = failure(reset, "Brak połączenia z serwerem. Spróbuj ponownie.")
 			} finally {
 				loading = false
+				uiState = uiState.copy(isRefreshing = false)
 			}
 		}
 	}
