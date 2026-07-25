@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.FriendNowPlaying
+import com.songly.shared.presence.PresenceProblem
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ data class FriendsPresenceUiState(
 	val friends: List<FriendNowPlaying> = emptyList(),
 	val live: Boolean = false,
 	val connecting: Boolean = true,
+	val problem: PresenceProblem? = null,
 )
 
 /**
@@ -47,7 +49,11 @@ class FriendsPresenceViewModel(private val client: SonglyApiClient) : ViewModel(
 				uiState = FriendsPresenceUiState(
 					friends = presence.friends,
 					live = presence.live,
-					connecting = !presence.live && uiState.friends.isEmpty() && presence.friends.isEmpty(),
+					// Limit strumieni nie jest „jeszcze się łączymy" tylko konkretną
+					// odmową — pokazujemy go od razu, zamiast udawać ładowanie.
+					connecting = !presence.live && presence.problem != PresenceProblem.TOO_MANY_STREAMS &&
+						uiState.friends.isEmpty() && presence.friends.isEmpty(),
+					problem = presence.problem,
 				)
 			}
 		}

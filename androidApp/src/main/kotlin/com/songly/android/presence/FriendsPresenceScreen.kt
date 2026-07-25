@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.shared.model.FriendNowPlaying
+import com.songly.shared.presence.PresenceProblem
 
 /**
  * „Znajomi teraz słuchają" na żywo (ADR 0007 backendu, Etap 3): stan początkowy z
@@ -51,17 +52,19 @@ fun FriendsPresenceScreen(
 			TopAppBar(
 				title = { Text("Znajomi teraz") },
 				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
-				actions = { ConnectionLabel(live = state.live, connecting = state.connecting) },
+				actions = {
+					ConnectionLabel(live = state.live, connecting = state.connecting, problem = state.problem)
+				},
 			)
 		},
 	) { padding ->
 		Box(modifier = Modifier.fillMaxSize().padding(padding)) {
 			if (state.friends.isEmpty()) {
 				Text(
-					text = if (state.connecting) {
-						"Łączenie ze strumieniem…"
-					} else {
-						"Nikt ze znajomych nic teraz nie gra."
+					text = when {
+						state.problem == PresenceProblem.TOO_MANY_STREAMS -> STREAM_LIMIT_MESSAGE
+						state.connecting -> "Łączenie ze strumieniem…"
+						else -> "Nikt ze znajomych nic teraz nie gra."
 					},
 					modifier = Modifier.align(Alignment.Center).padding(24.dp),
 					style = MaterialTheme.typography.bodyMedium,
@@ -89,9 +92,10 @@ fun FriendsPresenceScreen(
  * widziałby nieświeże statusy nie wiedząc, że strumień padł.
  */
 @Composable
-private fun ConnectionLabel(live: Boolean, connecting: Boolean) {
+private fun ConnectionLabel(live: Boolean, connecting: Boolean, problem: PresenceProblem?) {
 	val (label, color) = when {
 		live -> "● na żywo" to MaterialTheme.colorScheme.primary
+		problem == PresenceProblem.TOO_MANY_STREAMS -> "○ zajęte" to MaterialTheme.colorScheme.error
 		connecting -> "○ łączenie…" to MaterialTheme.colorScheme.onSurfaceVariant
 		else -> "○ offline" to MaterialTheme.colorScheme.error
 	}
@@ -132,3 +136,8 @@ private fun FriendPresenceCard(friend: FriendNowPlaying, onClick: () -> Unit) {
 		}
 	}
 }
+
+// Limit strumieni na użytkownika egzekwuje backend (429 TOO_MANY_STREAMS) — zwykle
+// biorą się z porzuconych sesji na innych urządzeniach, które wygasają same.
+private const val STREAM_LIMIT_MESSAGE =
+	"Masz otwarte strumienie na innych urządzeniach. Ten wróci, gdy któryś z nich wygaśnie."

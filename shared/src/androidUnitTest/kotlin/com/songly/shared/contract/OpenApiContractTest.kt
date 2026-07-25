@@ -95,6 +95,13 @@ class OpenApiContractTest {
 		ApiError.serializer() to "ApiError",
 	)
 
+	/**
+	 * Pola backendu, których model świadomie nie czyta (schemat -> pola). Pusta
+	 * mapa znaczy „bierzemy wszystko" — każdy wpis tutaj to decyzja do
+	 * uzasadnienia w komentarzu, nie miejsce na chowanie zaległości.
+	 */
+	private val intentionallyIgnored: Map<String, Set<String>> = emptyMap()
+
 	@Test
 	fun everyModelFieldExistsInBackendSchema() {
 		val schemas = loadSchemas()
@@ -119,6 +126,37 @@ class OpenApiContractTest {
 
 		if (violations.isNotEmpty()) {
 			fail("Dryf modeli mobilnych względem kontraktu OpenAPI:\n" + violations.joinToString("\n") { "  - $it" })
+		}
+	}
+
+	/**
+	 * Drugi kierunek: **pole dodane w backendzie musi trafić do modelu** albo na
+	 * listę świadomie pomijanych ([intentionallyIgnored]).
+	 *
+	 * Sam test wyżej łapie dryf tylko wtedy, gdy backend coś *usunie*. Częstszy
+	 * przypadek jest odwrotny: serwer zaczyna zwracać nowe pole, mobilka o nim nie
+	 * wie i po cichu go nie pokazuje. `ignoreUnknownKeys` sprawia, że nic nigdzie
+	 * nie wybucha, więc taki brak potrafi przeżyć miesiące.
+	 */
+	@Test
+	fun everyBackendFieldIsReadOrExplicitlyIgnored() {
+		val schemas = loadSchemas()
+		val violations = mutableListOf<String>()
+
+		for ((serializer, schemaName) in mapping) {
+			val backendFields = schemas[schemaName]?.jsonObject?.get("properties")?.jsonObject?.keys.orEmpty()
+			val descriptor = serializer.descriptor
+			val modelFields = (0 until descriptor.elementsCount).map { descriptor.getElementName(it) }.toSet()
+			val unread = backendFields - modelFields - intentionallyIgnored[schemaName].orEmpty()
+			if (unread.isNotEmpty()) {
+				violations += "Model ${descriptor.serialName} (schemat $schemaName): backend zwraca pola " +
+					"${unread.sorted()}, których model nie czyta. Dodaj je do modelu albo — jeśli celowo " +
+					"ich nie potrzebujemy — do intentionallyIgnored w tym teście."
+			}
+		}
+
+		if (violations.isNotEmpty()) {
+			fail("Mobilka nie nadąża za kontraktem OpenAPI:\n" + violations.joinToString("\n") { "  - $it" })
 		}
 	}
 
