@@ -16,6 +16,14 @@ android {
 		versionName = "0.1.0"
 	}
 
+	testOptions {
+		unitTests {
+			// Robolectric potrzebuje zasobów aplikacji (motyw, stringi) — bez tego
+			// testy UI wywalają się na inflacji themu.
+			isIncludeAndroidResources = true
+		}
+	}
+
 	buildFeatures {
 		compose = true
 	}
@@ -49,6 +57,14 @@ dependencies {
 	implementation(libs.coil.compose)
 	debugImplementation(libs.androidx.compose.ui.tooling)
 
-	// Testy jednostkowe UI-owe bez urządzenia: na razie kontrast palety motywu.
+	// Testy bez urządzenia: kontrast palety (czysta matematyka) oraz testy UI na
+	// Robolectriku — ten sam kod ekranów, tylko środowisko Androida symulowane na JVM.
 	testImplementation(libs.kotlin.test)
+	testImplementation(libs.junit)
+	testImplementation(libs.robolectric)
+	testImplementation(libs.kotlinx.coroutines.test)
+	testImplementation(libs.ktor.client.mock)
+	testImplementation(platform(libs.androidx.compose.bom))
+	testImplementation(libs.androidx.compose.ui.test.junit4)
+	debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
