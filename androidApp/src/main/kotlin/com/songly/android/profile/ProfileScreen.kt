@@ -124,14 +124,6 @@ fun ProfileScreen(
 						modifier = Modifier.fillMaxWidth(),
 					)
 					OutlinedTextField(
-						value = state.avatarUrl.orEmpty(),
-						onValueChange = viewModel::onAvatarUrlChange,
-						label = { Text("URL avatara") },
-						singleLine = true,
-						enabled = !state.isSavingProfile,
-						modifier = Modifier.fillMaxWidth(),
-					)
-					OutlinedTextField(
 						value = state.bio,
 						onValueChange = viewModel::onBioChange,
 						label = { Text("Bio") },

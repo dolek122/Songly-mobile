@@ -1,6 +1,18 @@
 {
   "components" : {
     "schemas" : {
+      "AdminListResponse" : {
+        "properties" : {
+          "userIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "AnalyticsCountResponse" : {
         "properties" : {
           "count" : {
@@ -8,7 +20,7 @@
             "type" : "integer"
           },
           "type" : {
-            "enum" : [ "USER_REGISTERED", "POST_LIKED", "POST_COMMENTED", "POST_SHARED", "FRIEND_REQUEST_SENT", "FRIEND_REQUEST_ACCEPTED", "COMMUNITY_MEMBER_JOINED" ],
+            "enum" : [ "USER_REGISTERED", "POST_LIKED", "POST_COMMENTED", "POST_SHARED", "FRIEND_REQUEST_SENT", "FRIEND_REQUEST_ACCEPTED", "COMMUNITY_MEMBER_JOINED", "POST_FIRST_REPORTED", "POST_REPORT_DISMISSED", "COMMUNITY_POST_REMOVED", "COMMUNITY_BAN_ISSUED_PERMANENT", "COMMUNITY_BAN_ISSUED_TEMPORARY", "BAN_APPEAL_SUBMITTED", "BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED" ],
             "type" : "string"
           }
         },
@@ -68,6 +80,56 @@
         },
         "type" : "object"
       },
+      "BanAppealRequest" : {
+        "properties" : {
+          "text" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "text" ],
+        "type" : "object"
+      },
+      "BanDetailsResponse" : {
+        "properties" : {
+          "appealStatus" : {
+            "enum" : [ "PENDING", "REJECTED", "ESCALATED", "ESCALATION_REJECTED" ],
+            "type" : "string"
+          },
+          "appealedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "BanMemberRequest" : {
+        "properties" : {
+          "durationDays" : {
+            "format" : "int32",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "reason" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "BlockedUserResponse" : {
         "properties" : {
           "blockedAt" : {
@@ -82,6 +144,21 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "ChangePasswordRequest" : {
+        "properties" : {
+          "currentPassword" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "newPassword" : {
+            "maxLength" : 72,
+            "minLength" : 8,
+            "type" : "string"
+          }
+        },
+        "required" : [ "currentPassword", "newPassword" ],
         "type" : "object"
       },
       "CommentResponse" : {
@@ -114,6 +191,47 @@
         },
         "type" : "object"
       },
+      "CommunityBanResponse" : {
+        "properties" : {
+          "appealStatus" : {
+            "enum" : [ "PENDING", "REJECTED", "ESCALATED", "ESCALATION_REJECTED" ],
+            "type" : "string"
+          },
+          "appealText" : {
+            "type" : "string"
+          },
+          "appealedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "bannedBy" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CommunityMemberResponse" : {
         "properties" : {
           "avatarUrl" : {
@@ -127,7 +245,7 @@
             "type" : "string"
           },
           "role" : {
-            "enum" : [ "OWNER", "MEMBER" ],
+            "enum" : [ "OWNER", "MODERATOR", "MEMBER" ],
             "type" : "string"
           },
           "userId" : {
@@ -155,7 +273,7 @@
             "type" : "integer"
           },
           "myRole" : {
-            "enum" : [ "OWNER", "MEMBER" ],
+            "enum" : [ "OWNER", "MODERATOR", "MEMBER" ],
             "type" : "string"
           },
           "name" : {
@@ -215,6 +333,11 @@
             "maxLength" : 1000,
             "minLength" : 0,
             "type" : "string"
+          },
+          "imageKey" : {
+            "maxLength" : 512,
+            "minLength" : 0,
+            "type" : "string"
           }
         },
         "required" : [ "content" ],
@@ -228,6 +351,44 @@
           }
         },
         "required" : [ "password" ],
+        "type" : "object"
+      },
+      "EscalatedAppealResponse" : {
+        "properties" : {
+          "appealText" : {
+            "type" : "string"
+          },
+          "appealedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "bannedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "communityId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "communityName" : {
+            "type" : "string"
+          },
+          "escalatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "FriendNowPlayingResponse" : {
@@ -331,6 +492,17 @@
         "required" : [ "email", "password" ],
         "type" : "object"
       },
+      "MailPreferencesResponse" : {
+        "properties" : {
+          "decisionsAboutMe" : {
+            "type" : "boolean"
+          },
+          "moderationQueue" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
       "ManualNowPlayingRequest" : {
         "properties" : {
           "album" : {
@@ -362,6 +534,10 @@
           "avatarUrl" : {
             "type" : "string"
           },
+          "confidence" : {
+            "format" : "double",
+            "type" : "number"
+          },
           "displayName" : {
             "type" : "string"
           },
@@ -377,6 +553,59 @@
             "type" : "array"
           },
           "userId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MembershipStatusResponse" : {
+        "properties" : {
+          "ban" : {
+            "$ref" : "#/components/schemas/BanDetailsResponse"
+          },
+          "joinedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "OWNER", "MODERATOR", "MEMBER" ],
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "MEMBER", "BANNED", "NONE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ModerationLogEntryResponse" : {
+        "properties" : {
+          "action" : {
+            "enum" : [ "COMMUNITY_BAN_ISSUED", "COMMUNITY_BAN_LIFTED", "COMMUNITY_POST_REMOVED", "POST_REPORT_DISMISSED", "POST_REPORT_UPHELD", "COMMUNITY_BAN_APPEAL_SUBMITTED", "COMMUNITY_BAN_APPEAL_ACCEPTED", "COMMUNITY_BAN_APPEAL_REJECTED", "COMMUNITY_BAN_APPEAL_ESCALATED", "COMMUNITY_BAN_ESCALATION_ACCEPTED", "COMMUNITY_BAN_ESCALATION_REJECTED", "COMMUNITY_MODERATOR_GRANTED", "COMMUNITY_MODERATOR_REVOKED", "ACCOUNT_SUSPENDED", "ACCOUNT_SUSPENSION_LIFTED", "SUSPENSION_APPEAL_SUBMITTED", "SUSPENSION_APPEAL_ACCEPTED", "SUSPENSION_APPEAL_REJECTED", "PLATFORM_ADMIN_GRANTED", "PLATFORM_ADMIN_REVOKED" ],
+            "type" : "string"
+          },
+          "actorId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "communityId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "occurredAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "reportCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "subjectId" : {
             "format" : "uuid",
             "type" : "string"
           }
@@ -412,7 +641,7 @@
             "type" : "string"
           },
           "type" : {
-            "enum" : [ "POST_LIKED", "POST_COMMENTED", "POST_SHARED", "FRIEND_REQUEST_RECEIVED", "FRIEND_REQUEST_ACCEPTED", "COMMUNITY_MEMBER_JOINED" ],
+            "enum" : [ "POST_LIKED", "POST_COMMENTED", "POST_SHARED", "FRIEND_REQUEST_RECEIVED", "FRIEND_REQUEST_ACCEPTED", "COMMUNITY_MEMBER_JOINED", "COMMUNITY_BANNED", "COMMUNITY_POST_REMOVED", "COMMUNITY_POST_REPORTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED", "POST_REPORT_DISMISSED", "BAN_APPEAL_SUBMITTED", "BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "COMMUNITY_MODERATOR_GRANTED", "COMMUNITY_MODERATOR_REVOKED" ],
             "type" : "string"
           }
         },
@@ -523,6 +752,20 @@
         },
         "type" : "object"
       },
+      "PagedModelCommunityBanResponse" : {
+        "properties" : {
+          "content" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CommunityBanResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "$ref" : "#/components/schemas/PageMetadata"
+          }
+        },
+        "type" : "object"
+      },
       "PagedModelCommunityMemberResponse" : {
         "properties" : {
           "content" : {
@@ -607,11 +850,39 @@
         },
         "type" : "object"
       },
+      "PagedModelModerationLogEntryResponse" : {
+        "properties" : {
+          "content" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ModerationLogEntryResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "$ref" : "#/components/schemas/PageMetadata"
+          }
+        },
+        "type" : "object"
+      },
       "PagedModelNotificationResponse" : {
         "properties" : {
           "content" : {
             "items" : {
               "$ref" : "#/components/schemas/NotificationResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "$ref" : "#/components/schemas/PageMetadata"
+          }
+        },
+        "type" : "object"
+      },
+      "PagedModelPostReportResponse" : {
+        "properties" : {
+          "content" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PostReportResponse"
             },
             "type" : "array"
           },
@@ -649,6 +920,85 @@
         },
         "type" : "object"
       },
+      "PasswordResetConfirmRequest" : {
+        "properties" : {
+          "newPassword" : {
+            "maxLength" : 72,
+            "minLength" : 8,
+            "type" : "string"
+          },
+          "token" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "newPassword", "token" ],
+        "type" : "object"
+      },
+      "PasswordResetRequest" : {
+        "properties" : {
+          "email" : {
+            "format" : "email",
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "email" ],
+        "type" : "object"
+      },
+      "PostImageResponse" : {
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PostReportResponse" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "post" : {
+            "$ref" : "#/components/schemas/PostResponse"
+          },
+          "reason" : {
+            "enum" : [ "SPAM", "HARASSMENT", "HATE_SPEECH", "ILLEGAL_CONTENT", "OTHER" ],
+            "type" : "string"
+          },
+          "reportCount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "reporterDismissedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "reporterDisplayName" : {
+            "type" : "string"
+          },
+          "reporterId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "reporterUpheldCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "PostResponse" : {
         "properties" : {
           "authorAvatarUrl" : {
@@ -665,6 +1015,10 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "communityId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
           "content" : {
             "type" : "string"
           },
@@ -674,6 +1028,9 @@
           },
           "id" : {
             "format" : "uuid",
+            "type" : "string"
+          },
+          "imageUrl" : {
             "type" : "string"
           },
           "likeCount" : {
@@ -761,6 +1118,21 @@
         "required" : [ "email", "password" ],
         "type" : "object"
       },
+      "ReportPostRequest" : {
+        "properties" : {
+          "details" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "reason" : {
+            "enum" : [ "SPAM", "HARASSMENT", "HATE_SPEECH", "ILLEGAL_CONTENT", "OTHER" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "reason" ],
+        "type" : "object"
+      },
       "SendFriendRequestRequest" : {
         "properties" : {
           "addresseeId" : {
@@ -784,6 +1156,101 @@
           }
         },
         "required" : [ "genreIds" ],
+        "type" : "object"
+      },
+      "SetMemberRoleRequest" : {
+        "properties" : {
+          "role" : {
+            "enum" : [ "OWNER", "MODERATOR", "MEMBER" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "role" ],
+        "type" : "object"
+      },
+      "SuspendAccountRequest" : {
+        "properties" : {
+          "durationDays" : {
+            "format" : "int32",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "reason" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "reason" ],
+        "type" : "object"
+      },
+      "SuspendedAccountResponse" : {
+        "properties" : {
+          "appealStatus" : {
+            "enum" : [ "PENDING", "REJECTED" ],
+            "type" : "string"
+          },
+          "appealText" : {
+            "type" : "string"
+          },
+          "appealedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "suspendedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "userId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "SuspensionAppealRequest" : {
+        "properties" : {
+          "text" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "text" ],
+        "type" : "object"
+      },
+      "SuspensionResponse" : {
+        "properties" : {
+          "appealStatus" : {
+            "enum" : [ "PENDING", "REJECTED" ],
+            "type" : "string"
+          },
+          "appealedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "suspended" : {
+            "type" : "boolean"
+          },
+          "suspendedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "UnreadCountResponse" : {
@@ -811,6 +1278,18 @@
         "required" : [ "name" ],
         "type" : "object"
       },
+      "UpdateMailPreferencesRequest" : {
+        "properties" : {
+          "decisionsAboutMe" : {
+            "type" : "boolean"
+          },
+          "moderationQueue" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "decisionsAboutMe", "moderationQueue" ],
+        "type" : "object"
+      },
       "UpdateNowPlayingSettingsRequest" : {
         "properties" : {
           "shareWithFriends" : {
@@ -822,11 +1301,6 @@
       },
       "UpdateProfileRequest" : {
         "properties" : {
-          "avatarUrl" : {
-            "maxLength" : 2048,
-            "minLength" : 0,
-            "type" : "string"
-          },
           "bio" : {
             "maxLength" : 500,
             "minLength" : 0,
@@ -855,6 +1329,16 @@
           }
         },
         "type" : "object"
+      },
+      "VerifyEmailRequest" : {
+        "properties" : {
+          "token" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "token" ],
+        "type" : "object"
       }
     },
     "securitySchemes" : {
@@ -872,6 +1356,295 @@
   },
   "openapi" : "3.1.0",
   "paths" : {
+    "/api/v1/admin/admins" : {
+      "get" : {
+        "operationId" : "admins",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/ban-appeals" : {
+      "get" : {
+        "operationId" : "escalatedAppeals",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/EscalatedAppealResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-admin-controller" ]
+      }
+    },
+    "/api/v1/admin/communities/{communityId}/bans/{userId}" : {
+      "delete" : {
+        "operationId" : "overturnBan",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-admin-controller" ]
+      }
+    },
+    "/api/v1/admin/communities/{communityId}/bans/{userId}/escalation-rejection" : {
+      "post" : {
+        "operationId" : "rejectEscalation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-admin-controller" ]
+      }
+    },
+    "/api/v1/admin/moderation-log" : {
+      "get" : {
+        "operationId" : "platformLog",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "userId",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageable",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Pageable"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelModerationLogEntryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "moderation-log-controller" ]
+      }
+    },
+    "/api/v1/admin/suspensions" : {
+      "get" : {
+        "operationId" : "suspensions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/SuspendedAccountResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/users/{userId}/admin" : {
+      "delete" : {
+        "operationId" : "revokeAdmin",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "admin-controller" ]
+      },
+      "put" : {
+        "operationId" : "grantAdmin",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/users/{userId}/suspension" : {
+      "delete" : {
+        "operationId" : "liftSuspension",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "admin-controller" ]
+      },
+      "put" : {
+        "operationId" : "suspend",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SuspendAccountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/api/v1/admin/users/{userId}/suspension/appeal/rejection" : {
+      "post" : {
+        "operationId" : "rejectSuspensionAppeal",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "admin-controller" ]
+      }
+    },
     "/api/v1/analytics/summary" : {
       "get" : {
         "operationId" : "summary",
@@ -976,6 +1749,117 @@
         "tags" : [ "auth-controller" ]
       }
     },
+    "/api/v1/auth/me/suspension" : {
+      "get" : {
+        "operationId" : "suspension",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SuspensionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/me/suspension/appeal" : {
+      "post" : {
+        "operationId" : "appealSuspension",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SuspensionAppealRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/password" : {
+      "put" : {
+        "operationId" : "changePassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/password/reset" : {
+      "post" : {
+        "operationId" : "resetPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasswordResetConfirmRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/password/reset-request" : {
+      "post" : {
+        "operationId" : "requestPasswordReset",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
     "/api/v1/auth/refresh" : {
       "post" : {
         "operationId" : "refresh",
@@ -1012,6 +1896,27 @@
             "application/json" : {
               "schema" : {
                 "$ref" : "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/register/verify" : {
+      "post" : {
+        "operationId" : "verifyEmail",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerifyEmailRequest"
               }
             }
           },
@@ -1281,6 +2186,199 @@
         "tags" : [ "community-controller" ]
       }
     },
+    "/api/v1/communities/{communityId}/ban-appeal" : {
+      "post" : {
+        "operationId" : "appealBan",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BanAppealRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-controller" ]
+      }
+    },
+    "/api/v1/communities/{communityId}/ban-appeal/escalation" : {
+      "post" : {
+        "operationId" : "escalateBanAppeal",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-controller" ]
+      }
+    },
+    "/api/v1/communities/{communityId}/bans" : {
+      "get" : {
+        "operationId" : "listBans",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageable",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Pageable"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelCommunityBanResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-controller" ]
+      }
+    },
+    "/api/v1/communities/{communityId}/bans/{userId}" : {
+      "delete" : {
+        "operationId" : "unban",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-controller" ]
+      },
+      "put" : {
+        "operationId" : "ban",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BanMemberRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-controller" ]
+      }
+    },
+    "/api/v1/communities/{communityId}/bans/{userId}/appeal/rejection" : {
+      "post" : {
+        "operationId" : "rejectBanAppeal",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-controller" ]
+      }
+    },
     "/api/v1/communities/{communityId}/members" : {
       "get" : {
         "operationId" : "listMembers",
@@ -1318,6 +2416,47 @@
         "tags" : [ "community-controller" ]
       }
     },
+    "/api/v1/communities/{communityId}/members/{userId}/role" : {
+      "put" : {
+        "operationId" : "setMemberRole",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetMemberRoleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-controller" ]
+      }
+    },
     "/api/v1/communities/{communityId}/membership" : {
       "delete" : {
         "operationId" : "leave",
@@ -1332,6 +2471,34 @@
         } ],
         "responses" : {
           "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-controller" ]
+      },
+      "get" : {
+        "operationId" : "membershipStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MembershipStatusResponse"
+                }
+              }
+            },
             "description" : "OK"
           }
         },
@@ -1360,6 +2527,186 @@
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "community-controller" ]
+      }
+    },
+    "/api/v1/communities/{communityId}/moderation-log" : {
+      "get" : {
+        "operationId" : "communityLog",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageable",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Pageable"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelModerationLogEntryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "moderation-log-controller" ]
+      }
+    },
+    "/api/v1/communities/{communityId}/post-reports" : {
+      "get" : {
+        "operationId" : "listPendingReports",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageable",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Pageable"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelPostReportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-moderation-controller" ]
+      }
+    },
+    "/api/v1/communities/{communityId}/post-reports/{reportId}/dismissal" : {
+      "post" : {
+        "operationId" : "dismissReport",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "reportId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-moderation-controller" ]
+      }
+    },
+    "/api/v1/communities/{communityId}/posts" : {
+      "get" : {
+        "operationId" : "listCommunityPosts",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageable",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Pageable"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelPostResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-post-controller" ]
+      },
+      "post" : {
+        "operationId" : "createCommunityPost",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "communityId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePostRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PostResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "community-post-controller" ]
       }
     },
     "/api/v1/feed" : {
@@ -1680,6 +3027,49 @@
         "tags" : [ "notification-controller" ]
       }
     },
+    "/api/v1/notifications/mail-preferences" : {
+      "get" : {
+        "operationId" : "mailPreferences",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MailPreferencesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "notification-controller" ]
+      },
+      "put" : {
+        "operationId" : "updateMailPreferences",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateMailPreferencesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "notification-controller" ]
+      }
+    },
     "/api/v1/notifications/read-all" : {
       "post" : {
         "operationId" : "markAllRead",
@@ -1804,13 +3194,36 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/NowPlayingStatusResponse"
                 }
               }
             },
-            "description" : "OK"
+            "description" : "Aktualny status"
+          },
+          "204" : {
+            "description" : "Nic aktualnie nie gra"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Utracono dostęp do serwisu muzycznego — połączenie zostało usunięte, trzeba przejść OAuth ponownie (`PROVIDER_REAUTHORIZATION_REQUIRED`)"
+          },
+          "502" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Serwis muzyczny nie odpowiedział poprawnie (`MUSIC_PROVIDER_ERROR`)"
           }
         },
         "security" : [ {
@@ -1895,8 +3308,28 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK"
+          "204" : {
+            "description" : "Konto połączone z serwisem muzycznym"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Nieprawidłowy lub zużyty `state` (`INVALID_OAUTH_STATE`) albo kod autoryzacyjny (`INVALID_AUTHORIZATION_CODE`)"
+          },
+          "502" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Serwis muzyczny nie odpowiedział poprawnie (`MUSIC_PROVIDER_ERROR`)"
           }
         },
         "tags" : [ "now-playing-controller" ]
@@ -2008,6 +3441,43 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PostResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "post-controller" ]
+      }
+    },
+    "/api/v1/posts/image" : {
+      "post" : {
+        "operationId" : "uploadPostImage",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PostImageResponse"
                 }
               }
             },
@@ -2221,6 +3691,39 @@
         "tags" : [ "post-controller" ]
       }
     },
+    "/api/v1/posts/{postId}/reports" : {
+      "post" : {
+        "operationId" : "reportPost",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "postId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportPostRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "post-controller" ]
+      }
+    },
     "/api/v1/posts/{postId}/shares" : {
       "delete" : {
         "operationId" : "unsharePost",
@@ -2296,6 +3799,55 @@
             }
           },
           "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "profile-controller" ]
+      }
+    },
+    "/api/v1/profiles/me/avatar" : {
+      "delete" : {
+        "operationId" : "deleteAvatar",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "profile-controller" ]
+      },
+      "post" : {
+        "operationId" : "uploadAvatar",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
         },
         "responses" : {
           "200" : {

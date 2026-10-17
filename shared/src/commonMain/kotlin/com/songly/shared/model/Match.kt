@@ -16,6 +16,9 @@ data class Match(
 	val avatarUrl: String? = null,
 	val score: Double,
 	val sharedGenreIds: List<String> = emptyList(),
+	// Ile wiemy o guście obu stron, (0, 1) — niski [score] przy niskiej pewności to
+	// „za mało danych", nie „nie pasujecie" (backend ADR 0033).
+	val confidence: Double = 0.0,
 ) {
 	/** Dopasowanie jako procent 0..100 (do wyświetlenia). */
 	val scorePercent: Int
