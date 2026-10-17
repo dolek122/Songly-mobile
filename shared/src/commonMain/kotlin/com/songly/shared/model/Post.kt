@@ -58,3 +58,11 @@ data class PageMetadata(
 	val totalElements: Long,
 	val totalPages: Int,
 )
+
+/**
+ * Wgrane zdjęcie do posta (backend: content.dto.PostImageResponse). [key] idzie
+ * do `CreatePostRequest.imageKey`, [url] służy wyłącznie do podglądu przed
+ * publikacją.
+ */
+@Serializable
+data class PostImage(val key: String, val url: String)

@@ -36,3 +36,15 @@ data class AuthTokens(
 	val tokenType: String,
 	val expiresInSeconds: Long,
 )
+
+/** Zmiana hasła (backend: identity.dto.ChangePasswordRequest; nowe 8–72 znaki). */
+@Serializable
+data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
+
+/** Zamówienie linku resetującego hasło (backend: identity.dto.PasswordResetRequest). */
+@Serializable
+data class PasswordResetRequest(val email: String)
+
+/** Nowe hasło z tokenem z maila (backend: identity.dto.PasswordResetConfirmRequest). */
+@Serializable
+data class PasswordResetConfirmRequest(val token: String, val newPassword: String)

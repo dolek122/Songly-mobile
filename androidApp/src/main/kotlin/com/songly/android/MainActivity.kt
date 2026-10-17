@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.songly.android.auth.ForgotPasswordScreen
+import com.songly.android.auth.ForgotPasswordViewModel
 import com.songly.android.auth.LoginScreen
 import com.songly.android.auth.LoginViewModel
 import com.songly.android.auth.RegisterScreen
@@ -94,6 +96,9 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot(client: SonglyApiClient) {
 	// null = jeszcze sprawdzamy zapisaną sesję (Keystore, I/O poza głównym wątkiem).
 	var loggedIn by remember { mutableStateOf<Boolean?>(null) }
+	// Powód powrotu do logowania (np. zmiana hasła odwołała sesję) — bez niego
+	// użytkownik zostałby nagle wylogowany bez słowa wyjaśnienia.
+	var authNotice by remember { mutableStateOf<String?>(null) }
 
 	LaunchedEffect(Unit) {
 		loggedIn = client.isLoggedIn()
@@ -104,46 +109,89 @@ private fun AppRoot(client: SonglyApiClient) {
 			CircularProgressIndicator()
 		}
 
-		true -> LoggedInNav(client = client, onLoggedOut = { loggedIn = false })
+		true -> LoggedInNav(client = client, onLoggedOut = { notice -> authNotice = notice; loggedIn = false })
 
-		false -> AuthNav(client = client, onAuthenticated = { loggedIn = true })
+		false -> AuthNav(
+			client = client,
+			notice = authNotice,
+			onNotice = { authNotice = it },
+			onAuthenticated = { authNotice = null; loggedIn = true },
+		)
 	}
 }
 
+private enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
+
 /**
- * Nawigacja przed zalogowaniem: logowanie ↔ rejestracja. Oba ekrany po sukcesie
- * wywołują [onAuthenticated] (sesja jest już założona w `shared`). Prosty stan
- * zamiast Navigation-Compose — wystarcza na dwa ekrany, jak w [LoggedInNav].
+ * Nawigacja przed zalogowaniem: logowanie, rejestracja i reset hasła. Rejestracja
+ * i logowanie po sukcesie wywołują [onAuthenticated] (sesja jest już założona w
+ * `shared`); reset hasła wraca do logowania, bo backend nie wydaje po nim sesji.
  */
 @Composable
-private fun AuthNav(client: SonglyApiClient, onAuthenticated: () -> Unit) {
-	var registering by remember { mutableStateOf(false) }
+private fun AuthNav(
+	client: SonglyApiClient,
+	notice: String?,
+	onNotice: (String?) -> Unit,
+	onAuthenticated: () -> Unit,
+) {
+	var screen by remember { mutableStateOf(AuthScreen.LOGIN) }
+	// Każde wejście w reset dostaje świeży ViewModel — zcache'owany pamiętałby
+	// „hasło ustawione" i od razu wyrzucał z ekranu przy kolejnej próbie.
+	var forgotAttempt by remember { mutableStateOf(0) }
+	val backToLogin = { screen = AuthScreen.LOGIN }
 
-	// Wstecz z rejestracji wraca do logowania, a nie zamyka aplikację.
-	BackHandler(enabled = registering) { registering = false }
+	// Wstecz z rejestracji i resetu wraca do logowania, a nie zamyka aplikację.
+	BackHandler(enabled = screen != AuthScreen.LOGIN) { backToLogin() }
 
-	if (registering) {
-		val registerViewModel: RegisterViewModel = viewModel(
-			factory = viewModelFactory {
-				initializer { RegisterViewModel(client) }
-			},
-		)
-		RegisterScreen(
-			viewModel = registerViewModel,
-			onRegistered = onAuthenticated,
-			onNavigateToLogin = { registering = false },
-		)
-	} else {
-		val loginViewModel: LoginViewModel = viewModel(
-			factory = viewModelFactory {
-				initializer { LoginViewModel(client) }
-			},
-		)
-		LoginScreen(
-			viewModel = loginViewModel,
-			onLoggedIn = onAuthenticated,
-			onNavigateToRegister = { registering = true },
-		)
+	when (screen) {
+		AuthScreen.REGISTER -> {
+			val registerViewModel: RegisterViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { RegisterViewModel(client) }
+				},
+			)
+			RegisterScreen(
+				viewModel = registerViewModel,
+				onRegistered = onAuthenticated,
+				onNavigateToLogin = backToLogin,
+			)
+		}
+
+		AuthScreen.FORGOT_PASSWORD -> {
+			val forgotViewModel: ForgotPasswordViewModel = viewModel(
+				key = "forgot-password-$forgotAttempt",
+				factory = viewModelFactory {
+					initializer { ForgotPasswordViewModel(client) }
+				},
+			)
+			ForgotPasswordScreen(
+				viewModel = forgotViewModel,
+				onPasswordReset = {
+					onNotice("Hasło zostało zmienione. Zaloguj się nowym hasłem.")
+					backToLogin()
+				},
+				onBack = backToLogin,
+			)
+		}
+
+		AuthScreen.LOGIN -> {
+			val loginViewModel: LoginViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { LoginViewModel(client) }
+				},
+			)
+			LoginScreen(
+				viewModel = loginViewModel,
+				onLoggedIn = onAuthenticated,
+				onNavigateToRegister = { onNotice(null); screen = AuthScreen.REGISTER },
+				onForgotPassword = {
+					onNotice(null)
+					forgotAttempt++
+					screen = AuthScreen.FORGOT_PASSWORD
+				},
+				notice = notice,
+			)
+		}
 	}
 }
 
@@ -153,7 +201,7 @@ private fun AuthNav(client: SonglyApiClient, onAuthenticated: () -> Unit) {
  * instancją. Prosty stan zamiast Navigation-Compose — wystarcza na dwa ekrany.
  */
 @Composable
-private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
+private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) -> Unit) {
 	val feedViewModel: FeedViewModel = viewModel(
 		factory = viewModelFactory {
 			initializer { FeedViewModel(client) }
@@ -368,7 +416,11 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			ProfileScreen(
 				viewModel = profileViewModel,
 				onBack = { showProfile = false },
-				onAccountDeleted = { showProfile = false; onLoggedOut() },
+				onAccountDeleted = { showProfile = false; onLoggedOut(null) },
+				onPasswordChanged = {
+					showProfile = false
+					onLoggedOut("Hasło zostało zmienione, a wszystkie sesje zakończone. Zaloguj się nowym hasłem.")
+				},
 			)
 		}
 
@@ -405,8 +457,8 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			FeedScreen(
 				viewModel = feedViewModel,
 				client = client,
-				onLoggedOut = onLoggedOut,
-				onSessionExpired = onLoggedOut,
+				onLoggedOut = { onLoggedOut(null) },
+				onSessionExpired = { onLoggedOut("Sesja wygasła. Zaloguj się ponownie.") },
 				onCreatePost = { creatingPost = true },
 				onOpenComments = openComments,
 				onOpenUserProfile = openUserProfile,
