@@ -6,6 +6,8 @@ import com.songly.shared.model.RefreshRequest
 import com.songly.shared.session.TokenStorage
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
@@ -39,9 +41,9 @@ internal expect fun httpClientEngineFactory(): HttpClientEngineFactory<*>
  *  - gdy refresh się nie powiedzie (refresh token wygasł/unieważniony), czyścimy
  *    [storage]; warstwa wyżej potraktuje to jako wylogowanie.
  */
-internal fun createHttpClient(config: ApiConfig, storage: TokenStorage): HttpClient {
+internal fun createHttpClient(config: ApiConfig, storage: TokenStorage, engine: HttpClientEngine? = null): HttpClient {
 	val base = config.baseUrl.trimEnd('/')
-	return HttpClient(httpClientEngineFactory()) {
+	val configure: HttpClientConfig<*>.() -> Unit = {
 		expectSuccess = false
 		install(ContentNegotiation) {
 			json(
@@ -92,4 +94,8 @@ internal fun createHttpClient(config: ApiConfig, storage: TokenStorage): HttpCli
 			}
 		}
 	}
+	// Silnik podany z zewnątrz to seam dla testów (MockEngine): pozwala przejść
+	// całą realną ścieżkę klienta — serializację, wtyczkę Auth, mapowanie błędów —
+	// bez sieci. Produkcyjnie zawsze null, czyli silnik platformy.
+	return if (engine != null) HttpClient(engine, configure) else HttpClient(httpClientEngineFactory(), configure)
 }

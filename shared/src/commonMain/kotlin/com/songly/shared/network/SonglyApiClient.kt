@@ -44,6 +44,7 @@ import com.songly.shared.presence.reconnectDelayMillis
 import com.songly.shared.session.InMemoryTokenStorage
 import com.songly.shared.session.TokenStorage
 import io.ktor.client.call.body
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.auth.authProvider
 import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.plugins.HttpTimeoutConfig
@@ -77,12 +78,29 @@ import kotlinx.serialization.json.Json
  * refresh tokenem (patrz [createHttpClient]). UI nie dotyka tokenów — woła metody
  * domenowe i ewentualnie łapie [SonglyApiException].
  */
-class SonglyApiClient(
+class SonglyApiClient internal constructor(
 	config: ApiConfig,
-	private val storage: TokenStorage = InMemoryTokenStorage(),
+	private val storage: TokenStorage,
+	engine: HttpClientEngine?,
 ) {
 
-	private val http = createHttpClient(config, storage)
+	constructor(config: ApiConfig, storage: TokenStorage = InMemoryTokenStorage()) : this(config, storage, null)
+
+	companion object {
+
+		/**
+		 * Klient na podstawionym silniku HTTP — **wyłącznie do testów**.
+		 *
+		 * Osobna fabryka zamiast domyślnego argumentu w konstruktorze, bo typ silnika
+		 * pochodzi z Ktora: gdyby wisiał w głównym konstruktorze, każdy moduł tworzący
+		 * klienta (czyli aplikacje) musiałby mieć Ktora na swojej ścieżce kompilacji
+		 * tylko po to, żeby wywołać konstruktor z domyślnymi argumentami.
+		 */
+		fun withEngine(config: ApiConfig, storage: TokenStorage, engine: HttpClientEngine): SonglyApiClient =
+			SonglyApiClient(config, storage, engine)
+	}
+
+	private val http = createHttpClient(config, storage, engine)
 	private val base = config.baseUrl.trimEnd('/')
 
 	// Ramki SSE to czysty tekst poza ContentNegotiation, więc strumień presence

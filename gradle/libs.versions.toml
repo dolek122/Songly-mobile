@@ -12,6 +12,8 @@ activityCompose = "1.9.3"
 lifecycle = "2.8.7"
 composeBom = "2025.01.00"
 coil = "2.7.0"
+robolectric = "4.14.1"
+junit = "4.13.2"
 compileSdk = "35"
 minSdk = "26"
 targetSdk = "35"
@@ -32,6 +34,13 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 # Testy (KMP: kotlin-test dobiera właściwy framework per target — JUnit na JVM/Android)
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+# Testy UI bez urządzenia: Robolectric podstawia środowisko Androida na JVM,
+# compose-ui-test daje regułę i asercje na drzewie kompozycji.
+junit = { module = "junit:junit", version.ref = "junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
 # Android UI (natywny Compose, patrz §14 blueprintu backendu)
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
