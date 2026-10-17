@@ -9,13 +9,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +50,9 @@ fun UserProfileScreen(
 	postsViewModel: PostListViewModel,
 	onBack: () -> Unit,
 	onOpenComments: (postId: String) -> Unit,
+	/** Oglądający jest administratorem platformy — pokazujemy akcje admina. */
+	isAdminViewer: Boolean = false,
+	onOpenModerationHistory: (userId: String) -> Unit = {},
 ) {
 	val state = viewModel.uiState
 
@@ -52,6 +62,10 @@ fun UserProfileScreen(
 	}
 
 	PostListDialogs(postsViewModel)
+
+	if (state.showSuspendDialog) {
+		SuspendDialog(state, viewModel)
+	}
 
 	Scaffold(
 		topBar = {
@@ -84,6 +98,16 @@ fun UserProfileScreen(
 					modifier = Modifier.fillMaxSize(),
 				) {
 					item(key = "profile") { ProfileContent(state, onInvite = viewModel::invite) }
+					if (isAdminViewer && !state.isSelf) {
+						item(key = "admin-actions") {
+							AdminActions(
+								state = state,
+								onSuspend = viewModel::openSuspendDialog,
+								onGrantAdmin = viewModel::grantAdmin,
+								onHistory = { state.profile?.userId?.let(onOpenModerationHistory) },
+							)
+						}
+					}
 					item(key = "posts-title") {
 						Text("Posty", style = MaterialTheme.typography.titleMedium)
 					}
@@ -173,4 +197,78 @@ private fun ProfileContent(state: UserProfileUiState, onInvite: () -> Unit) {
 			}
 		}
 	}
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AdminActions(
+	state: UserProfileUiState,
+	onSuspend: () -> Unit,
+	onGrantAdmin: () -> Unit,
+	onHistory: () -> Unit,
+) {
+	Card(modifier = Modifier.fillMaxWidth()) {
+		Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+			Text("Administracja", style = MaterialTheme.typography.titleSmall)
+			if (state.adminMessage != null) {
+				Text(state.adminMessage, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+			}
+			FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+				OutlinedButton(
+					onClick = onSuspend,
+					enabled = !state.isAdminActionRunning,
+					colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+				) { Text("Zawieś konto") }
+				OutlinedButton(onClick = onGrantAdmin, enabled = !state.isAdminActionRunning) { Text("Nadaj rolę admina") }
+				TextButton(onClick = onHistory) { Text("Historia moderacji") }
+			}
+		}
+	}
+}
+
+@Composable
+private fun SuspendDialog(state: UserProfileUiState, viewModel: UserProfileViewModel) {
+	AlertDialog(
+		onDismissRequest = viewModel::dismissSuspendDialog,
+		title = { Text("Zawiesić konto?") },
+		text = {
+			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+				Text(
+					"Zawieszenie odcina od całej aplikacji i ukrywa treści tej osoby. Powód zobaczy zawieszony.",
+					style = MaterialTheme.typography.bodySmall,
+				)
+				Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+					listOf<Int?>(1, 7, 30, null).forEach { days ->
+						FilterChip(
+							selected = state.suspendDays == days,
+							onClick = { viewModel.onSuspendDaysChange(days) },
+							label = { Text(if (days == null) "Na zawsze" else "$days d") },
+						)
+					}
+				}
+				OutlinedTextField(
+					value = state.suspendReason,
+					onValueChange = viewModel::onSuspendReasonChange,
+					label = { Text("Powód (wymagany)") },
+					enabled = !state.isAdminActionRunning,
+					minLines = 2,
+					isError = state.suspendReason.length > 500,
+					modifier = Modifier.fillMaxWidth(),
+				)
+				if (state.suspendError != null) {
+					Text(state.suspendError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+				}
+			}
+		},
+		confirmButton = {
+			TextButton(
+				onClick = viewModel::suspend,
+				enabled = state.canSuspend,
+				colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+			) { Text(if (state.isAdminActionRunning) "Zawieszanie…" else "Zawieś") }
+		},
+		dismissButton = {
+			TextButton(onClick = viewModel::dismissSuspendDialog, enabled = !state.isAdminActionRunning) { Text("Anuluj") }
+		},
+	)
 }

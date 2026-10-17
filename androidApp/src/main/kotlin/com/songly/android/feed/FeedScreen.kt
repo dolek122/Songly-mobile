@@ -73,6 +73,9 @@ fun FeedScreen(
 	onOpenNotifications: () -> Unit,
 	onOpenCommunities: () -> Unit,
 	onOpenMatches: () -> Unit,
+	isAdmin: Boolean = false,
+	onOpenAdmin: () -> Unit = {},
+	onAccountSuspended: () -> Unit = {},
 ) {
 	val state = viewModel.uiState
 	val scope = rememberCoroutineScope()
@@ -87,6 +90,9 @@ fun FeedScreen(
 
 	LaunchedEffect(state.sessionExpired) {
 		if (state.sessionExpired) onSessionExpired()
+	}
+	LaunchedEffect(state.accountSuspended) {
+		if (state.accountSuspended) onAccountSuspended()
 	}
 
 	// Infinite scroll: gdy widoczny jest jeden z ostatnich elementów, doczytaj
@@ -165,6 +171,12 @@ fun FeedScreen(
 							text = { Text("Profil") },
 							onClick = { menuOpen = false; onOpenProfile() },
 						)
+						if (isAdmin) {
+							DropdownMenuItem(
+								text = { Text("Panel administratora") },
+								onClick = { menuOpen = false; onOpenAdmin() },
+							)
+						}
 						DropdownMenuItem(
 							text = { Text("Wyloguj") },
 							onClick = {

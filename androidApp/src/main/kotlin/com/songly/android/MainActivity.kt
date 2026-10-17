@@ -20,6 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.songly.android.account.SuspendedScreen
+import com.songly.android.account.SuspendedViewModel
+import com.songly.android.admin.AdminScreen
+import com.songly.android.admin.AdminViewModel
 import com.songly.android.auth.ForgotPasswordScreen
 import com.songly.android.auth.ForgotPasswordViewModel
 import com.songly.android.auth.LoginScreen
@@ -218,6 +222,44 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 	var showCommunities by remember { mutableStateOf(false) }
 	var communityDetailId by remember { mutableStateOf<String?>(null) }
 	var showMatches by remember { mutableStateOf(false) }
+	var showAdmin by remember { mutableStateOf(false) }
+
+	// Stan konta sprawdzany na starcie sesji: zawieszone konto dostaje 403 na
+	// prawie wszystko (ADR 0022), więc zamiast zepsutego feedu pokazujemy mu jego
+	// stan. null = jeszcze sprawdzamy. Brak sieci traktujemy jak „niezawieszone"
+	// — feed i tak pokaże wtedy błąd połączenia, a nie fałszywe zawieszenie.
+	var suspended by remember { mutableStateOf<Boolean?>(null) }
+	var isAdmin by remember { mutableStateOf(false) }
+	LaunchedEffect(suspended) {
+		if (suspended == null) {
+			suspended = runCatching { client.mySuspension().suspended }.getOrDefault(false)
+		}
+		if (suspended == false) {
+			isAdmin = runCatching { client.isCurrentUserAdmin() }.getOrDefault(false)
+		}
+	}
+	when (suspended) {
+		null -> {
+			Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+			return
+		}
+
+		true -> {
+			val suspendedViewModel: SuspendedViewModel = viewModel(
+				key = "suspended",
+				factory = viewModelFactory { initializer { SuspendedViewModel(client) } },
+			)
+			SuspendedScreen(
+				viewModel = suspendedViewModel,
+				onLifted = { suspended = false; feedViewModel.refresh() },
+				onSessionEnded = { onLoggedOut(null) },
+			)
+			return
+		}
+
+		false -> Unit
+	}
+
 	// Profil, post i komentarze to nakładki otwierane z dowolnego ekranu i z siebie
 	// nawzajem (profil → post → komentarze → profil komentującego…), więc nie da się
 	// ich ułożyć w stałą kolejność gałęzi `when` jak ekranów niżej. Trzymamy je na
@@ -229,6 +271,10 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 	val closeOverlay: () -> Unit = { overlays.removeAt(overlays.lastIndex) }
 	// Zgłoszenie żyje tyle, co jego dialog — świeży stan przy każdym otwarciu.
 	val createReportViewModel: (String) -> ReportPostViewModel = { ReportPostViewModel(client, it) }
+	val adminViewModel: AdminViewModel = viewModel(
+		key = "admin",
+		factory = viewModelFactory { initializer { AdminViewModel(client) } },
+	)
 
 	// Systemowy Wstecz (przycisk i gest) musi robić to samo co „Wróć" na ekranie —
 	// bez tego zamyka aplikację, co na Androidzie jest po prostu zepsute.
@@ -239,6 +285,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 	// Navigation-Compose z prawdziwym back stackiem.
 	val closeTopScreen: (() -> Unit)? = when {
 		overlays.isNotEmpty() -> closeOverlay
+		showAdmin -> ({ showAdmin = false })
 		showMatches -> ({ showMatches = false })
 		communityDetailId != null -> ({ communityDetailId = null })
 		showCommunities -> ({ showCommunities = false })
@@ -282,6 +329,12 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 				postsViewModel = postsViewModel,
 				onBack = closeOverlay,
 				onOpenComments = openComments,
+				isAdminViewer = isAdmin,
+				onOpenModerationHistory = { userId ->
+					overlays.clear()
+					showAdmin = true
+					adminViewModel.showLogFor(userId)
+				},
 			)
 		}
 
@@ -317,6 +370,13 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 				onOpenUserProfile = openUserProfile,
 			)
 		}
+
+		showAdmin -> AdminScreen(
+			viewModel = adminViewModel,
+			onBack = { showAdmin = false },
+			onOpenUserProfile = openUserProfile,
+			onOpenCommunity = { showAdmin = false; communityDetailId = it },
+		)
 
 		showMatches -> {
 			val matchesViewModel: MatchesViewModel = viewModel(
@@ -484,6 +544,10 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 				onOpenNotifications = { showNotifications = true },
 				onOpenCommunities = { showCommunities = true },
 				onOpenMatches = { showMatches = true },
+				isAdmin = isAdmin,
+				onOpenAdmin = { showAdmin = true },
+				// Zawieszenie w trakcie sesji — sprawdzamy stan od nowa i pokazujemy ekran zawieszenia.
+				onAccountSuspended = { suspended = null },
 			)
 		}
 	}

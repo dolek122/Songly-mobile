@@ -258,7 +258,7 @@ fun appealLabel(status: String?): String? = when (status) {
 	else -> null
 }
 
-private fun logActionLabel(action: String): String = when (action) {
+fun logActionLabel(action: String): String = when (action) {
 	"COMMUNITY_BAN_ISSUED" -> "Ban"
 	"COMMUNITY_BAN_LIFTED" -> "Zdjęcie bana"
 	"COMMUNITY_POST_REMOVED" -> "Usunięcie posta"
@@ -272,5 +272,12 @@ private fun logActionLabel(action: String): String = when (action) {
 	"COMMUNITY_BAN_ESCALATION_REJECTED" -> "Administracja utrzymała ban"
 	"COMMUNITY_MODERATOR_GRANTED" -> "Nadanie roli moderatora"
 	"COMMUNITY_MODERATOR_REVOKED" -> "Odebranie roli moderatora"
+	"ACCOUNT_SUSPENDED" -> "Zawieszenie konta"
+	"ACCOUNT_SUSPENSION_LIFTED" -> "Zdjęcie zawieszenia"
+	"SUSPENSION_APPEAL_SUBMITTED" -> "Odwołanie od zawieszenia"
+	"SUSPENSION_APPEAL_ACCEPTED" -> "Uznane odwołanie od zawieszenia"
+	"SUSPENSION_APPEAL_REJECTED" -> "Odrzucone odwołanie od zawieszenia"
+	"PLATFORM_ADMIN_GRANTED" -> "Nadanie roli administratora"
+	"PLATFORM_ADMIN_REVOKED" -> "Odebranie roli administratora"
 	else -> action
 }

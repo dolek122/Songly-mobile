@@ -2,6 +2,13 @@ package com.songly.shared.network
 
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.model.ApiError
+import com.songly.shared.model.AdminList
+import com.songly.shared.model.AnalyticsSummary
+import com.songly.shared.model.EscalatedAppeal
+import com.songly.shared.model.SuspendAccountRequest
+import com.songly.shared.model.SuspendedAccount
+import com.songly.shared.model.Suspension
+import com.songly.shared.model.SuspensionAppealRequest
 import com.songly.shared.model.BanAppealRequest
 import com.songly.shared.model.BanMemberRequest
 import com.songly.shared.model.CommunityBan
@@ -737,6 +744,93 @@ class SonglyApiClient internal constructor(
 	 */
 	suspend fun escalateBanAppeal(communityId: String) =
 		http.post("$base/api/v1/communities/$communityId/ban-appeal/escalation").ensureSuccessOrThrow()
+
+	// --- Stan mojego konta (zawieszenie, ADR 0022–0023) ---
+
+	/**
+	 * Czy moje konto jest zawieszone, za co i do kiedy. Jedna z trzech rzeczy, które
+	 * zawieszone konto może zrobić (obok odwołania i usunięcia konta) — reszta API
+	 * odpowiada mu 403 `ACCOUNT_SUSPENDED`.
+	 */
+	suspend fun mySuspension(): Suspension =
+		http.get("$base/api/v1/auth/me/suspension").decodeOrThrow()
+
+	/** Odwołanie od zawieszenia — jedno na zawieszenie (409 `SUSPENSION_APPEAL_ALREADY_SUBMITTED`). */
+	suspend fun appealSuspension(text: String) =
+		http.post("$base/api/v1/auth/me/suspension/appeal") {
+			contentType(ContentType.Application.Json)
+			setBody(SuspensionAppealRequest(text))
+		}.ensureSuccessOrThrow()
+
+	// --- Administracja platformy (ADR 0021–0031; wszystko poniżej: 403 dla nie-admina) ---
+
+	suspend fun admins(): AdminList =
+		http.get("$base/api/v1/admin/admins").decodeOrThrow()
+
+	/**
+	 * Czy zalogowany jest administratorem. Backend nie ma osobnego endpointu „kim
+	 * jestem", więc pytamy o wykaz adminów: nie-admin dostaje 403, a admin — listę
+	 * z własnym id. Rola jest czytana na żywo (ADR 0006), więc wynik bywa nieaktualny
+	 * po degradacji — wtedy kolejne żądania panelu po prostu dostaną 403.
+	 */
+	suspend fun isCurrentUserAdmin(): Boolean = try {
+		currentUserId() in admins().userIds
+	} catch (e: SonglyApiException) {
+		if (e.status == 403) false else throw e
+	}
+
+	suspend fun grantAdmin(userId: String) =
+		http.put("$base/api/v1/admin/users/$userId/admin").ensureSuccessOrThrow()
+
+	/** Odebranie roli — nie sobie samemu (403 `CANNOT_REVOKE_OWN_ADMIN`). */
+	suspend fun revokeAdmin(userId: String) =
+		http.delete("$base/api/v1/admin/users/$userId/admin").ensureSuccessOrThrow()
+
+	/** Wykaz zawieszeń — zarazem kolejka odwołań od nich. Bez paginacji: to lista do audytu. */
+	suspend fun suspensions(): List<SuspendedAccount> =
+		http.get("$base/api/v1/admin/suspensions").decodeOrThrow()
+
+	/**
+	 * Zawiesza konto (nie siebie i nie innego admina). Działa od razu, bez
+	 * wylogowania zawieszonego — stan jest czytany na żywo przy każdym żądaniu.
+	 */
+	suspend fun suspendUser(userId: String, reason: String, durationDays: Int?) =
+		http.put("$base/api/v1/admin/users/$userId/suspension") {
+			contentType(ContentType.Application.Json)
+			setBody(SuspendAccountRequest(reason, durationDays))
+		}.ensureSuccessOrThrow()
+
+	/** Zdejmuje zawieszenie. Przy oczekującym odwołaniu to jest jego uznanie (ADR 0023). */
+	suspend fun liftSuspension(userId: String) =
+		http.delete("$base/api/v1/admin/users/$userId/suspension").ensureSuccessOrThrow()
+
+	suspend fun rejectSuspensionAppeal(userId: String) =
+		http.post("$base/api/v1/admin/users/$userId/suspension/appeal/rejection").ensureSuccessOrThrow()
+
+	/** Odwołania od banów przekazane administracji (ADR 0028). */
+	suspend fun escalatedBanAppeals(): List<EscalatedAppeal> =
+		http.get("$base/api/v1/admin/ban-appeals").decodeOrThrow()
+
+	/** Uchyla ban na wniosek ukaranego — moderatorzy dostają powiadomienie. */
+	suspend fun overturnBan(communityId: String, userId: String) =
+		http.delete("$base/api/v1/admin/communities/$communityId/bans/$userId").ensureSuccessOrThrow()
+
+	/** Utrzymuje ban — stan końcowy, nad administracją nie ma nikogo. */
+	suspend fun upholdBan(communityId: String, userId: String) =
+		http.post("$base/api/v1/admin/communities/$communityId/bans/$userId/escalation-rejection").ensureSuccessOrThrow()
+
+	/** Dziennik moderacji całej platformy; [userId] zawęża do wpisów o tej osobie. */
+	suspend fun platformModerationLog(userId: String? = null, page: Int = 0, size: Int = 20): Page<ModerationLogEntry> =
+		http.get("$base/api/v1/admin/moderation-log") {
+			userId?.let { parameter("userId", it) }
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	suspend fun analyticsSummary(days: Int): AnalyticsSummary =
+		http.get("$base/api/v1/analytics/summary") {
+			parameter("days", days)
+		}.decodeOrThrow()
 
 	// --- Dopasowywanie po gatunkach (moduł matching) ---
 

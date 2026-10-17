@@ -27,6 +27,10 @@ data class FeedUiState(
 	val isDeleting: Boolean = false,
 	// Odświeżanie zwróciło 401 mimo auto-refreshu = refresh token też wygasł.
 	val sessionExpired: Boolean = false,
+	// Konto zawieszone w trakcie sesji — każde żądanie poza kilkoma dostaje 403
+	// ACCOUNT_SUSPENDED (ADR 0022), więc feed i tak nie zadziała; przechodzimy do
+	// ekranu zawieszenia zamiast pokazywać błąd bez wyjaśnienia.
+	val accountSuspended: Boolean = false,
 ) {
 	val isEmpty: Boolean
 		get() = !isLoading && errorMessage == null && posts.isEmpty()
@@ -198,10 +202,13 @@ class FeedViewModel(private val client: SonglyApiClient) : ViewModel() {
 					currentUserId = userId,
 					errorMessage = null,
 					appendErrorMessage = null,
+					accountSuspended = false,
 				)
 			} catch (e: SonglyApiException) {
 				if (e.status == 401) {
 					uiState = uiState.copy(isLoading = false, isLoadingMore = false, sessionExpired = true)
+				} else if (e.error?.code == "ACCOUNT_SUSPENDED") {
+					uiState = uiState.copy(isLoading = false, isLoadingMore = false, accountSuspended = true)
 				} else {
 					val message = e.error?.message ?: "Nie udało się wczytać feedu (HTTP ${e.status})"
 					uiState = failure(reset, message)
