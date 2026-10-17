@@ -36,6 +36,7 @@ import com.songly.shared.model.UnreadCount
 import com.songly.shared.model.UpdateNowPlayingSettingsRequest
 import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.model.UserSearchResult
+import com.songly.shared.model.VerifyEmailRequest
 import com.songly.shared.presence.FriendsPresence
 import com.songly.shared.presence.PresenceProblem
 import com.songly.shared.presence.applyPresenceChange
@@ -73,7 +74,7 @@ import kotlinx.serialization.json.Json
  * w `shared` (KMP, §14 blueprintu backendu), żeby Android i iOS dzieliły dokładnie
  * tę samą logikę wywołań, mapowania błędów i odświeżania tokenów.
  *
- * Sesja: po [register]/[login] tokeny lądują w [storage]; przy każdym żądaniu
+ * Sesja: po [verifyRegistration]/[login] tokeny lądują w [storage]; przy każdym żądaniu
  * uwierzytelnionym access token dokłada wtyczka Auth, a po 401 sama odświeża go
  * refresh tokenem (patrz [createHttpClient]). UI nie dotyka tokenów — woła metody
  * domenowe i ewentualnie łapie [SonglyApiException].
@@ -122,10 +123,31 @@ class SonglyApiClient internal constructor(
 	suspend fun currentUserId(): String =
 		cachedUserId ?: myProfile().userId.also { cachedUserId = it }
 
-	suspend fun register(email: String, password: String): AuthTokens =
+	/**
+	 * Zgłasza rejestrację (backend ADR 0009). **Nie zakłada konta ani sesji** —
+	 * serwer odpowiada 202 bez tokenów i wysyła link potwierdzający na podany
+	 * adres; konto powstaje dopiero w [verifyRegistration].
+	 *
+	 * Odpowiedź jest identyczna dla adresu wolnego i zajętego (backend nie zdradza,
+	 * kto ma konto), więc UI zawsze pokazuje „sprawdź skrzynkę", nigdy „adres
+	 * zajęty". Ponowne wywołanie po minucie wysyła nowy link (resend-interval).
+	 */
+	suspend fun register(email: String, password: String) =
 		http.post("$base/api/v1/auth/register") {
 			contentType(ContentType.Application.Json)
 			setBody(RegisterRequest(email, password))
+		}.ensureSuccessOrThrow()
+
+	/**
+	 * Potwierdza adres tokenem z maila i dopiero wtedy zakłada konto — serwer od
+	 * razu wydaje parę tokenów, więc po sukcesie użytkownik jest zalogowany.
+	 * Token nieznany, wygasły i zużyty dają ten sam błąd 400
+	 * `INVALID_VERIFICATION_TOKEN`.
+	 */
+	suspend fun verifyRegistration(token: String): AuthTokens =
+		http.post("$base/api/v1/auth/register/verify") {
+			contentType(ContentType.Application.Json)
+			setBody(VerifyEmailRequest(token))
 		}.decodeOrThrow<AuthTokens>().also { startSession(it) }
 
 	suspend fun login(email: String, password: String): AuthTokens =
@@ -226,10 +248,10 @@ class SonglyApiClient internal constructor(
 		http.get("$base/api/v1/profiles/$userId").decodeOrThrow()
 
 	/** Aktualizuje profil i zwraca zaktualizowaną wersję. */
-	suspend fun updateProfile(displayName: String, bio: String?, avatarUrl: String?): Profile =
+	suspend fun updateProfile(displayName: String, bio: String?): Profile =
 		http.put("$base/api/v1/profiles/me") {
 			contentType(ContentType.Application.Json)
-			setBody(UpdateProfileRequest(displayName, bio, avatarUrl))
+			setBody(UpdateProfileRequest(displayName, bio))
 		}.decodeOrThrow()
 
 	/** Ulubione gatunki zalogowanego użytkownika. */

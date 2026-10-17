@@ -16,7 +16,7 @@ data class ProfileUiState(
 	val errorMessage: String? = null,
 	val displayName: String = "",
 	val bio: String = "",
-	val avatarUrl: String? = null, // URL avatara (edytowalny, pusty = brak)
+	val avatarUrl: String? = null, // tylko do wyświetlenia; zmiana awatara to upload pliku
 	val isSavingProfile: Boolean = false,
 	val allGenres: List<Genre> = emptyList(),
 	val selectedGenreIds: Set<String> = emptySet(),
@@ -84,11 +84,6 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 		uiState = uiState.copy(bio = value, statusMessage = null)
 	}
 
-	/** Pusty URL zapisujemy jako brak avatara (null). */
-	fun onAvatarUrlChange(value: String) {
-		uiState = uiState.copy(avatarUrl = value.ifBlank { null }, statusMessage = null)
-	}
-
 	fun toggleGenre(id: String) {
 		val selected = uiState.selectedGenreIds.toMutableSet()
 		if (!selected.add(id)) selected.remove(id)
@@ -103,7 +98,6 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 				val updated = client.updateProfile(
 					displayName = uiState.displayName.trim(),
 					bio = uiState.bio.trim().ifBlank { null },
-					avatarUrl = uiState.avatarUrl,
 				)
 				uiState = uiState.copy(
 					isSavingProfile = false,

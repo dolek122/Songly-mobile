@@ -10,6 +10,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class RegisterRequest(val email: String, val password: String)
 
+/** Potwierdzenie adresu e-mail tokenem z linku (backend: identity.dto.VerifyEmailRequest). */
+@Serializable
+data class VerifyEmailRequest(val token: String)
+
 @Serializable
 data class LoginRequest(val email: String, val password: String)
 

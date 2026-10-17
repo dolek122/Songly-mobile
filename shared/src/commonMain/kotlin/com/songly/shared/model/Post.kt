@@ -4,7 +4,11 @@ import kotlinx.serialization.Serializable
 
 /** Żądanie utworzenia posta (backend: content.dto.CreatePostRequest, treść max 1000 znaków). */
 @Serializable
-data class CreatePostRequest(val content: String)
+data class CreatePostRequest(
+	val content: String,
+	// Klucz z `POST /posts/image` (ADR 0010); wysyłanie zdjęć jeszcze nie ma UI.
+	val imageKey: String? = null,
+)
 
 /** Post z feedu (backend: content.dto.PostResponse). */
 @Serializable
@@ -20,6 +24,9 @@ data class Post(
 	val commentCount: Long,
 	val shareCount: Long,
 	val sharedByMe: Boolean,
+	// `null` = zwykły post; wartość = post w społeczności.
+	val communityId: String? = null,
+	val imageUrl: String? = null,
 )
 
 /**

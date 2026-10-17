@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -19,8 +19,13 @@ jobs:
           java-version: "21"
           distribution: "temurin"
 
+      # Domyślnie akcja instaluje "tools platform-tools", a pakietu "tools" Google
+      # już nie publikuje (sdkmanager: "Failed to find package") — krok padał
+      # przed jakimkolwiek buildem. Resztę SDK Gradle dociąga sam.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4

@@ -34,6 +34,7 @@ import com.songly.shared.model.UpdateCommunityRequest
 import com.songly.shared.model.UpdateNowPlayingSettingsRequest
 import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.model.UserSearchResult
+import com.songly.shared.model.VerifyEmailRequest
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -60,6 +61,7 @@ class OpenApiContractTest {
 	/** Model mobilny -> nazwa schematu w `components/schemas` backendu. */
 	private val mapping: List<Pair<KSerializer<*>, String>> = listOf(
 		RegisterRequest.serializer() to "RegisterRequest",
+		VerifyEmailRequest.serializer() to "VerifyEmailRequest",
 		LoginRequest.serializer() to "LoginRequest",
 		RefreshRequest.serializer() to "RefreshRequest",
 		DeleteAccountRequest.serializer() to "DeleteAccountRequest",

@@ -34,13 +34,13 @@ data class PublicProfile(
 
 /**
  * Aktualizacja profilu (backend: profile.dto.UpdateProfileRequest).
- * displayName wymagany (max 80), bio max 500, avatarUrl max 2048.
+ * displayName wymagany (max 80), bio max 500. Awatara tu nie ma — od ADR 0010
+ * backend przyjmuje wyłącznie upload pliku (`POST /profiles/me/avatar`).
  */
 @Serializable
 data class UpdateProfileRequest(
 	val displayName: String,
 	val bio: String? = null,
-	val avatarUrl: String? = null,
 )
 
 /** Ustawienie ulubionych gatunków (backend: profile.dto.SetFavoriteGenresRequest, zbiór niepusty). */
