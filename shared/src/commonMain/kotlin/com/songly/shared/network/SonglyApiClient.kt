@@ -2,6 +2,7 @@ package com.songly.shared.network
 
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.model.ApiError
+import com.songly.shared.model.ProfileSummary
 import com.songly.shared.model.AdminList
 import com.songly.shared.model.AnalyticsSummary
 import com.songly.shared.model.EscalatedAppeal
@@ -825,6 +826,16 @@ class SonglyApiClient internal constructor(
 			userId?.let { parameter("userId", it) }
 			parameter("page", page)
 			parameter("size", size)
+		}.decodeOrThrow()
+
+	/**
+	 * Nazwy dla wykazów administracji (ADR 0036) — wsadowo i także dla zawieszonych,
+	 * których `GET /profiles/{id}` nie pokaże (404, ADR 0026). Backend przyjmuje
+	 * najwyżej 100 id naraz; nieznane id po prostu nie wracają.
+	 */
+	suspend fun adminProfileSummaries(userIds: Collection<String>): List<ProfileSummary> =
+		http.get("$base/api/v1/admin/profiles") {
+			parameter("userIds", userIds.joinToString(","))
 		}.decodeOrThrow()
 
 	suspend fun analyticsSummary(days: Int): AnalyticsSummary =

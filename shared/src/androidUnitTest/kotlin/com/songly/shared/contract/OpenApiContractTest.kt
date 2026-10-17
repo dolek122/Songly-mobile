@@ -1,6 +1,7 @@
 package com.songly.shared.contract
 
 import com.songly.shared.model.ApiError
+import com.songly.shared.model.ProfileSummary
 import com.songly.shared.model.AdminList
 import com.songly.shared.model.AnalyticsCount
 import com.songly.shared.model.AnalyticsSummary
@@ -136,6 +137,7 @@ class OpenApiContractTest {
 		AnalyticsCount.serializer() to "AnalyticsCountResponse",
 		Suspension.serializer() to "SuspensionResponse",
 		SuspensionAppealRequest.serializer() to "SuspensionAppealRequest",
+		ProfileSummary.serializer() to "ProfileSummaryResponse",
 		ApiError.serializer() to "ApiError",
 	)
 
