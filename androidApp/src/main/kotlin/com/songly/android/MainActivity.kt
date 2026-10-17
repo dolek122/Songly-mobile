@@ -36,6 +36,8 @@ import com.songly.android.feed.FeedScreen
 import com.songly.android.feed.FeedViewModel
 import com.songly.android.friends.FriendsScreen
 import com.songly.android.friends.FriendsViewModel
+import com.songly.android.moderation.CommunityModerationViewModel
+import com.songly.android.moderation.ReportPostViewModel
 import com.songly.android.matches.MatchesScreen
 import com.songly.android.matches.MatchesViewModel
 import com.songly.android.notifications.NotificationsScreen
@@ -225,6 +227,8 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 	val openComments: (String) -> Unit = { overlays.add(Overlay.Comments(it)) }
 	val openPost: (String) -> Unit = { overlays.add(Overlay.PostDetail(it)) }
 	val closeOverlay: () -> Unit = { overlays.removeAt(overlays.lastIndex) }
+	// Zgłoszenie żyje tyle, co jego dialog — świeży stan przy każdym otwarciu.
+	val createReportViewModel: (String) -> ReportPostViewModel = { ReportPostViewModel(client, it) }
 
 	// Systemowy Wstecz (przycisk i gest) musi robić to samo co „Wróć" na ekranie —
 	// bez tego zamyka aplikację, co na Androidzie jest po prostu zepsute.
@@ -293,6 +297,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 				onBack = closeOverlay,
 				onOpenComments = openComments,
 				onOpenUserProfile = openUserProfile,
+				createReportViewModel = createReportViewModel,
 			)
 		}
 
@@ -341,6 +346,12 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 					initializer { PostListViewModel(client) { page, size -> communityPosts(id, page, size) } }
 				},
 			)
+			val moderationViewModel: CommunityModerationViewModel = viewModel(
+				key = "community-moderation-$id",
+				factory = viewModelFactory {
+					initializer { CommunityModerationViewModel(client, id) }
+				},
+			)
 			CommunityDetailScreen(
 				viewModel = detailViewModel,
 				postsViewModel = communityPostsViewModel,
@@ -349,6 +360,9 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 				// Po usunięciu wróć do listy — CommunitiesScreen odświeży się sam przy wejściu.
 				onDeleted = { communityDetailId = null },
 				onOpenUserProfile = openUserProfile,
+				moderationViewModel = moderationViewModel,
+				createReportViewModel = createReportViewModel,
+				onOpenPost = openPost,
 			)
 		}
 
@@ -378,6 +392,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 				onBack = { showNotifications = false; feedViewModel.refresh() },
 				onOpenUserProfile = openUserProfile,
 				onOpenPost = openPost,
+				onOpenCommunity = { communityDetailId = it },
 			)
 		}
 

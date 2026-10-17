@@ -25,6 +25,10 @@ data class Community(
 
 	val isOwner: Boolean
 		get() = myRole == "OWNER"
+
+	// Moderują właściciel i moderatorzy (ADR 0011).
+	val isModerator: Boolean
+		get() = myRole == "OWNER" || myRole == "MODERATOR"
 }
 
 /** Członek społeczności (backend: community.dto.CommunityMemberResponse). */
@@ -38,6 +42,9 @@ data class CommunityMember(
 ) {
 	val isOwner: Boolean
 		get() = role == "OWNER"
+
+	val isModerator: Boolean
+		get() = role == "MODERATOR"
 }
 
 /** Utworzenie społeczności (backend: community.dto.CreateCommunityRequest; nazwa max 100, opis max 500). */

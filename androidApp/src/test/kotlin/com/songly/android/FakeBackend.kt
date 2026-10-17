@@ -12,6 +12,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -60,12 +61,18 @@ class FakeBackend {
 	fun lastBody(method: HttpMethod, path: String): String? = lastBodies["${method.value} $path"]
 
 	fun client(): SonglyApiClient {
-		val engine = MockEngine { request ->
-			val path = request.url.encodedPath
-			val methodKey = "${request.method.value} $path"
-			(request.body as? TextContent)?.let { lastBodies[methodKey] = it.text }
-			for (key in listOf(path, methodKey)) {
-				callCounts[key] = callCounts.getOrElse(key) { 0 } + 1
+		// Odpowiedź w wątku wołającego zamiast na puli IO. Inaczej ViewModel zmienia stan
+		// Compose z wątku tła, a pod obciążeniem (cały zestaw testów naraz) taka
+		// aktualizacja potrafiła nie dotrzeć do UI przed końcem waitUntil — test
+		// zakładki moderacji padał mniej więcej co drugi przebieg.
+		val engine = MockEngine.create {
+			dispatcher = Dispatchers.Unconfined
+			addHandler { request ->
+				val path = request.url.encodedPath
+				val methodKey = "${request.method.value} $path"
+				(request.body as? TextContent)?.let { lastBodies[methodKey] = it.text }
+				for (key in listOf(path, methodKey)) {
+					callCounts[key] = callCounts.getOrElse(key) { 0 } + 1
 			}
 			val methodHandler = handlers[methodKey]
 			val index = (if (methodHandler != null) callCounts[methodKey] else callCounts[path])!! - 1
@@ -79,6 +86,7 @@ class FakeBackend {
 					status = reply.status,
 					headers = headersOf(HttpHeaders.ContentType, "application/json"),
 				)
+			}
 			}
 		}
 		val storage = InMemoryTokenStorage()

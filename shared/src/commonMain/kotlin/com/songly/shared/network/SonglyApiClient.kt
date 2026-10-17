@@ -2,6 +2,13 @@ package com.songly.shared.network
 
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.model.ApiError
+import com.songly.shared.model.BanAppealRequest
+import com.songly.shared.model.BanMemberRequest
+import com.songly.shared.model.CommunityBan
+import com.songly.shared.model.ModerationLogEntry
+import com.songly.shared.model.PostReport
+import com.songly.shared.model.ReportPostRequest
+import com.songly.shared.model.SetMemberRoleRequest
 import com.songly.shared.model.AuthTokens
 import com.songly.shared.model.Comment
 import com.songly.shared.model.ConnectResponse
@@ -651,6 +658,85 @@ class SonglyApiClient internal constructor(
 			contentType(ContentType.Application.Json)
 			setBody(CreatePostRequest(content, imageKey))
 		}.decodeOrThrow()
+
+	// --- Moderacja społeczności (backend §8) ---
+
+	/**
+	 * Zgłasza post w społeczności — zwykłych postów zgłaszać się nie da, bo nie
+	 * ma kto ich rozpatrzyć. Odmowy: własny post, już zgłoszony (409), ban w tej
+	 * społeczności, limit zgłoszeń (429 `REPORT_RATE_LIMIT_EXCEEDED`).
+	 */
+	suspend fun reportPost(postId: String, reason: String, details: String?) =
+		http.post("$base/api/v1/posts/$postId/reports") {
+			contentType(ContentType.Application.Json)
+			setBody(ReportPostRequest(reason, details))
+		}.ensureSuccessOrThrow()
+
+	/** Kolejka zgłoszeń — tylko właściciel i moderatorzy. */
+	suspend fun postReports(communityId: String, page: Int = 0, size: Int = 20): Page<PostReport> =
+		http.get("$base/api/v1/communities/$communityId/post-reports") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/**
+	 * Odrzuca zgłoszenie (post zostaje). Uwzględnienie zgłoszenia to po prostu
+	 * usunięcie posta zwykłym [deletePost] — osobnego endpointu nie ma.
+	 */
+	suspend fun dismissReport(communityId: String, reportId: String) =
+		http.post("$base/api/v1/communities/$communityId/post-reports/$reportId/dismissal").ensureSuccessOrThrow()
+
+	suspend fun communityBans(communityId: String, page: Int = 0, size: Int = 20): Page<CommunityBan> =
+		http.get("$base/api/v1/communities/$communityId/bans") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/**
+	 * Banuje członka. Właściciela nie da się zbanować, a moderator nie banuje
+	 * moderatora (403). Aktywny ban jest nietykalny — zmiana terminu to zdjęcie i
+	 * ponowne nałożenie (ADR 0014).
+	 */
+	suspend fun banMember(communityId: String, userId: String, reason: String?, durationDays: Int?) =
+		http.put("$base/api/v1/communities/$communityId/bans/$userId") {
+			contentType(ContentType.Application.Json)
+			setBody(BanMemberRequest(reason, durationDays))
+		}.ensureSuccessOrThrow()
+
+	/** Zdejmuje ban. Przy oczekującym odwołaniu to jest **uznanie odwołania** (ADR 0017). */
+	suspend fun unbanMember(communityId: String, userId: String) =
+		http.delete("$base/api/v1/communities/$communityId/bans/$userId").ensureSuccessOrThrow()
+
+	/** Odrzuca oczekujące odwołanie — ban zostaje, a ukarany może eskalować do administracji. */
+	suspend fun rejectBanAppeal(communityId: String, userId: String) =
+		http.post("$base/api/v1/communities/$communityId/bans/$userId/appeal/rejection").ensureSuccessOrThrow()
+
+	/** Nadaje (`MODERATOR`) albo odbiera (`MEMBER`) rolę — wyłącznie właściciel. */
+	suspend fun setMemberRole(communityId: String, userId: String, role: String) =
+		http.put("$base/api/v1/communities/$communityId/members/$userId/role") {
+			contentType(ContentType.Application.Json)
+			setBody(SetMemberRoleRequest(role))
+		}.ensureSuccessOrThrow()
+
+	suspend fun communityModerationLog(communityId: String, page: Int = 0, size: Int = 20): Page<ModerationLogEntry> =
+		http.get("$base/api/v1/communities/$communityId/moderation-log") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/** Moje odwołanie od bana — jedno na ban (409 `BAN_APPEAL_ALREADY_SUBMITTED`). */
+	suspend fun appealBan(communityId: String, text: String) =
+		http.post("$base/api/v1/communities/$communityId/ban-appeal") {
+			contentType(ContentType.Application.Json)
+			setBody(BanAppealRequest(text))
+		}.ensureSuccessOrThrow()
+
+	/**
+	 * Przekazuje odrzucone odwołanie administracji platformy (ADR 0028) — tylko ze
+	 * stanu `REJECTED` i tylko raz (409 `BAN_APPEAL_NOT_ESCALATABLE`).
+	 */
+	suspend fun escalateBanAppeal(communityId: String) =
+		http.post("$base/api/v1/communities/$communityId/ban-appeal/escalation").ensureSuccessOrThrow()
 
 	// --- Dopasowywanie po gatunkach (moduł matching) ---
 

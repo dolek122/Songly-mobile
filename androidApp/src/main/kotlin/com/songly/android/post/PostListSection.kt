@@ -32,6 +32,9 @@ fun LazyListScope.postListItems(
 	emptyText: String,
 	onOpenComments: (postId: String) -> Unit,
 	onOpenAuthor: (userId: String) -> Unit,
+	// Moderator społeczności może usunąć każdy post na tej liście.
+	canModerate: Boolean = false,
+	onReport: ((postId: String) -> Unit)? = null,
 ) {
 	val state = viewModel.uiState
 	when {
@@ -66,12 +69,17 @@ fun LazyListScope.postListItems(
 			items(state.posts.items, key = { "post-${it.id}" }) { post ->
 				PostCard(
 					post = post,
-					canDelete = post.authorId == state.currentUserId,
+					canDelete = canModerate || post.authorId == state.currentUserId,
 					onToggleLike = { viewModel.toggleLike(post) },
 					onOpenComments = { onOpenComments(post.id) },
 					onToggleShare = { viewModel.toggleShare(post) },
 					onDelete = { viewModel.requestDelete(post.id) },
 					onOpenAuthor = { onOpenAuthor(post.authorId) },
+					onReport = if (onReport != null && post.communityId != null && post.authorId != state.currentUserId) {
+						{ onReport(post.id) }
+					} else {
+						null
+					},
 				)
 			}
 			val posts = state.posts

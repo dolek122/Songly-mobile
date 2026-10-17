@@ -1,6 +1,13 @@
 package com.songly.shared.contract
 
 import com.songly.shared.model.ApiError
+import com.songly.shared.model.BanAppealRequest
+import com.songly.shared.model.BanMemberRequest
+import com.songly.shared.model.CommunityBan
+import com.songly.shared.model.ModerationLogEntry
+import com.songly.shared.model.PostReport
+import com.songly.shared.model.ReportPostRequest
+import com.songly.shared.model.SetMemberRoleRequest
 import com.songly.shared.model.ChangePasswordRequest
 import com.songly.shared.model.PasswordResetConfirmRequest
 import com.songly.shared.model.PasswordResetRequest
@@ -106,6 +113,13 @@ class OpenApiContractTest {
 		UpdateNowPlayingSettingsRequest.serializer() to "UpdateNowPlayingSettingsRequest",
 		ManualNowPlayingRequest.serializer() to "ManualNowPlayingRequest",
 		ConnectResponse.serializer() to "ConnectResponse",
+		ReportPostRequest.serializer() to "ReportPostRequest",
+		PostReport.serializer() to "PostReportResponse",
+		CommunityBan.serializer() to "CommunityBanResponse",
+		BanMemberRequest.serializer() to "BanMemberRequest",
+		SetMemberRoleRequest.serializer() to "SetMemberRoleRequest",
+		BanAppealRequest.serializer() to "BanAppealRequest",
+		ModerationLogEntry.serializer() to "ModerationLogEntryResponse",
 		ApiError.serializer() to "ApiError",
 	)
 
