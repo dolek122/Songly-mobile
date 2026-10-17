@@ -42,7 +42,29 @@ data class CommunityDetailUiState(
 	val draft: String = "",
 	val isPublishing: Boolean = false,
 	val publishError: String? = null,
+	// Ban członka (dialog): kogo, za co i na ile (null = bezterminowo).
+	val banTarget: CommunityMember? = null,
+	val banReason: String = "",
+	val banDays: Int? = null,
+	val isBanning: Boolean = false,
+	val banError: String? = null,
+	/** Członek, na którym trwa zmiana roli — blokuje jego przyciski. */
+	val roleChangeUserId: String? = null,
+	// Moje odwołanie od bana.
+	val appealText: String = "",
+	val isAppealing: Boolean = false,
+	val appealError: String? = null,
 ) {
+	val canModerate: Boolean
+		get() = community?.isModerator == true
+
+	val canBan: Boolean
+		get() = banTarget != null && banReason.length <= 500 && !isBanning
+
+	// Backend: BanAppealRequest.text max 1000 znaków.
+	val canAppeal: Boolean
+		get() = appealText.isNotBlank() && appealText.length <= 1000 && !isAppealing
+
 	// Backend: nazwa @NotBlank, max 100 znaków.
 	val canSaveEdit: Boolean
 		get() = editName.isNotBlank() && editName.length <= 100 && !isSaving
@@ -55,7 +77,10 @@ data class CommunityDetailUiState(
 		get() = canWrite && draft.isNotBlank() && draft.length <= MAX_POST_LENGTH && !isPublishing
 }
 
-enum class CommunityTab { POSTS, MEMBERS }
+enum class CommunityTab { POSTS, MEMBERS, MODERATION }
+
+/** Opcje terminu bana w dialogu; `null` = bezterminowo (ADR 0014). */
+val BAN_DURATIONS: List<Int?> = listOf(1, 7, 30, null)
 
 /**
  * Logika ekranu szczegółów jednej społeczności (moduł community przez `shared`).
@@ -238,6 +263,99 @@ class CommunityDetailViewModel(
 				if (e.error?.code == "BANNED_FROM_COMMUNITY") refreshMembership()
 			} catch (e: Exception) {
 				uiState = uiState.copy(isPublishing = false, publishError = errorText(e, "opublikować posta"))
+			}
+		}
+	}
+
+	// --- Moderacja: ban członka i role ---
+
+	fun openBanDialog(member: CommunityMember) {
+		uiState = uiState.copy(banTarget = member, banReason = "", banDays = 7, banError = null)
+	}
+
+	fun dismissBanDialog() {
+		if (uiState.isBanning) return
+		uiState = uiState.copy(banTarget = null, banError = null)
+	}
+
+	fun onBanReasonChange(value: String) {
+		uiState = uiState.copy(banReason = value, banError = null)
+	}
+
+	fun onBanDaysChange(days: Int?) {
+		uiState = uiState.copy(banDays = days, banError = null)
+	}
+
+	/**
+	 * Banuje i usuwa z listy członków (ban zabiera członkostwo). Powód zobaczy
+	 * zbanowany w aplikacji — nie jest prywatną notatką moderacji (ADR 0015).
+	 */
+	fun confirmBan(onBanned: () -> Unit = {}) {
+		val target = uiState.banTarget ?: return
+		if (!uiState.canBan) return
+		uiState = uiState.copy(isBanning = true, banError = null)
+		viewModelScope.launch {
+			try {
+				client.banMember(communityId, target.userId, uiState.banReason.trim().ifBlank { null }, uiState.banDays)
+				reload()
+				uiState = uiState.copy(isBanning = false, banTarget = null, statusMessage = "Zbanowano: ${target.displayName}")
+				onBanned()
+			} catch (e: Exception) {
+				uiState = uiState.copy(isBanning = false, banError = errorText(e, "zbanować"))
+			}
+		}
+	}
+
+	/** Nadaje albo odbiera rolę moderatora — wyłącznie właściciel (ADR 0011). */
+	fun toggleModerator(member: CommunityMember) {
+		if (uiState.roleChangeUserId != null) return
+		val role = if (member.isModerator) "MEMBER" else "MODERATOR"
+		uiState = uiState.copy(roleChangeUserId = member.userId, statusMessage = null)
+		viewModelScope.launch {
+			try {
+				client.setMemberRole(communityId, member.userId, role)
+				uiState = uiState.copy(
+					roleChangeUserId = null,
+					members = uiState.members.map { if (it.userId == member.userId) it.copy(role = role) else it },
+					statusMessage = if (role == "MODERATOR") {
+						"${member.displayName} jest teraz moderatorem"
+					} else {
+						"${member.displayName} nie jest już moderatorem"
+					},
+				)
+			} catch (e: Exception) {
+				uiState = uiState.copy(roleChangeUserId = null, statusMessage = errorText(e, "zmienić roli"))
+			}
+		}
+	}
+
+	// --- Moje odwołanie od bana (ADR 0017, 0028) ---
+
+	fun onAppealTextChange(value: String) {
+		uiState = uiState.copy(appealText = value, appealError = null)
+	}
+
+	/** Jedno odwołanie na ban — po wysłaniu formularz znika, zostaje jego status. */
+	fun submitAppeal() {
+		if (!uiState.canAppeal) return
+		appealAction { client.appealBan(communityId, uiState.appealText.trim()) }
+	}
+
+	/** Odrzucone odwołanie można raz przekazać administracji platformy. */
+	fun escalateAppeal() {
+		if (uiState.isAppealing) return
+		appealAction { client.escalateBanAppeal(communityId) }
+	}
+
+	private fun appealAction(call: suspend () -> Unit) {
+		uiState = uiState.copy(isAppealing = true, appealError = null)
+		viewModelScope.launch {
+			try {
+				call()
+				refreshMembership()
+				uiState = uiState.copy(isAppealing = false, appealText = "")
+			} catch (e: Exception) {
+				uiState = uiState.copy(isAppealing = false, appealError = errorText(e, "wysłać odwołania"))
 			}
 		}
 	}

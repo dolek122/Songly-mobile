@@ -20,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,6 +35,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,12 +47,15 @@ import com.songly.shared.model.Community
 import com.songly.shared.model.BanDetails
 import com.songly.shared.model.CommunityMember
 import com.songly.android.post.MAX_POST_LENGTH
+import com.songly.android.moderation.CommunityModerationViewModel
+import com.songly.android.moderation.ReportPostDialog
+import com.songly.android.moderation.ReportPostViewModel
+import com.songly.android.moderation.appealLabel
+import com.songly.android.moderation.moderationItems
 import com.songly.android.post.PostListDialogs
 import com.songly.android.post.PostListViewModel
 import com.songly.android.post.postListItems
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.songly.android.ui.formatDateTime
 
 /**
  * Ekran szczegółów społeczności (Compose, natywny UI — §14): nagłówek z opisem i
@@ -64,9 +70,14 @@ fun CommunityDetailScreen(
 	onBack: () -> Unit,
 	onDeleted: () -> Unit,
 	onOpenUserProfile: (String) -> Unit,
+	moderationViewModel: CommunityModerationViewModel? = null,
+	createReportViewModel: ((postId: String) -> ReportPostViewModel)? = null,
+	onOpenPost: (postId: String) -> Unit = {},
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
+	var reportingPostId by remember { mutableStateOf<String?>(null) }
+	var reportStatus by remember { mutableStateOf<String?>(null) }
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
@@ -74,6 +85,31 @@ fun CommunityDetailScreen(
 	}
 
 	PostListDialogs(postsViewModel)
+
+	val reportingId = reportingPostId
+	if (reportingId != null && createReportViewModel != null) {
+		val reportViewModel = remember(reportingId) { createReportViewModel(reportingId) }
+		ReportPostDialog(
+			viewModel = reportViewModel,
+			onReported = {
+				reportingPostId = null
+				reportStatus = "Dziękujemy — zgłoszenie trafiło do moderatorów."
+			},
+			onDismiss = { reportingPostId = null },
+		)
+	}
+
+	val banTarget = state.banTarget
+	if (banTarget != null) {
+		BanMemberDialog(
+			member = banTarget,
+			state = state,
+			onReasonChange = viewModel::onBanReasonChange,
+			onDaysChange = viewModel::onBanDaysChange,
+			onConfirm = { viewModel.confirmBan(onBanned = { moderationViewModel?.invalidateBans() }) },
+			onDismiss = viewModel::dismissBanDialog,
+		)
+	}
 
 	// Po usunięciu społeczności wróć do listy (i pozwól jej się odświeżyć).
 	LaunchedEffect(state.deleted) {
@@ -175,12 +211,38 @@ fun CommunityDetailScreen(
 								onClick = { viewModel.selectTab(CommunityTab.MEMBERS) },
 								text = { Text("Członkowie (${state.community.memberCount})") },
 							)
+							if (state.canModerate && moderationViewModel != null) {
+								Tab(
+									selected = state.selectedTab == CommunityTab.MODERATION,
+									onClick = {
+										viewModel.selectTab(CommunityTab.MODERATION)
+										moderationViewModel.select(moderationViewModel.uiState.section)
+									},
+									text = { Text("Moderacja") },
+								)
+							}
 						}
 					}
 					if (state.selectedTab == CommunityTab.POSTS) {
 						val ban = state.membership?.ban
 						if (state.membership?.isBanned == true && ban != null) {
-							item(key = "ban") { BanBanner(ban) }
+							item(key = "ban") {
+								BanBanner(
+									ban = ban,
+									appealText = state.appealText,
+									isAppealing = state.isAppealing,
+									canAppeal = state.canAppeal,
+									appealError = state.appealError,
+									onAppealTextChange = viewModel::onAppealTextChange,
+									onSubmitAppeal = viewModel::submitAppeal,
+									onEscalate = viewModel::escalateAppeal,
+								)
+							}
+						}
+						if (reportStatus != null) {
+							item(key = "report-status") {
+								Text(reportStatus!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+							}
 						}
 						if (state.canWrite) {
 							item(key = "composer") {
@@ -199,12 +261,36 @@ fun CommunityDetailScreen(
 							emptyText = "W tej społeczności nie ma jeszcze postów.",
 							onOpenComments = onOpenComments,
 							onOpenAuthor = onOpenUserProfile,
+							canModerate = state.canModerate,
+							onReport = if (createReportViewModel != null) {
+								{ reportingPostId = it; reportStatus = null }
+							} else {
+								null
+							},
 						)
 					}
 					if (state.selectedTab == CommunityTab.MEMBERS) {
 						items(state.members, key = { it.userId }) { member ->
-							MemberRow(member, onOpenProfile = { onOpenUserProfile(member.userId) })
+							MemberRow(
+								member = member,
+								// Właściciela nie da się moderować; siebie samego też nie banujemy.
+								canBan = state.canModerate && !member.isOwner && member.userId != postsViewModel.uiState.currentUserId,
+								canManageRole = state.community.isOwner && !member.isOwner,
+								roleBusy = state.roleChangeUserId == member.userId,
+								onOpenProfile = { onOpenUserProfile(member.userId) },
+								onBan = { viewModel.openBanDialog(member) },
+								onToggleModerator = { viewModel.toggleModerator(member) },
+							)
 						}
+					}
+					if (state.selectedTab == CommunityTab.MODERATION && moderationViewModel != null) {
+						val names = state.members.associate { it.userId to it.displayName }
+						moderationItems(
+							viewModel = moderationViewModel,
+							displayNameOf = { id -> id?.let { names[it] } ?: "użytkownik spoza listy członków" },
+							onOpenPost = onOpenPost,
+							onOpenUserProfile = onOpenUserProfile,
+						)
 					}
 					if (state.selectedTab == CommunityTab.MEMBERS && state.isLoadingMoreMembers) {
 						item(key = "members-footer") {
@@ -264,12 +350,21 @@ private fun CommunityHeader(
  * — ban odcina tylko pisanie — więc baner stoi nad postami, a nie zamiast nich.
  */
 @Composable
-private fun BanBanner(ban: BanDetails) {
+private fun BanBanner(
+	ban: BanDetails,
+	appealText: String,
+	isAppealing: Boolean,
+	canAppeal: Boolean,
+	appealError: String?,
+	onAppealTextChange: (String) -> Unit,
+	onSubmitAppeal: () -> Unit,
+	onEscalate: () -> Unit,
+) {
 	Card(
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
 		modifier = Modifier.fillMaxWidth(),
 	) {
-		Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+		Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
 			Text(
 				text = if (ban.expiresAt == null) {
 					"Masz bezterminowy zakaz publikowania w tej społeczności."
@@ -287,8 +382,104 @@ private fun BanBanner(ban: BanDetails) {
 					color = MaterialTheme.colorScheme.onErrorContainer,
 				)
 			}
+
+			// Jedno odwołanie na ban; po odrzuceniu jedna eskalacja do administracji
+			// (ADR 0017, 0028). Każdy stan ma tu dokładnie jedno możliwe działanie.
+			when (ban.appealStatus) {
+				null -> {
+					OutlinedTextField(
+						value = appealText,
+						onValueChange = onAppealTextChange,
+						label = { Text("Odwołanie do moderacji") },
+						enabled = !isAppealing,
+						minLines = 2,
+						isError = appealText.length > 1000,
+						supportingText = { Text("${appealText.length}/1000 · można się odwołać tylko raz") },
+						modifier = Modifier.fillMaxWidth(),
+					)
+					Button(onClick = onSubmitAppeal, enabled = canAppeal, modifier = Modifier.align(Alignment.End)) {
+						Text(if (isAppealing) "Wysyłanie…" else "Odwołaj się")
+					}
+				}
+
+				"REJECTED" -> {
+					AppealStatus(appealLabel(ban.appealStatus))
+					OutlinedButton(onClick = onEscalate, enabled = !isAppealing, modifier = Modifier.align(Alignment.End)) {
+						Text(if (isAppealing) "Wysyłanie…" else "Przekaż administracji")
+					}
+				}
+
+				else -> AppealStatus(appealLabel(ban.appealStatus))
+			}
+			if (appealError != null) {
+				Text(appealError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+			}
 		}
 	}
+}
+
+@Composable
+private fun AppealStatus(label: String?) {
+	if (label != null) {
+		Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onErrorContainer)
+	}
+}
+
+@Composable
+private fun BanMemberDialog(
+	member: CommunityMember,
+	state: CommunityDetailUiState,
+	onReasonChange: (String) -> Unit,
+	onDaysChange: (Int?) -> Unit,
+	onConfirm: () -> Unit,
+	onDismiss: () -> Unit,
+) {
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text("Zbanować: ${member.displayName}?") },
+		text = {
+			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+				Text(
+					"Ban odbiera członkostwo i możliwość pisania. Powód zobaczy zbanowana osoba.",
+					style = MaterialTheme.typography.bodySmall,
+				)
+				Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+					BAN_DURATIONS.forEach { days ->
+						FilterChip(
+							selected = state.banDays == days,
+							onClick = { onDaysChange(days) },
+							label = { Text(if (days == null) "Na zawsze" else "$days d") },
+							enabled = !state.isBanning,
+						)
+					}
+				}
+				OutlinedTextField(
+					value = state.banReason,
+					onValueChange = onReasonChange,
+					label = { Text("Powód (opcjonalnie)") },
+					enabled = !state.isBanning,
+					isError = state.banReason.length > 500,
+					minLines = 2,
+					modifier = Modifier.fillMaxWidth(),
+				)
+				if (state.banError != null) {
+					Text(state.banError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+				}
+			}
+		},
+		confirmButton = {
+			TextButton(
+				onClick = onConfirm,
+				enabled = state.canBan,
+				colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+			) {
+				Text(if (state.isBanning) "Banowanie…" else "Zbanuj")
+			}
+		},
+		dismissButton = {
+			TextButton(onClick = onDismiss, enabled = !state.isBanning) { Text("Anuluj") }
+		},
+	)
 }
 
 @Composable
@@ -320,13 +511,38 @@ private fun PostComposer(
 	}
 }
 
-private fun formatDateTime(iso: String): String = runCatching {
-	DateTimeFormatter.ofPattern("d.MM.yyyy, HH:mm")
-		.format(Instant.parse(iso).atZone(ZoneId.systemDefault()))
-}.getOrDefault(iso)
+@Composable
+private fun MemberRow(
+	member: CommunityMember,
+	canBan: Boolean,
+	canManageRole: Boolean,
+	roleBusy: Boolean,
+	onOpenProfile: () -> Unit,
+	onBan: () -> Unit,
+	onToggleModerator: () -> Unit,
+) {
+	Column {
+		MemberIdentity(member, onOpenProfile)
+		if (canBan || canManageRole) {
+			Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.align(Alignment.End)) {
+				if (canManageRole) {
+					TextButton(onClick = onToggleModerator, enabled = !roleBusy) {
+						Text(if (member.isModerator) "Odbierz moderatora" else "Nadaj moderatora")
+					}
+				}
+				if (canBan) {
+					TextButton(
+						onClick = onBan,
+						colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+					) { Text("Zbanuj") }
+				}
+			}
+		}
+	}
+}
 
 @Composable
-private fun MemberRow(member: CommunityMember, onOpenProfile: () -> Unit) {
+private fun MemberIdentity(member: CommunityMember, onOpenProfile: () -> Unit) {
 	Row(
 		modifier = Modifier.fillMaxWidth(),
 		verticalAlignment = Alignment.CenterVertically,
@@ -344,9 +560,14 @@ private fun MemberRow(member: CommunityMember, onOpenProfile: () -> Unit) {
 				style = MaterialTheme.typography.bodyLarge,
 			)
 		}
-		if (member.isOwner) {
+		val roleLabel = when {
+			member.isOwner -> "Właściciel"
+			member.isModerator -> "Moderator"
+			else -> null
+		}
+		if (roleLabel != null) {
 			Text(
-				text = "Właściciel",
+				text = roleLabel,
 				style = MaterialTheme.typography.labelMedium,
 				color = MaterialTheme.colorScheme.primary,
 			)

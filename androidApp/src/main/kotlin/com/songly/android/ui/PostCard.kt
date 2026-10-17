@@ -30,8 +30,8 @@ import com.songly.shared.util.RelativeTime
  * pojedynczego posta. Post to ten sam byt niezależnie od miejsca publikacji
  * (backend §8), więc i wygląda tak samo.
  *
- * [canDelete] pokazuje „Usuń" — tylko na własnych postach; moderacja społeczności
- * dostanie osobną ścieżkę.
+ * [canDelete] pokazuje „Usuń" — na własnych postach, a w społeczności także
+ * moderatorom (backend pozwala im usunąć dowolny post u siebie).
  */
 @Composable
 fun PostCard(
@@ -42,6 +42,9 @@ fun PostCard(
 	onToggleShare: () -> Unit,
 	onDelete: () -> Unit,
 	onOpenAuthor: () -> Unit,
+	// `null` = bez „Zgłoś" (własny post albo poza społecznością — zwykłych postów
+	// nie ma komu zgłosić, backend §8).
+	onReport: (() -> Unit)? = null,
 ) {
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(16.dp)) {
@@ -68,6 +71,14 @@ fun PostCard(
 							color = MaterialTheme.colorScheme.onSurfaceVariant,
 						)
 					}
+				}
+				if (onReport != null) {
+					Text(
+						text = "Zgłoś",
+						style = MaterialTheme.typography.labelMedium,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+						modifier = Modifier.clickable(onClick = onReport),
+					)
 				}
 				if (canDelete) {
 					Text(

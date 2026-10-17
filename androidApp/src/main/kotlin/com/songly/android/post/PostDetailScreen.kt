@@ -17,10 +17,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.songly.android.moderation.ReportPostDialog
+import com.songly.android.moderation.ReportPostViewModel
 import com.songly.android.ui.DeletePostDialog
 import com.songly.android.ui.PostCard
 
@@ -31,14 +37,27 @@ fun PostDetailScreen(
 	onBack: () -> Unit,
 	onOpenComments: (postId: String) -> Unit,
 	onOpenUserProfile: (userId: String) -> Unit,
+	createReportViewModel: ((postId: String) -> ReportPostViewModel)? = null,
 ) {
 	val state = viewModel.uiState
+	var reporting by remember { mutableStateOf(false) }
+	var reported by remember { mutableStateOf(false) }
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
 	}
 	LaunchedEffect(state.deleted) {
 		if (state.deleted) onBack()
+	}
+
+	val reportedPost = state.post
+	if (reporting && reportedPost != null && createReportViewModel != null) {
+		val reportViewModel = remember(reportedPost.id) { createReportViewModel(reportedPost.id) }
+		ReportPostDialog(
+			viewModel = reportViewModel,
+			onReported = { reporting = false; reported = true },
+			onDismiss = { reporting = false },
+		)
 	}
 
 	if (state.showDeleteDialog) {
@@ -85,7 +104,18 @@ fun PostDetailScreen(
 						onToggleShare = viewModel::toggleShare,
 						onDelete = viewModel::requestDelete,
 						onOpenAuthor = { onOpenUserProfile(post.authorId) },
+						// Zgłosić da się tylko post w społeczności — zwykłego nie ma kto rozpatrzyć.
+						onReport = if (createReportViewModel != null && post.communityId != null && !reported &&
+							post.authorId != state.currentUserId
+						) {
+							{ reporting = true }
+						} else {
+							null
+						},
 					)
+					if (reported) {
+						Text("Dziękujemy — zgłoszenie trafiło do moderatorów.", color = MaterialTheme.colorScheme.primary)
+					}
 					if (state.actionError != null) {
 						Text(state.actionError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
 					}

@@ -53,6 +53,7 @@ fun NotificationsScreen(
 	onBack: () -> Unit,
 	onOpenUserProfile: (String) -> Unit,
 	onOpenPost: (postId: String) -> Unit,
+	onOpenCommunity: (communityId: String) -> Unit = {},
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
@@ -117,7 +118,11 @@ fun NotificationsScreen(
 							notification = notification,
 							onClick = {
 								viewModel.markRead(notification)
-								postIdOf(notification)?.let(onOpenPost)
+								when (val target = targetOf(notification)) {
+									is NotificationTarget.Post -> onOpenPost(target.postId)
+									is NotificationTarget.Community -> onOpenCommunity(target.communityId)
+									null -> Unit
+								}
 							},
 							onOpenProfile = { onOpenUserProfile(notification.actorId) },
 						)
@@ -141,8 +146,8 @@ fun NotificationsScreen(
 private fun NotificationCard(notification: Notification, onClick: () -> Unit, onOpenProfile: () -> Unit) {
 	val unread = notification.isUnread
 	Card(
-		// Klikalna, gdy jest co zrobić: oznaczyć jako przeczytane albo otworzyć post.
-		modifier = Modifier.fillMaxWidth().clickable(enabled = unread || postIdOf(notification) != null, onClick = onClick),
+		// Klikalna, gdy jest co zrobić: oznaczyć jako przeczytane albo otworzyć cel.
+		modifier = Modifier.fillMaxWidth().clickable(enabled = unread || targetOf(notification) != null, onClick = onClick),
 		colors = if (unread) {
 			CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 		} else {
@@ -187,29 +192,59 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 	}
 }
 
+/** Dokąd prowadzi powiadomienie — `resourceId` znaczy co innego zależnie od typu. */
+internal sealed interface NotificationTarget {
+	data class Post(val postId: String) : NotificationTarget
+	data class Community(val communityId: String) : NotificationTarget
+}
+
 /**
- * Post, którego dotyczy powiadomienie — dla lajka, komentarza i udostępnienia
- * backend niesie w `resourceId` identyfikator posta. Pozostałe typy wskazują
- * zaproszenie albo społeczność, więc nie prowadzą do posta.
+ * Cel powiadomienia według tego, co backend wkłada do `resourceId`: post przy
+ * lajku, komentarzu, udostępnieniu i zgłoszeniach; społeczność przy członkostwie,
+ * banach, odwołaniach i rolach. Zaproszenia do znajomych nie prowadzą nigdzie
+ * poza profilem nadawcy (awatar).
+ *
+ * `POST_REPORT_DISMISSED` i `COMMUNITY_POST_REMOVED` celowo nie prowadzą do
+ * posta: pierwszy dotyczy cudzego posta, który zostaje, ale zgłaszający niczego
+ * tam już nie zrobi, a drugi — posta, którego już nie ma.
  */
-private fun postIdOf(notification: Notification): String? = when (notification.type) {
-	"POST_LIKED", "POST_COMMENTED", "POST_SHARED" -> notification.resourceId
+internal fun targetOf(notification: Notification): NotificationTarget? = when (notification.type) {
+	"POST_LIKED", "POST_COMMENTED", "POST_SHARED", "COMMUNITY_POST_REPORTED" ->
+		NotificationTarget.Post(notification.resourceId)
+
+	"COMMUNITY_MEMBER_JOINED", "COMMUNITY_BANNED", "COMMUNITY_POST_REMOVED", "BAN_APPEAL_SUBMITTED",
+	"BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED",
+	"COMMUNITY_MODERATOR_GRANTED", "COMMUNITY_MODERATOR_REVOKED",
+	-> NotificationTarget.Community(notification.resourceId)
+
 	else -> null
 }
 
 /** Mapuje typ powiadomienia + nazwę autora na zdanie po polsku. */
-private fun notificationText(notification: Notification): String {
+internal fun notificationText(notification: Notification): String {
 	val actor = notification.actorDisplayName ?: "Ktoś"
-	val action = when (notification.type) {
-		"POST_LIKED" -> "polubił(a) Twój post"
-		"POST_COMMENTED" -> "skomentował(a) Twój post"
-		"POST_SHARED" -> "udostępnił(a) Twój post"
-		"FRIEND_REQUEST_RECEIVED" -> "wysłał(a) Ci zaproszenie do znajomych"
-		"FRIEND_REQUEST_ACCEPTED" -> "zaakceptował(a) Twoje zaproszenie do znajomych"
-		"COMMUNITY_MEMBER_JOINED" -> "dołączył(a) do Twojej społeczności"
-		else -> "ma dla Ciebie powiadomienie"
+	// Decyzje moderacyjne podpisujemy funkcją, nie osobą: ban należy do
+	// społeczności, a nie do moderatora (ADR 0015).
+	return when (notification.type) {
+		"POST_LIKED" -> "$actor polubił(a) Twój post"
+		"POST_COMMENTED" -> "$actor skomentował(a) Twój post"
+		"POST_SHARED" -> "$actor udostępnił(a) Twój post"
+		"FRIEND_REQUEST_RECEIVED" -> "$actor wysłał(a) Ci zaproszenie do znajomych"
+		"FRIEND_REQUEST_ACCEPTED" -> "$actor zaakceptował(a) Twoje zaproszenie do znajomych"
+		"COMMUNITY_MEMBER_JOINED" -> "$actor dołączył(a) do Twojej społeczności"
+		"COMMUNITY_BANNED" -> "Moderacja zbanowała Cię w społeczności"
+		"COMMUNITY_POST_REMOVED" -> "Moderacja usunęła Twój post w społeczności"
+		"COMMUNITY_POST_REPORTED" -> "Nowe zgłoszenie posta do rozpatrzenia"
+		"POST_REPORT_DISMISSED" -> "Moderacja odrzuciła Twoje zgłoszenie"
+		"BAN_APPEAL_SUBMITTED" -> "Nowe odwołanie od bana do rozpatrzenia"
+		"BAN_APPEAL_ACCEPTED" -> "Moderacja uznała Twoje odwołanie — ban zdjęty"
+		"BAN_APPEAL_REJECTED" -> "Moderacja odrzuciła Twoje odwołanie od bana"
+		"BAN_ESCALATION_ACCEPTED" -> "Administracja uchyliła Twój ban"
+		"BAN_ESCALATION_REJECTED" -> "Administracja utrzymała Twój ban"
+		"COMMUNITY_MODERATOR_GRANTED" -> "$actor nadał(a) Ci rolę moderatora"
+		"COMMUNITY_MODERATOR_REVOKED" -> "$actor odebrał(a) Ci rolę moderatora"
+		else -> "$actor ma dla Ciebie powiadomienie"
 	}
-	return "$actor $action"
 }
 
 @Composable
