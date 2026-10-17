@@ -10,6 +10,7 @@ import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
 
@@ -53,10 +54,16 @@ class FakeBackend {
 
 	fun callCount(method: HttpMethod, path: String): Int = callCounts["${method.value} $path"] ?: 0
 
+	private val lastBodies = mutableMapOf<String, String>()
+
+	/** Ostatnie ciało JSON wysłane danym żądaniem — do sprawdzenia, co klient wysłał. */
+	fun lastBody(method: HttpMethod, path: String): String? = lastBodies["${method.value} $path"]
+
 	fun client(): SonglyApiClient {
 		val engine = MockEngine { request ->
 			val path = request.url.encodedPath
 			val methodKey = "${request.method.value} $path"
+			(request.body as? TextContent)?.let { lastBodies[methodKey] = it.text }
 			for (key in listOf(path, methodKey)) {
 				callCounts[key] = callCounts.getOrElse(key) { 0 } + 1
 			}

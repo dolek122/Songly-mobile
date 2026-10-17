@@ -1,10 +1,14 @@
 package com.songly.android.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,10 +34,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.songly.android.media.ImagePreparer
 import com.songly.android.ui.Avatar
 
 /**
@@ -47,8 +53,16 @@ fun ProfileScreen(
 	viewModel: ProfileViewModel,
 	onBack: () -> Unit,
 	onAccountDeleted: () -> Unit,
+	onPasswordChanged: () -> Unit = {},
 ) {
 	val state = viewModel.uiState
+	val context = LocalContext.current
+
+	// Systemowy wybór zdjęć — bez uprawnień do całej galerii; aplikacja dostaje
+	// dostęp tylko do jednego wskazanego pliku.
+	val pickAvatar = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+		if (uri != null) viewModel.changeAvatar { ImagePreparer.prepare(context, uri) }
+	}
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
@@ -57,6 +71,15 @@ fun ProfileScreen(
 	// Po usunięciu konta sesja jest już wyczyszczona — wróć do ekranu logowania.
 	LaunchedEffect(state.accountDeleted) {
 		if (state.accountDeleted) onAccountDeleted()
+	}
+
+	// Zmiana hasła zakończyła wszystkie sesje, łącznie z tą — tak samo do logowania.
+	LaunchedEffect(state.passwordChanged) {
+		if (state.passwordChanged) onPasswordChanged()
+	}
+
+	if (state.showPasswordDialog) {
+		ChangePasswordDialog(state, viewModel)
 	}
 
 	if (state.showDeleteDialog) {
@@ -115,6 +138,24 @@ fun ProfileScreen(
 						size = 88.dp,
 						modifier = Modifier.align(Alignment.CenterHorizontally),
 					)
+					Row(
+						horizontalArrangement = Arrangement.spacedBy(8.dp),
+						modifier = Modifier.align(Alignment.CenterHorizontally),
+					) {
+						TextButton(
+							onClick = {
+								pickAvatar.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+							},
+							enabled = !state.isUpdatingAvatar,
+						) {
+							Text(if (state.isUpdatingAvatar) "Wysyłanie…" else "Zmień zdjęcie")
+						}
+						if (state.avatarUrl != null) {
+							TextButton(onClick = viewModel::removeAvatar, enabled = !state.isUpdatingAvatar) {
+								Text("Usuń zdjęcie")
+							}
+						}
+					}
 					OutlinedTextField(
 						value = state.displayName,
 						onValueChange = viewModel::onDisplayNameChange,
@@ -162,6 +203,18 @@ fun ProfileScreen(
 						modifier = Modifier.align(Alignment.End),
 					) {
 						Text(if (state.isSavingGenres) "Zapisywanie…" else "Zapisz gatunki")
+					}
+
+					HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+					Text("Bezpieczeństwo", style = MaterialTheme.typography.titleMedium)
+					Text(
+						"Zmiana hasła wyloguje Cię ze wszystkich urządzeń, także z tego.",
+						style = MaterialTheme.typography.bodyMedium,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+					)
+					OutlinedButton(onClick = viewModel::openPasswordDialog, modifier = Modifier.align(Alignment.End)) {
+						Text("Zmień hasło")
 					}
 
 					HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -246,5 +299,65 @@ private fun DeleteAccountDialog(
 		dismissButton = {
 			TextButton(onClick = onDismiss, enabled = !isDeleting) { Text("Anuluj") }
 		},
+	)
+}
+
+@Composable
+private fun ChangePasswordDialog(state: ProfileUiState, viewModel: ProfileViewModel) {
+	AlertDialog(
+		onDismissRequest = viewModel::dismissPasswordDialog,
+		title = { Text("Zmień hasło") },
+		text = {
+			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+				PasswordField("Obecne hasło", state.currentPassword, viewModel::onCurrentPasswordChange, !state.isChangingPassword)
+				PasswordField(
+					label = "Nowe hasło",
+					value = state.newPassword,
+					onValueChange = viewModel::onNewPasswordChange,
+					enabled = !state.isChangingPassword,
+					error = if (state.newPasswordInvalid) "Hasło musi mieć od 8 do 72 znaków" else null,
+				)
+				PasswordField(
+					label = "Powtórz nowe hasło",
+					value = state.confirmNewPassword,
+					onValueChange = viewModel::onConfirmNewPasswordChange,
+					enabled = !state.isChangingPassword,
+					error = if (state.newPasswordsMismatch) "Hasła nie są takie same" else null,
+				)
+				if (state.passwordError != null) {
+					Text(state.passwordError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+				}
+			}
+		},
+		confirmButton = {
+			TextButton(onClick = viewModel::changePassword, enabled = state.canChangePassword) {
+				Text(if (state.isChangingPassword) "Zmienianie…" else "Zmień hasło")
+			}
+		},
+		dismissButton = {
+			TextButton(onClick = viewModel::dismissPasswordDialog, enabled = !state.isChangingPassword) { Text("Anuluj") }
+		},
+	)
+}
+
+@Composable
+private fun PasswordField(
+	label: String,
+	value: String,
+	onValueChange: (String) -> Unit,
+	enabled: Boolean,
+	error: String? = null,
+) {
+	OutlinedTextField(
+		value = value,
+		onValueChange = onValueChange,
+		label = { Text(label) },
+		singleLine = true,
+		enabled = enabled,
+		isError = error != null,
+		supportingText = error?.let { { Text(it) } },
+		visualTransformation = PasswordVisualTransformation(),
+		keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+		modifier = Modifier.fillMaxWidth(),
 	)
 }

@@ -43,6 +43,7 @@ import com.songly.android.ui.Avatar
 import com.songly.shared.model.Community
 import com.songly.shared.model.BanDetails
 import com.songly.shared.model.CommunityMember
+import com.songly.android.post.MAX_POST_LENGTH
 import com.songly.android.post.PostListDialogs
 import com.songly.android.post.PostListViewModel
 import com.songly.android.post.postListItems

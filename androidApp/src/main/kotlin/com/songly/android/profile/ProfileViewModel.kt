@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.songly.android.media.PreparedImage
 import com.songly.shared.model.Genre
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
@@ -28,7 +29,26 @@ data class ProfileUiState(
 	val isDeleting: Boolean = false,
 	val deleteError: String? = null,
 	val accountDeleted: Boolean = false,
+	val isUpdatingAvatar: Boolean = false,
+	// Zmiana hasła — kończy wszystkie sesje, łącznie z bieżącą (backend §9).
+	val showPasswordDialog: Boolean = false,
+	val currentPassword: String = "",
+	val newPassword: String = "",
+	val confirmNewPassword: String = "",
+	val isChangingPassword: Boolean = false,
+	val passwordError: String? = null,
+	val passwordChanged: Boolean = false,
 ) {
+	val newPasswordInvalid: Boolean
+		get() = newPassword.isNotEmpty() && newPassword.length !in 8..72
+
+	val newPasswordsMismatch: Boolean
+		get() = confirmNewPassword.isNotEmpty() && confirmNewPassword != newPassword
+
+	val canChangePassword: Boolean
+		get() = currentPassword.isNotEmpty() && newPassword.length in 8..72 &&
+			confirmNewPassword == newPassword && !isChangingPassword
+
 	val canSaveProfile: Boolean
 		get() = displayName.isNotBlank() && !isSavingProfile
 
@@ -153,6 +173,96 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 				uiState = uiState.copy(isDeleting = false, showDeleteDialog = false, accountDeleted = true)
 			} catch (e: Exception) {
 				uiState = uiState.copy(isDeleting = false, deleteError = errorText(e, "usunąć konta"))
+			}
+		}
+	}
+
+	// --- Awatar (upload pliku, backend ADR 0010) ---
+
+	/**
+	 * [prepare] przygotowuje zdjęcie (dekodowanie i przekodowanie poza wątkiem
+	 * UI) — przekazane z ekranu, bo wymaga `Context`, a ViewModel go nie trzyma.
+	 */
+	fun changeAvatar(prepare: suspend () -> PreparedImage) {
+		if (uiState.isUpdatingAvatar) return
+		uiState = uiState.copy(isUpdatingAvatar = true, statusMessage = null)
+		viewModelScope.launch {
+			uiState = try {
+				val image = prepare()
+				val profile = client.uploadAvatar(image.bytes, image.contentType)
+				uiState.copy(isUpdatingAvatar = false, avatarUrl = profile.avatarUrl, statusMessage = "Zmieniono zdjęcie")
+			} catch (e: IllegalArgumentException) {
+				uiState.copy(isUpdatingAvatar = false, statusMessage = "Nie udało się odczytać wybranego zdjęcia.")
+			} catch (e: Exception) {
+				uiState.copy(isUpdatingAvatar = false, statusMessage = errorText(e, "zmienić zdjęcia"))
+			}
+		}
+	}
+
+	fun removeAvatar() {
+		if (uiState.isUpdatingAvatar) return
+		uiState = uiState.copy(isUpdatingAvatar = true, statusMessage = null)
+		viewModelScope.launch {
+			uiState = try {
+				client.deleteAvatar()
+				uiState.copy(isUpdatingAvatar = false, avatarUrl = null, statusMessage = "Usunięto zdjęcie")
+			} catch (e: Exception) {
+				uiState.copy(isUpdatingAvatar = false, statusMessage = errorText(e, "usunąć zdjęcia"))
+			}
+		}
+	}
+
+	// --- Zmiana hasła ---
+
+	fun openPasswordDialog() {
+		uiState = uiState.copy(
+			showPasswordDialog = true,
+			currentPassword = "",
+			newPassword = "",
+			confirmNewPassword = "",
+			passwordError = null,
+		)
+	}
+
+	fun dismissPasswordDialog() {
+		if (uiState.isChangingPassword) return
+		uiState = uiState.copy(showPasswordDialog = false, currentPassword = "", newPassword = "", confirmNewPassword = "")
+	}
+
+	fun onCurrentPasswordChange(value: String) {
+		uiState = uiState.copy(currentPassword = value, passwordError = null)
+	}
+
+	fun onNewPasswordChange(value: String) {
+		uiState = uiState.copy(newPassword = value, passwordError = null)
+	}
+
+	fun onConfirmNewPasswordChange(value: String) {
+		uiState = uiState.copy(confirmNewPassword = value, passwordError = null)
+	}
+
+	/**
+	 * Po sukcesie `shared` kończy już sesję lokalnie (backend odwołał wszystkie,
+	 * łącznie z bieżącą), a [passwordChanged] przenosi do logowania.
+	 */
+	fun changePassword() {
+		if (!uiState.canChangePassword) return
+		uiState = uiState.copy(isChangingPassword = true, passwordError = null)
+		viewModelScope.launch {
+			uiState = try {
+				client.changePassword(uiState.currentPassword, uiState.newPassword)
+				uiState.copy(isChangingPassword = false, showPasswordDialog = false, passwordChanged = true)
+			} catch (e: SonglyApiException) {
+				uiState.copy(
+					isChangingPassword = false,
+					passwordError = if (e.error?.code == "INVALID_CREDENTIALS") {
+						"Obecne hasło jest nieprawidłowe."
+					} else {
+						errorText(e, "zmienić hasła")
+					},
+				)
+			} catch (e: Exception) {
+				uiState.copy(isChangingPassword = false, passwordError = errorText(e, "zmienić hasła"))
 			}
 		}
 	}

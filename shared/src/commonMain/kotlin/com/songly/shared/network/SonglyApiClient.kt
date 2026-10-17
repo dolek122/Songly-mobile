@@ -9,7 +9,11 @@ import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.Community
 import com.songly.shared.model.CommunityMember
 import com.songly.shared.model.CreateCommunityRequest
+import com.songly.shared.model.ChangePasswordRequest
 import com.songly.shared.model.CreatePostRequest
+import com.songly.shared.model.PasswordResetConfirmRequest
+import com.songly.shared.model.PasswordResetRequest
+import com.songly.shared.model.PostImage
 import com.songly.shared.model.UpdateCommunityRequest
 import com.songly.shared.model.DeleteAccountRequest
 import com.songly.shared.model.ManualNowPlayingRequest
@@ -54,6 +58,8 @@ import io.ktor.client.plugins.timeout
 import io.ktor.client.plugins.sse.SSEClientException
 import io.ktor.client.plugins.sse.sse
 import io.ktor.client.request.delete
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -61,6 +67,8 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlin.coroutines.cancellation.CancellationException
@@ -187,17 +195,91 @@ class SonglyApiClient internal constructor(
 		endSession()
 	}
 
+	/**
+	 * Zmienia hasło. Backend **odwołuje wszystkie sesje, łącznie z bieżącą**, i nie
+	 * wydaje nowych tokenów (backend §9) — więc po sukcesie kończymy sesję lokalnie,
+	 * a UI wraca do logowania nowym hasłem. Złe obecne hasło to 401
+	 * `INVALID_CREDENTIALS`, nowe równe staremu — 400 `NEW_PASSWORD_SAME_AS_CURRENT`.
+	 */
+	suspend fun changePassword(currentPassword: String, newPassword: String) {
+		http.put("$base/api/v1/auth/password") {
+			contentType(ContentType.Application.Json)
+			setBody(ChangePasswordRequest(currentPassword, newPassword))
+		}.ensureSuccessOrThrow()
+		endSession()
+	}
+
+	/**
+	 * Zamawia link resetujący hasło (ADR 0008). Zawsze 202 — backend nie zdradza,
+	 * czy konto istnieje, więc UI nie może tego twierdzić w żadną stronę.
+	 */
+	suspend fun requestPasswordReset(email: String) =
+		http.post("$base/api/v1/auth/password/reset-request") {
+			contentType(ContentType.Application.Json)
+			setBody(PasswordResetRequest(email))
+		}.ensureSuccessOrThrow()
+
+	/**
+	 * Ustawia nowe hasło tokenem z maila. Token nieznany, wygasły i zużyty dają ten
+	 * sam 400 `INVALID_PASSWORD_RESET_TOKEN`. Reset odwołuje wszystkie sesje, więc
+	 * potem trzeba się zalogować — dlatego nie zakłada też sesji tutaj.
+	 */
+	suspend fun resetPassword(token: String, newPassword: String) =
+		http.post("$base/api/v1/auth/password/reset") {
+			contentType(ContentType.Application.Json)
+			setBody(PasswordResetConfirmRequest(token, newPassword))
+		}.ensureSuccessOrThrow()
+
+	/**
+	 * Wgrywa awatar. Backend rozpoznaje format po bajtach (JPEG, PNG, WebP; 415
+	 * `UNSUPPORTED_IMAGE`) i przyjmuje najwyżej 5 MB (413), więc nazwa pliku i typ
+	 * są tu tylko formalnością multiparta.
+	 */
+	suspend fun uploadAvatar(image: ByteArray, contentType: String): Profile =
+		http.post("$base/api/v1/profiles/me/avatar") {
+			setBody(imageForm(image, contentType))
+		}.decodeOrThrow()
+
+	suspend fun deleteAvatar() =
+		http.delete("$base/api/v1/profiles/me/avatar").ensureSuccessOrThrow()
+
+	/**
+	 * Wgrywa zdjęcie do posta. Samo w sobie niczego nie publikuje — zwrócony
+	 * [PostImage.key] podaje się potem w [createPost] / [createCommunityPost].
+	 */
+	suspend fun uploadPostImage(image: ByteArray, contentType: String): PostImage =
+		http.post("$base/api/v1/posts/image") {
+			setBody(imageForm(image, contentType))
+		}.decodeOrThrow()
+
+	private fun imageForm(image: ByteArray, contentType: String) = MultiPartFormDataContent(
+		formData {
+			append(
+				"file",
+				image,
+				Headers.build {
+					append(HttpHeaders.ContentType, contentType)
+					append(HttpHeaders.ContentDisposition, "filename=\"image\"")
+				},
+			)
+		},
+	)
+
 	suspend fun feed(page: Int = 0, size: Int = 20): Page<Post> =
 		http.get("$base/api/v1/feed") {
 			parameter("page", page)
 			parameter("size", size)
 		}.decodeOrThrow()
 
-	/** Tworzy nowy post autorstwa zalogowanego użytkownika. */
-	suspend fun createPost(content: String): Post =
+	/**
+	 * Tworzy nowy post autorstwa zalogowanego użytkownika. [imageKey] z
+	 * [uploadPostImage]; backend przyjmuje tylko klucz z własnego wgrania (400
+	 * `UNKNOWN_POST_IMAGE`).
+	 */
+	suspend fun createPost(content: String, imageKey: String? = null): Post =
 		http.post("$base/api/v1/posts") {
 			contentType(ContentType.Application.Json)
-			setBody(CreatePostRequest(content))
+			setBody(CreatePostRequest(content, imageKey))
 		}.decodeOrThrow()
 
 	/**
@@ -564,10 +646,10 @@ class SonglyApiClient internal constructor(
 	 * (403 `NOT_COMMUNITY_MEMBER` / `BANNED_FROM_COMMUNITY`). Lajki, komentarze i
 	 * usuwanie takiego posta idą zwykłymi endpointami postów.
 	 */
-	suspend fun createCommunityPost(communityId: String, content: String): Post =
+	suspend fun createCommunityPost(communityId: String, content: String, imageKey: String? = null): Post =
 		http.post("$base/api/v1/communities/$communityId/posts") {
 			contentType(ContentType.Application.Json)
-			setBody(CreatePostRequest(content))
+			setBody(CreatePostRequest(content, imageKey))
 		}.decodeOrThrow()
 
 	// --- Dopasowywanie po gatunkach (moduł matching) ---

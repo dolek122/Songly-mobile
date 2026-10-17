@@ -1,6 +1,10 @@
 package com.songly.shared.contract
 
 import com.songly.shared.model.ApiError
+import com.songly.shared.model.ChangePasswordRequest
+import com.songly.shared.model.PasswordResetConfirmRequest
+import com.songly.shared.model.PasswordResetRequest
+import com.songly.shared.model.PostImage
 import com.songly.shared.model.AuthTokens
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Comment
@@ -67,6 +71,10 @@ class OpenApiContractTest {
 		LoginRequest.serializer() to "LoginRequest",
 		RefreshRequest.serializer() to "RefreshRequest",
 		DeleteAccountRequest.serializer() to "DeleteAccountRequest",
+		ChangePasswordRequest.serializer() to "ChangePasswordRequest",
+		PasswordResetRequest.serializer() to "PasswordResetRequest",
+		PasswordResetConfirmRequest.serializer() to "PasswordResetConfirmRequest",
+		PostImage.serializer() to "PostImageResponse",
 		AuthTokens.serializer() to "AuthTokensResponse",
 		Post.serializer() to "PostResponse",
 		CreatePostRequest.serializer() to "CreatePostRequest",

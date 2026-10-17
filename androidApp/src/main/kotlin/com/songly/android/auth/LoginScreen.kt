@@ -33,6 +33,9 @@ fun LoginScreen(
 	viewModel: LoginViewModel,
 	onLoggedIn: () -> Unit,
 	onNavigateToRegister: () -> Unit,
+	onForgotPassword: () -> Unit = {},
+	/** Komunikat z poprzedniego kroku, np. „hasło zmienione — zaloguj się nowym". */
+	notice: String? = null,
 ) {
 	val state = viewModel.uiState
 
@@ -53,6 +56,15 @@ fun LoginScreen(
 			style = MaterialTheme.typography.bodyMedium,
 			modifier = Modifier.padding(top = 4.dp, bottom = 24.dp),
 		)
+
+		if (notice != null) {
+			Text(
+				text = notice,
+				color = MaterialTheme.colorScheme.primary,
+				style = MaterialTheme.typography.bodyMedium,
+				modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+			)
+		}
 
 		OutlinedTextField(
 			value = state.email,
@@ -111,6 +123,10 @@ fun LoginScreen(
 			modifier = Modifier.padding(top = 8.dp),
 		) {
 			Text("Nie masz konta? Zarejestruj się")
+		}
+
+		TextButton(onClick = onForgotPassword, enabled = !state.isSubmitting) {
+			Text("Nie pamiętasz hasła?")
 		}
 	}
 }

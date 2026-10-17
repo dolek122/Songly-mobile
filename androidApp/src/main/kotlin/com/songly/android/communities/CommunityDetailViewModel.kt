@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.Community
 import com.songly.shared.model.CommunityMember
 import com.songly.shared.model.MembershipStatus
+import com.songly.android.post.MAX_POST_LENGTH
 import com.songly.shared.model.Post
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
@@ -55,9 +56,6 @@ data class CommunityDetailUiState(
 }
 
 enum class CommunityTab { POSTS, MEMBERS }
-
-// Backend: CreatePostRequest.content max 1000 znaków.
-const val MAX_POST_LENGTH = 1000
 
 /**
  * Logika ekranu szczegółów jednej społeczności (moduł community przez `shared`).
