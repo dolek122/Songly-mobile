@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -23,6 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -37,7 +41,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.shared.model.Community
+import com.songly.shared.model.BanDetails
 import com.songly.shared.model.CommunityMember
+import com.songly.android.post.PostListDialogs
+import com.songly.android.post.PostListViewModel
+import com.songly.android.post.postListItems
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Ekran szczegółów społeczności (Compose, natywny UI — §14): nagłówek z opisem i
@@ -47,6 +58,8 @@ import com.songly.shared.model.CommunityMember
 @Composable
 fun CommunityDetailScreen(
 	viewModel: CommunityDetailViewModel,
+	postsViewModel: PostListViewModel,
+	onOpenComments: (postId: String) -> Unit,
 	onBack: () -> Unit,
 	onDeleted: () -> Unit,
 	onOpenUserProfile: (String) -> Unit,
@@ -56,7 +69,10 @@ fun CommunityDetailScreen(
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
+		postsViewModel.refresh()
 	}
+
+	PostListDialogs(postsViewModel)
 
 	// Po usunięciu społeczności wróć do listy (i pozwól jej się odświeżyć).
 	LaunchedEffect(state.deleted) {
@@ -93,8 +109,9 @@ fun CommunityDetailScreen(
 			total > 0 && lastVisible >= total - 3
 		}
 	}
-	LaunchedEffect(shouldLoadMore) {
-		if (shouldLoadMore) viewModel.loadMoreMembers()
+	// Automatyczne doczytywanie tylko dla członków — posty mają przycisk (patrz postListItems).
+	LaunchedEffect(shouldLoadMore, state.selectedTab) {
+		if (shouldLoadMore && state.selectedTab == CommunityTab.MEMBERS) viewModel.loadMoreMembers()
 	}
 
 	Scaffold(
@@ -145,18 +162,50 @@ fun CommunityDetailScreen(
 							onToggleMembership = viewModel::toggleMembership,
 						)
 					}
-					item(key = "members-header") {
-						Text(
-							text = "Członkowie (${state.community.memberCount})",
-							style = MaterialTheme.typography.titleMedium,
-							fontWeight = FontWeight.SemiBold,
-							modifier = Modifier.padding(top = 8.dp),
+					item(key = "tabs") {
+						TabRow(selectedTabIndex = state.selectedTab.ordinal) {
+							Tab(
+								selected = state.selectedTab == CommunityTab.POSTS,
+								onClick = { viewModel.selectTab(CommunityTab.POSTS) },
+								text = { Text("Posty") },
+							)
+							Tab(
+								selected = state.selectedTab == CommunityTab.MEMBERS,
+								onClick = { viewModel.selectTab(CommunityTab.MEMBERS) },
+								text = { Text("Członkowie (${state.community.memberCount})") },
+							)
+						}
+					}
+					if (state.selectedTab == CommunityTab.POSTS) {
+						val ban = state.membership?.ban
+						if (state.membership?.isBanned == true && ban != null) {
+							item(key = "ban") { BanBanner(ban) }
+						}
+						if (state.canWrite) {
+							item(key = "composer") {
+								PostComposer(
+									draft = state.draft,
+									isPublishing = state.isPublishing,
+									canPublish = state.canPublish,
+									errorMessage = state.publishError,
+									onDraftChange = viewModel::onDraftChange,
+									onPublish = { viewModel.publish(onPublished = postsViewModel::prepend) },
+								)
+							}
+						}
+						postListItems(
+							viewModel = postsViewModel,
+							emptyText = "W tej społeczności nie ma jeszcze postów.",
+							onOpenComments = onOpenComments,
+							onOpenAuthor = onOpenUserProfile,
 						)
 					}
-					items(state.members, key = { it.userId }) { member ->
-						MemberRow(member, onOpenProfile = { onOpenUserProfile(member.userId) })
+					if (state.selectedTab == CommunityTab.MEMBERS) {
+						items(state.members, key = { it.userId }) { member ->
+							MemberRow(member, onOpenProfile = { onOpenUserProfile(member.userId) })
+						}
 					}
-					if (state.isLoadingMoreMembers) {
+					if (state.selectedTab == CommunityTab.MEMBERS && state.isLoadingMoreMembers) {
 						item(key = "members-footer") {
 							Box(
 								modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -208,6 +257,72 @@ private fun CommunityHeader(
 		HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
 	}
 }
+
+/**
+ * Mój ban z powodem i terminem (backend ADR 0015). Społeczność czytać wolno dalej
+ * — ban odcina tylko pisanie — więc baner stoi nad postami, a nie zamiast nich.
+ */
+@Composable
+private fun BanBanner(ban: BanDetails) {
+	Card(
+		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+		modifier = Modifier.fillMaxWidth(),
+	) {
+		Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+			Text(
+				text = if (ban.expiresAt == null) {
+					"Masz bezterminowy zakaz publikowania w tej społeczności."
+				} else {
+					"Masz zakaz publikowania w tej społeczności do ${formatDateTime(ban.expiresAt!!)}."
+				},
+				style = MaterialTheme.typography.bodyMedium,
+				fontWeight = FontWeight.SemiBold,
+				color = MaterialTheme.colorScheme.onErrorContainer,
+			)
+			if (!ban.reason.isNullOrBlank()) {
+				Text(
+					text = "Powód: ${ban.reason}",
+					style = MaterialTheme.typography.bodyMedium,
+					color = MaterialTheme.colorScheme.onErrorContainer,
+				)
+			}
+		}
+	}
+}
+
+@Composable
+private fun PostComposer(
+	draft: String,
+	isPublishing: Boolean,
+	canPublish: Boolean,
+	errorMessage: String?,
+	onDraftChange: (String) -> Unit,
+	onPublish: () -> Unit,
+) {
+	Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+		OutlinedTextField(
+			value = draft,
+			onValueChange = onDraftChange,
+			label = { Text("Napisz post w społeczności") },
+			enabled = !isPublishing,
+			minLines = 2,
+			isError = draft.length > MAX_POST_LENGTH,
+			supportingText = { Text("${draft.length}/$MAX_POST_LENGTH") },
+			modifier = Modifier.fillMaxWidth(),
+		)
+		if (errorMessage != null) {
+			Text(errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+		}
+		Button(onClick = onPublish, enabled = canPublish, modifier = Modifier.align(Alignment.End)) {
+			Text(if (isPublishing) "Publikowanie…" else "Opublikuj")
+		}
+	}
+}
+
+private fun formatDateTime(iso: String): String = runCatching {
+	DateTimeFormatter.ofPattern("d.MM.yyyy, HH:mm")
+		.format(Instant.parse(iso).atZone(ZoneId.systemDefault()))
+}.getOrDefault(iso)
 
 @Composable
 private fun MemberRow(member: CommunityMember, onOpenProfile: () -> Unit) {

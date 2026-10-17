@@ -18,6 +18,7 @@ import com.songly.shared.model.NowPlayingSettings
 import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.Match
+import com.songly.shared.model.MembershipStatus
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
 import com.songly.shared.model.FriendNowPlaying
@@ -197,6 +198,25 @@ class SonglyApiClient internal constructor(
 		http.post("$base/api/v1/posts") {
 			contentType(ContentType.Application.Json)
 			setBody(CreatePostRequest(content))
+		}.decodeOrThrow()
+
+	/**
+	 * Pojedynczy post — np. z powiadomienia o lajku. Post niewidoczny (usunięty,
+	 * autor zablokowany albo zawieszony) to 404 `POST_NOT_FOUND`: backend celowo nie
+	 * odróżnia „nie ma" od „nie wolno Ci widzieć".
+	 */
+	suspend fun post(postId: String): Post =
+		http.get("$base/api/v1/posts/$postId").decodeOrThrow()
+
+	/**
+	 * Posty jednego autora, najnowsze pierwsze. Bez postów publikowanych w
+	 * społecznościach — te nie trafiają na profil autora (backend §8).
+	 */
+	suspend fun postsByAuthor(authorId: String, page: Int = 0, size: Int = 20): Page<Post> =
+		http.get("$base/api/v1/posts") {
+			parameter("authorId", authorId)
+			parameter("page", page)
+			parameter("size", size)
 		}.decodeOrThrow()
 
 	/** Usuwa własny post (backend: tylko autor; obcym zwraca błąd). */
@@ -522,6 +542,32 @@ class SonglyApiClient internal constructor(
 		http.get("$base/api/v1/communities/$communityId/members") {
 			parameter("page", page)
 			parameter("size", size)
+		}.decodeOrThrow()
+
+	/**
+	 * Mój status w społeczności: członek (z rolą), zbanowany (z powodem i
+	 * terminem) albo nic. Powód bana dociera wyłącznie tym kanałem — nie ma go w
+	 * mailu ani w błędzie `BANNED_FROM_COMMUNITY` (backend ADR 0015).
+	 */
+	suspend fun membershipStatus(communityId: String): MembershipStatus =
+		http.get("$base/api/v1/communities/$communityId/membership").decodeOrThrow()
+
+	/** Posty opublikowane w społeczności. Czytać może każdy zalogowany. */
+	suspend fun communityPosts(communityId: String, page: Int = 0, size: Int = 20): Page<Post> =
+		http.get("$base/api/v1/communities/$communityId/posts") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	/**
+	 * Publikuje post w społeczności — tylko członek i tylko bez aktywnego bana
+	 * (403 `NOT_COMMUNITY_MEMBER` / `BANNED_FROM_COMMUNITY`). Lajki, komentarze i
+	 * usuwanie takiego posta idą zwykłymi endpointami postów.
+	 */
+	suspend fun createCommunityPost(communityId: String, content: String): Post =
+		http.post("$base/api/v1/communities/$communityId/posts") {
+			contentType(ContentType.Application.Json)
+			setBody(CreatePostRequest(content))
 		}.decodeOrThrow()
 
 	// --- Dopasowywanie po gatunkach (moduł matching) ---

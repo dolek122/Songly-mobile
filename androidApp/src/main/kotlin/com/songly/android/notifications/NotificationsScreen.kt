@@ -52,6 +52,7 @@ fun NotificationsScreen(
 	viewModel: NotificationsViewModel,
 	onBack: () -> Unit,
 	onOpenUserProfile: (String) -> Unit,
+	onOpenPost: (postId: String) -> Unit,
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
@@ -114,7 +115,10 @@ fun NotificationsScreen(
 					items(state.notifications, key = { it.id }) { notification ->
 						NotificationCard(
 							notification = notification,
-							onClick = { viewModel.markRead(notification) },
+							onClick = {
+								viewModel.markRead(notification)
+								postIdOf(notification)?.let(onOpenPost)
+							},
 							onOpenProfile = { onOpenUserProfile(notification.actorId) },
 						)
 					}
@@ -137,7 +141,8 @@ fun NotificationsScreen(
 private fun NotificationCard(notification: Notification, onClick: () -> Unit, onOpenProfile: () -> Unit) {
 	val unread = notification.isUnread
 	Card(
-		modifier = Modifier.fillMaxWidth().clickable(enabled = unread, onClick = onClick),
+		// Klikalna, gdy jest co zrobić: oznaczyć jako przeczytane albo otworzyć post.
+		modifier = Modifier.fillMaxWidth().clickable(enabled = unread || postIdOf(notification) != null, onClick = onClick),
 		colors = if (unread) {
 			CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 		} else {
@@ -180,6 +185,16 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 			}
 		}
 	}
+}
+
+/**
+ * Post, którego dotyczy powiadomienie — dla lajka, komentarza i udostępnienia
+ * backend niesie w `resourceId` identyfikator posta. Pozostałe typy wskazują
+ * zaproszenie albo społeczność, więc nie prowadzą do posta.
+ */
+private fun postIdOf(notification: Notification): String? = when (notification.type) {
+	"POST_LIKED", "POST_COMMENTED", "POST_SHARED" -> notification.resourceId
+	else -> null
 }
 
 /** Mapuje typ powiadomienia + nazwę autora na zdanie po polsku. */

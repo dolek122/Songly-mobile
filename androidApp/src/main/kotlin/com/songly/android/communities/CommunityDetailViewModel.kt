@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.Community
 import com.songly.shared.model.CommunityMember
+import com.songly.shared.model.MembershipStatus
+import com.songly.shared.model.Post
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
@@ -33,11 +35,29 @@ data class CommunityDetailUiState(
 	val isDeleting: Boolean = false,
 	val deleteError: String? = null,
 	val deleted: Boolean = false, // po usunięciu — ekran wraca do listy
+	// Posty: mój status (ban z powodem) i pole publikacji.
+	val selectedTab: CommunityTab = CommunityTab.POSTS,
+	val membership: MembershipStatus? = null,
+	val draft: String = "",
+	val isPublishing: Boolean = false,
+	val publishError: String? = null,
 ) {
 	// Backend: nazwa @NotBlank, max 100 znaków.
 	val canSaveEdit: Boolean
 		get() = editName.isNotBlank() && editName.length <= 100 && !isSaving
+
+	// Publikują wyłącznie członkowie bez aktywnego bana (backend §8); czytać może każdy.
+	val canWrite: Boolean
+		get() = community?.isMember == true && membership?.isBanned != true
+
+	val canPublish: Boolean
+		get() = canWrite && draft.isNotBlank() && draft.length <= MAX_POST_LENGTH && !isPublishing
 }
+
+enum class CommunityTab { POSTS, MEMBERS }
+
+// Backend: CreatePostRequest.content max 1000 znaków.
+const val MAX_POST_LENGTH = 1000
 
 /**
  * Logika ekranu szczegółów jednej społeczności (moduł community przez `shared`).
@@ -60,15 +80,8 @@ class CommunityDetailViewModel(
 		nextMembersPage = 0
 		viewModelScope.launch {
 			try {
-				val community = client.community(communityId)
-				val membersPage = client.communityMembers(communityId, page = 0, size = PAGE_SIZE)
-				nextMembersPage = membersPage.number + 1
-				uiState = uiState.copy(
-					isLoading = false,
-					community = community,
-					members = membersPage.content,
-					membersEndReached = membersPage.last,
-				)
+				reload()
+				uiState = uiState.copy(isLoading = false)
 			} catch (e: SonglyApiException) {
 				uiState = uiState.copy(
 					isLoading = false,
@@ -199,6 +212,44 @@ class CommunityDetailViewModel(
 		else -> "Brak połączenia z serwerem."
 	}
 
+	// --- Posty ---
+
+	fun selectTab(tab: CommunityTab) {
+		uiState = uiState.copy(selectedTab = tab)
+	}
+
+	fun onDraftChange(value: String) {
+		uiState = uiState.copy(draft = value, publishError = null)
+	}
+
+	/**
+	 * Publikuje post w społeczności. Nowy post oddajemy przez [onPublished], bo
+	 * listę postów trzyma osobny [com.songly.android.post.PostListViewModel].
+	 */
+	fun publish(onPublished: (Post) -> Unit) {
+		if (!uiState.canPublish) return
+		uiState = uiState.copy(isPublishing = true, publishError = null)
+		viewModelScope.launch {
+			try {
+				val post = client.createCommunityPost(communityId, uiState.draft.trim())
+				uiState = uiState.copy(isPublishing = false, draft = "")
+				onPublished(post)
+			} catch (e: SonglyApiException) {
+				uiState = uiState.copy(isPublishing = false, publishError = errorText(e, "opublikować posta"))
+				// Ban mógł zapaść, gdy ekran był otwarty — odśwież status, żeby schować pole.
+				if (e.error?.code == "BANNED_FROM_COMMUNITY") refreshMembership()
+			} catch (e: Exception) {
+				uiState = uiState.copy(isPublishing = false, publishError = errorText(e, "opublikować posta"))
+			}
+		}
+	}
+
+	private suspend fun refreshMembership() {
+		// Status to dodatek do ekranu: jego awaria nie może zasłonić społeczności.
+		val membership = runCatching { client.membershipStatus(communityId) }.getOrNull()
+		uiState = uiState.copy(membership = membership)
+	}
+
 	private suspend fun reload() {
 		nextMembersPage = 0
 		val community = client.community(communityId)
@@ -209,5 +260,6 @@ class CommunityDetailViewModel(
 			members = membersPage.content,
 			membersEndReached = membersPage.last,
 		)
+		refreshMembership()
 	}
 }

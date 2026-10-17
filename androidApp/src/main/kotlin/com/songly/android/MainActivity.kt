@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,6 +44,9 @@ import com.songly.android.presence.FriendsPresenceScreen
 import com.songly.android.presence.FriendsPresenceViewModel
 import com.songly.android.post.CreatePostScreen
 import com.songly.android.post.CreatePostViewModel
+import com.songly.android.post.PostDetailScreen
+import com.songly.android.post.PostDetailViewModel
+import com.songly.android.post.PostListViewModel
 import com.songly.android.profile.ProfileScreen
 import com.songly.android.profile.ProfileViewModel
 import com.songly.android.profile.UserProfileScreen
@@ -156,7 +160,6 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 		},
 	)
 	var creatingPost by remember { mutableStateOf(false) }
-	var commentsPostId by remember { mutableStateOf<String?>(null) }
 	var showProfile by remember { mutableStateOf(false) }
 	var showFriends by remember { mutableStateOf(false) }
 	var showNowPlaying by remember { mutableStateOf(false) }
@@ -165,9 +168,15 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	var showCommunities by remember { mutableStateOf(false) }
 	var communityDetailId by remember { mutableStateOf<String?>(null) }
 	var showMatches by remember { mutableStateOf(false) }
-	// Profil innego użytkownika — nakładka nad dowolnym ekranem (feed, znajomi…);
-	// po powrocie (viewUserId = null) wracamy do ekranu spod spodu.
-	var viewUserId by remember { mutableStateOf<String?>(null) }
+	// Profil, post i komentarze to nakładki otwierane z dowolnego ekranu i z siebie
+	// nawzajem (profil → post → komentarze → profil komentującego…), więc nie da się
+	// ich ułożyć w stałą kolejność gałęzi `when` jak ekranów niżej. Trzymamy je na
+	// stosie: rysujemy wierzch, Wstecz zdejmuje jedną warstwę.
+	val overlays = remember { mutableStateListOf<Overlay>() }
+	val openUserProfile: (String) -> Unit = { overlays.add(Overlay.UserProfile(it)) }
+	val openComments: (String) -> Unit = { overlays.add(Overlay.Comments(it)) }
+	val openPost: (String) -> Unit = { overlays.add(Overlay.PostDetail(it)) }
+	val closeOverlay: () -> Unit = { overlays.removeAt(overlays.lastIndex) }
 
 	// Systemowy Wstecz (przycisk i gest) musi robić to samo co „Wróć" na ekranie —
 	// bez tego zamyka aplikację, co na Androidzie jest po prostu zepsute.
@@ -177,7 +186,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 	// ekranów będzie więcej, ta duplikacja jest sygnałem, że czas na
 	// Navigation-Compose z prawdziwym back stackiem.
 	val closeTopScreen: (() -> Unit)? = when {
-		viewUserId != null -> ({ viewUserId = null })
+		overlays.isNotEmpty() -> closeOverlay
 		showMatches -> ({ showMatches = false })
 		communityDetailId != null -> ({ communityDetailId = null })
 		showCommunities -> ({ showCommunities = false })
@@ -189,26 +198,70 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 		showProfile -> ({ showProfile = false })
 		showFriends -> ({ showFriends = false })
 		creatingPost -> ({ creatingPost = false })
-		commentsPostId != null -> ({ commentsPostId = null })
 		// Na feedzie zostawiamy Wstecz systemowi — tam wyjście z aplikacji jest
 		// zachowaniem oczekiwanym.
 		else -> null
 	}
 	BackHandler(enabled = closeTopScreen != null) { closeTopScreen?.invoke() }
 
+	val topOverlay = overlays.lastOrNull()
 	when {
-		viewUserId != null -> {
-			val id = viewUserId!!
-			// Klucz per użytkownik — inaczej viewModel() oddałby profil innej osoby.
+		// Klucze ViewModeli per zasób — inaczej viewModel() oddałby dane innej
+		// osoby/posta. Klucz zawiera też głębokość stosu: ten sam profil otwarty
+		// dwa razy (profil → komentarze → ten sam profil) dostaje świeży stan.
+		topOverlay is Overlay.UserProfile -> {
+			val key = "${overlays.lastIndex}-${topOverlay.userId}"
 			val userProfileViewModel: UserProfileViewModel = viewModel(
-				key = "user-profile-$id",
+				key = "user-profile-$key",
 				factory = viewModelFactory {
-					initializer { UserProfileViewModel(client, id) }
+					initializer { UserProfileViewModel(client, topOverlay.userId) }
+				},
+			)
+			val postsViewModel: PostListViewModel = viewModel(
+				key = "user-posts-$key",
+				factory = viewModelFactory {
+					initializer {
+						PostListViewModel(client) { page, size -> postsByAuthor(topOverlay.userId, page, size) }
+					}
 				},
 			)
 			UserProfileScreen(
 				viewModel = userProfileViewModel,
-				onBack = { viewUserId = null },
+				postsViewModel = postsViewModel,
+				onBack = closeOverlay,
+				onOpenComments = openComments,
+			)
+		}
+
+		topOverlay is Overlay.PostDetail -> {
+			val postViewModel: PostDetailViewModel = viewModel(
+				key = "post-${overlays.lastIndex}-${topOverlay.postId}",
+				factory = viewModelFactory {
+					initializer { PostDetailViewModel(client, topOverlay.postId) }
+				},
+			)
+			PostDetailScreen(
+				viewModel = postViewModel,
+				onBack = closeOverlay,
+				onOpenComments = openComments,
+				onOpenUserProfile = openUserProfile,
+			)
+		}
+
+		topOverlay is Overlay.Comments -> {
+			val postId = topOverlay.postId
+			val commentsViewModel: CommentsViewModel = viewModel(
+				key = "comments-${overlays.lastIndex}-$postId",
+				factory = viewModelFactory {
+					initializer { CommentsViewModel(client, postId) }
+				},
+			)
+			CommentsScreen(
+				viewModel = commentsViewModel,
+				onBack = closeOverlay,
+				onCommentAdded = { feedViewModel.incrementCommentCount(postId) },
+				onCommentDeleted = { feedViewModel.decrementCommentCount(postId) },
+				onOpenUserProfile = openUserProfile,
 			)
 		}
 
@@ -221,7 +274,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			MatchesScreen(
 				viewModel = matchesViewModel,
 				onBack = { showMatches = false },
-				onOpenUserProfile = { viewUserId = it },
+				onOpenUserProfile = openUserProfile,
 			)
 		}
 
@@ -234,12 +287,20 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 					initializer { CommunityDetailViewModel(client, id) }
 				},
 			)
+			val communityPostsViewModel: PostListViewModel = viewModel(
+				key = "community-posts-$id",
+				factory = viewModelFactory {
+					initializer { PostListViewModel(client) { page, size -> communityPosts(id, page, size) } }
+				},
+			)
 			CommunityDetailScreen(
 				viewModel = detailViewModel,
+				postsViewModel = communityPostsViewModel,
+				onOpenComments = openComments,
 				onBack = { communityDetailId = null },
 				// Po usunięciu wróć do listy — CommunitiesScreen odświeży się sam przy wejściu.
 				onDeleted = { communityDetailId = null },
-				onOpenUserProfile = { viewUserId = it },
+				onOpenUserProfile = openUserProfile,
 			)
 		}
 
@@ -253,7 +314,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				viewModel = communitiesViewModel,
 				onBack = { showCommunities = false },
 				onOpenCommunity = { communityDetailId = it },
-				onOpenUserProfile = { viewUserId = it },
+				onOpenUserProfile = openUserProfile,
 			)
 		}
 
@@ -267,7 +328,8 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				viewModel = notificationsViewModel,
 				// Powrót odświeża feed, żeby badge nieprzeczytanych zszedł po lekturze.
 				onBack = { showNotifications = false; feedViewModel.refresh() },
-				onOpenUserProfile = { viewUserId = it },
+				onOpenUserProfile = openUserProfile,
+				onOpenPost = openPost,
 			)
 		}
 
@@ -280,7 +342,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			FriendsPresenceScreen(
 				viewModel = presenceViewModel,
 				onBack = { showFriendsPresence = false },
-				onOpenUserProfile = { viewUserId = it },
+				onOpenUserProfile = openUserProfile,
 			)
 		}
 
@@ -319,7 +381,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			FriendsScreen(
 				viewModel = friendsViewModel,
 				onBack = { showFriends = false },
-				onOpenUserProfile = { viewUserId = it },
+				onOpenUserProfile = openUserProfile,
 			)
 		}
 
@@ -339,24 +401,6 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			)
 		}
 
-		commentsPostId != null -> {
-			val postId = commentsPostId!!
-			// Klucz per post — inaczej viewModel() oddałby komentarze innego posta.
-			val commentsViewModel: CommentsViewModel = viewModel(
-				key = "comments-$postId",
-				factory = viewModelFactory {
-					initializer { CommentsViewModel(client, postId) }
-				},
-			)
-			CommentsScreen(
-				viewModel = commentsViewModel,
-				onBack = { commentsPostId = null },
-				onCommentAdded = { feedViewModel.incrementCommentCount(postId) },
-				onCommentDeleted = { feedViewModel.decrementCommentCount(postId) },
-				onOpenUserProfile = { viewUserId = it },
-			)
-		}
-
 		else -> {
 			FeedScreen(
 				viewModel = feedViewModel,
@@ -364,8 +408,8 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 				onLoggedOut = onLoggedOut,
 				onSessionExpired = onLoggedOut,
 				onCreatePost = { creatingPost = true },
-				onOpenComments = { commentsPostId = it },
-				onOpenUserProfile = { viewUserId = it },
+				onOpenComments = openComments,
+				onOpenUserProfile = openUserProfile,
 				onOpenProfile = { showProfile = true },
 				onOpenFriends = { showFriends = true },
 				onOpenNowPlaying = { showNowPlaying = true },
@@ -376,4 +420,11 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: () -> Unit) {
 			)
 		}
 	}
+}
+
+/** Nakładki otwierane z dowolnego ekranu — patrz stos w [LoggedInNav]. */
+private sealed interface Overlay {
+	data class UserProfile(val userId: String) : Overlay
+	data class PostDetail(val postId: String) : Overlay
+	data class Comments(val postId: String) : Overlay
 }

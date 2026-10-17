@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.songly.android.post.PostListDialogs
+import com.songly.android.post.PostListViewModel
+import com.songly.android.post.postListItems
 import com.songly.android.ui.Avatar
 
 /**
@@ -37,13 +40,18 @@ import com.songly.android.ui.Avatar
 @Composable
 fun UserProfileScreen(
 	viewModel: UserProfileViewModel,
+	postsViewModel: PostListViewModel,
 	onBack: () -> Unit,
+	onOpenComments: (postId: String) -> Unit,
 ) {
 	val state = viewModel.uiState
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
+		postsViewModel.refresh()
 	}
+
+	PostListDialogs(postsViewModel)
 
 	Scaffold(
 		topBar = {
@@ -70,7 +78,23 @@ fun UserProfileScreen(
 					}
 				}
 
-				state.profile != null -> ProfileContent(state, onInvite = viewModel::invite)
+				state.profile != null -> LazyColumn(
+					contentPadding = PaddingValues(16.dp),
+					verticalArrangement = Arrangement.spacedBy(12.dp),
+					modifier = Modifier.fillMaxSize(),
+				) {
+					item(key = "profile") { ProfileContent(state, onInvite = viewModel::invite) }
+					item(key = "posts-title") {
+						Text("Posty", style = MaterialTheme.typography.titleMedium)
+					}
+					postListItems(
+						viewModel = postsViewModel,
+						emptyText = "Ten użytkownik nie opublikował jeszcze żadnego posta.",
+						onOpenComments = onOpenComments,
+						// Autor każdego posta to właściciel tego profilu — jesteśmy już u niego.
+						onOpenAuthor = {},
+					)
+				}
 			}
 		}
 	}
@@ -81,7 +105,7 @@ fun UserProfileScreen(
 private fun ProfileContent(state: UserProfileUiState, onInvite: () -> Unit) {
 	val profile = state.profile ?: return
 	Column(
-		modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+		modifier = Modifier.fillMaxWidth(),
 		verticalArrangement = Arrangement.spacedBy(12.dp),
 		horizontalAlignment = Alignment.CenterHorizontally,
 	) {
