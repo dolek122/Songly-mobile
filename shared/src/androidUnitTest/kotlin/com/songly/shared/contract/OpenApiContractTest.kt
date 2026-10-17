@@ -18,6 +18,8 @@ import com.songly.shared.model.Genre
 import com.songly.shared.model.LoginRequest
 import com.songly.shared.model.ManualNowPlayingRequest
 import com.songly.shared.model.Match
+import com.songly.shared.model.MembershipStatus
+import com.songly.shared.model.BanDetails
 import com.songly.shared.model.Notification
 import com.songly.shared.model.NowPlayingSettings
 import com.songly.shared.model.NowPlayingStatus
@@ -86,6 +88,8 @@ class OpenApiContractTest {
 		SetFavoriteGenresRequest.serializer() to "SetFavoriteGenresRequest",
 		Community.serializer() to "CommunityResponse",
 		CommunityMember.serializer() to "CommunityMemberResponse",
+		MembershipStatus.serializer() to "MembershipStatusResponse",
+		BanDetails.serializer() to "BanDetailsResponse",
 		CreateCommunityRequest.serializer() to "CreateCommunityRequest",
 		UpdateCommunityRequest.serializer() to "UpdateCommunityRequest",
 		NowPlayingStatus.serializer() to "NowPlayingStatusResponse",

@@ -44,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.DeletePostDialog
+import com.songly.android.ui.PostCard
 import com.songly.shared.model.Post
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.util.RelativeTime
@@ -239,27 +241,6 @@ fun FeedScreen(
 private fun badgeLabel(count: Long): String = if (count > 99) "99+" else count.toString()
 
 @Composable
-private fun DeletePostDialog(isDeleting: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-	AlertDialog(
-		onDismissRequest = onDismiss,
-		title = { Text("Usunąć post?") },
-		text = { Text("Tej operacji nie można cofnąć.") },
-		confirmButton = {
-			TextButton(
-				onClick = onConfirm,
-				enabled = !isDeleting,
-				colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-			) {
-				Text(if (isDeleting) "Usuwanie…" else "Usuń")
-			}
-		},
-		dismissButton = {
-			TextButton(onClick = onDismiss, enabled = !isDeleting) { Text("Anuluj") }
-		},
-	)
-}
-
-@Composable
 private fun FeedFooter(isLoading: Boolean, errorMessage: String?, onRetry: () -> Unit) {
 	Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
 		when {
@@ -267,88 +248,6 @@ private fun FeedFooter(isLoading: Boolean, errorMessage: String?, onRetry: () ->
 			errorMessage != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
 				Text(text = errorMessage, style = MaterialTheme.typography.bodySmall)
 				TextButton(onClick = onRetry) { Text("Ponów") }
-			}
-		}
-	}
-}
-
-@Composable
-private fun PostCard(
-	post: Post,
-	canDelete: Boolean,
-	onToggleLike: () -> Unit,
-	onOpenComments: () -> Unit,
-	onToggleShare: () -> Unit,
-	onDelete: () -> Unit,
-	onOpenAuthor: () -> Unit,
-) {
-	Card(modifier = Modifier.fillMaxWidth()) {
-		Column(modifier = Modifier.padding(16.dp)) {
-			Row(
-				verticalAlignment = Alignment.CenterVertically,
-				horizontalArrangement = Arrangement.spacedBy(10.dp),
-			) {
-				// Avatar + nazwa autora prowadzą do jego profilu; kosz zostaje osobno.
-				Row(
-					modifier = Modifier.weight(1f).clickable(onClick = onOpenAuthor),
-					verticalAlignment = Alignment.CenterVertically,
-					horizontalArrangement = Arrangement.spacedBy(10.dp),
-				) {
-					Avatar(displayName = post.authorDisplayName, avatarUrl = post.authorAvatarUrl, size = 40.dp)
-					Column {
-						Text(
-							text = post.authorDisplayName,
-							style = MaterialTheme.typography.titleSmall,
-							fontWeight = FontWeight.SemiBold,
-						)
-						Text(
-							text = RelativeTime.format(post.createdAt),
-							style = MaterialTheme.typography.labelSmall,
-							color = MaterialTheme.colorScheme.onSurfaceVariant,
-						)
-					}
-				}
-				// Kosz tylko na własnych postach.
-				if (canDelete) {
-					Text(
-						text = "Usuń",
-						style = MaterialTheme.typography.labelMedium,
-						color = MaterialTheme.colorScheme.error,
-						modifier = Modifier.clickable(onClick = onDelete),
-					)
-				}
-			}
-			Text(
-				text = post.content,
-				style = MaterialTheme.typography.bodyMedium,
-				modifier = Modifier.padding(top = 6.dp),
-			)
-			Row(
-				horizontalArrangement = Arrangement.spacedBy(20.dp),
-				verticalAlignment = Alignment.CenterVertically,
-				modifier = Modifier.padding(top = 10.dp),
-			) {
-				// Lajk — klikalny, podświetlony gdy polubiony.
-				Text(
-					text = "${if (post.likedByMe) "♥" else "♡"} ${post.likeCount}",
-					style = MaterialTheme.typography.labelLarge,
-					color = if (post.likedByMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-					modifier = Modifier.clickable(onClick = onToggleLike),
-				)
-				// Komentarze — klikalne, otwierają ekran komentarzy.
-				Text(
-					text = "💬 ${post.commentCount}",
-					style = MaterialTheme.typography.labelLarge,
-					color = MaterialTheme.colorScheme.onSurfaceVariant,
-					modifier = Modifier.clickable(onClick = onOpenComments),
-				)
-				// Udostępnienie — klikalne, podświetlone gdy udostępnione.
-				Text(
-					text = "↗ ${post.shareCount}",
-					style = MaterialTheme.typography.labelLarge,
-					color = if (post.sharedByMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-					modifier = Modifier.clickable(onClick = onToggleShare),
-				)
 			}
 		}
 	}

@@ -8,6 +8,7 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
@@ -38,15 +39,30 @@ class FakeBackend {
 
 	fun onJson(path: String, body: String) = on(path) { body }
 
+	/**
+	 * Odpowiedź tylko dla jednej metody — gdy ta sama ścieżka znaczy dwie operacje
+	 * (np. `GET` listy i `POST` publikacji w społeczności). Ma pierwszeństwo przed
+	 * [on] dla tej ścieżki.
+	 */
+	fun on(method: HttpMethod, path: String, status: HttpStatusCode = HttpStatusCode.OK, body: (callIndex: Int) -> String) {
+		handlers["${method.value} $path"] = { index -> Reply(status, body(index)) }
+	}
+
 	/** Ile razy odpytano ścieżkę — do sprawdzenia, że odświeżenie faktycznie poszło. */
 	fun callCount(path: String): Int = callCounts[path] ?: 0
+
+	fun callCount(method: HttpMethod, path: String): Int = callCounts["${method.value} $path"] ?: 0
 
 	fun client(): SonglyApiClient {
 		val engine = MockEngine { request ->
 			val path = request.url.encodedPath
-			val index = callCounts.getOrElse(path) { 0 }
-			callCounts[path] = index + 1
-			val handler = handlers[path]
+			val methodKey = "${request.method.value} $path"
+			for (key in listOf(path, methodKey)) {
+				callCounts[key] = callCounts.getOrElse(key) { 0 } + 1
+			}
+			val methodHandler = handlers[methodKey]
+			val index = (if (methodHandler != null) callCounts[methodKey] else callCounts[path])!! - 1
+			val handler = methodHandler ?: handlers[path]
 			if (handler == null) {
 				respondError(HttpStatusCode.NotFound, """{"code":"NOT_FOUND","message":"brak atrapy dla $path"}""")
 			} else {
@@ -82,3 +98,11 @@ fun postJson(id: String, content: String): String =
 	"""{"id":"$id","authorId":"me-1","authorDisplayName":"Ja","authorAvatarUrl":null,"content":"$content",""" +
 		""""createdAt":"2026-01-01T10:00:00Z","likeCount":0,"likedByMe":false,"commentCount":0,""" +
 		""""shareCount":0,"sharedByMe":false}"""
+
+fun postJson(id: String, content: String, authorId: String, authorName: String): String =
+	postJson(id, content).replace(""""authorId":"me-1","authorDisplayName":"Ja"""", """"authorId":"$authorId","authorDisplayName":"$authorName"""")
+
+fun communityJson(id: String = "c1", myRole: String? = "MEMBER"): String =
+	"""{"id":"$id","name":"Jazz","description":null,"ownerId":"owner-1","ownerDisplayName":"Właściciel",""" +
+		""""ownerAvatarUrl":null,"memberCount":2,"myRole":${myRole?.let { "\"$it\"" } ?: "null"},""" +
+		""""createdAt":"2026-01-01T10:00:00Z"}"""
