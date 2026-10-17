@@ -1,6 +1,14 @@
 package com.songly.shared.contract
 
 import com.songly.shared.model.ApiError
+import com.songly.shared.model.AdminList
+import com.songly.shared.model.AnalyticsCount
+import com.songly.shared.model.AnalyticsSummary
+import com.songly.shared.model.EscalatedAppeal
+import com.songly.shared.model.SuspendAccountRequest
+import com.songly.shared.model.SuspendedAccount
+import com.songly.shared.model.Suspension
+import com.songly.shared.model.SuspensionAppealRequest
 import com.songly.shared.model.BanAppealRequest
 import com.songly.shared.model.BanMemberRequest
 import com.songly.shared.model.CommunityBan
@@ -120,6 +128,14 @@ class OpenApiContractTest {
 		SetMemberRoleRequest.serializer() to "SetMemberRoleRequest",
 		BanAppealRequest.serializer() to "BanAppealRequest",
 		ModerationLogEntry.serializer() to "ModerationLogEntryResponse",
+		AdminList.serializer() to "AdminListResponse",
+		SuspendAccountRequest.serializer() to "SuspendAccountRequest",
+		SuspendedAccount.serializer() to "SuspendedAccountResponse",
+		EscalatedAppeal.serializer() to "EscalatedAppealResponse",
+		AnalyticsSummary.serializer() to "AnalyticsSummaryResponse",
+		AnalyticsCount.serializer() to "AnalyticsCountResponse",
+		Suspension.serializer() to "SuspensionResponse",
+		SuspensionAppealRequest.serializer() to "SuspensionAppealRequest",
 		ApiError.serializer() to "ApiError",
 	)
 

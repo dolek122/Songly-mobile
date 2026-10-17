@@ -25,7 +25,18 @@ data class UserProfileUiState(
 	val isInviting: Boolean = false,
 	val inviteSent: Boolean = false,
 	val inviteMessage: String? = null,
-)
+	// Akcje administratora platformy (widoczne tylko dla admina, nie na własnym profilu).
+	val showSuspendDialog: Boolean = false,
+	val suspendReason: String = "",
+	val suspendDays: Int? = 7,
+	val isAdminActionRunning: Boolean = false,
+	val adminMessage: String? = null,
+	val suspendError: String? = null,
+) {
+	// Backend: SuspendAccountRequest.reason wymagany, max 500 — zawieszony go zobaczy.
+	val canSuspend: Boolean
+		get() = suspendReason.isNotBlank() && suspendReason.length <= 500 && !isAdminActionRunning
+}
 
 /**
  * Logika ekranu cudzego profilu (read-only poza akcją zaproszenia). Pobiera
@@ -59,6 +70,61 @@ class UserProfileViewModel(
 				uiState = UserProfileUiState(isLoading = false, errorMessage = "Brak połączenia z serwerem. Spróbuj ponownie.")
 			}
 		}
+	}
+
+	// --- Akcje administratora (ADR 0021, 0022) ---
+
+	fun openSuspendDialog() {
+		uiState = uiState.copy(showSuspendDialog = true, suspendReason = "", suspendDays = 7, suspendError = null)
+	}
+
+	fun dismissSuspendDialog() {
+		if (uiState.isAdminActionRunning) return
+		uiState = uiState.copy(showSuspendDialog = false)
+	}
+
+	fun onSuspendReasonChange(value: String) {
+		uiState = uiState.copy(suspendReason = value, suspendError = null)
+	}
+
+	fun onSuspendDaysChange(days: Int?) {
+		uiState = uiState.copy(suspendDays = days)
+	}
+
+	/**
+	 * Zawieszenie działa od razu (rola i stan czytane na żywo, ADR 0006), a profil
+	 * zawieszonego znika dla wszystkich (ADR 0026) — także z tego ekranu po
+	 * odświeżeniu. Odmowy: siebie i innego admina zawiesić nie można.
+	 */
+	fun suspend() {
+		if (!uiState.canSuspend) return
+		uiState = uiState.copy(isAdminActionRunning = true, suspendError = null)
+		viewModelScope.launch {
+			uiState = try {
+				client.suspendUser(userId, uiState.suspendReason.trim(), uiState.suspendDays)
+				uiState.copy(isAdminActionRunning = false, showSuspendDialog = false, adminMessage = "Konto zawieszone")
+			} catch (e: Exception) {
+				uiState.copy(isAdminActionRunning = false, suspendError = adminErrorText(e, "zawiesić konta"))
+			}
+		}
+	}
+
+	fun grantAdmin() {
+		if (uiState.isAdminActionRunning) return
+		uiState = uiState.copy(isAdminActionRunning = true, adminMessage = null)
+		viewModelScope.launch {
+			uiState = try {
+				client.grantAdmin(userId)
+				uiState.copy(isAdminActionRunning = false, adminMessage = "Nadano rolę administratora")
+			} catch (e: Exception) {
+				uiState.copy(isAdminActionRunning = false, adminMessage = adminErrorText(e, "nadać roli"))
+			}
+		}
+	}
+
+	private fun adminErrorText(e: Exception, action: String): String = when (e) {
+		is SonglyApiException -> e.error?.message ?: "Nie udało się $action (HTTP ${e.status})"
+		else -> "Brak połączenia z serwerem."
 	}
 
 	/** Wysyła zaproszenie do znajomych; po sukcesie blokuje przycisk, błąd pokazuje po fakcie. */
