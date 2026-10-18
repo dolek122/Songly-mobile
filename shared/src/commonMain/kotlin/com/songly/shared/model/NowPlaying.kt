@@ -15,7 +15,19 @@ data class NowPlayingStatus(
 	val imageUrl: String? = null,
 	val playing: Boolean = false,
 	val fetchedAt: String? = null,
-)
+) {
+	/**
+	 * Źródło do pokazania ludziom. Backend wpisuje w `provider` identyfikator
+	 * integracji albo — przy ręcznym statusie — nazwę serwisu podaną przez
+	 * użytkownika, a gdy jej nie podał, techniczne „manual".
+	 */
+	val providerLabel: String
+		get() = when (provider) {
+			"manual" -> "wpisane ręcznie"
+			"spotify" -> "Spotify"
+			else -> provider
+		}
+}
 
 /**
  * Ręczne ustawienie „teraz słucham" (backend: nowplaying.dto.ManualNowPlayingRequest).

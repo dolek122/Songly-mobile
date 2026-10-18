@@ -205,7 +205,7 @@ private fun CommunityCard(
 					)
 				}
 				Text(
-					text = "${community.memberCount} członków",
+					text = membersLabel(community.memberCount),
 					style = MaterialTheme.typography.labelMedium,
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 					modifier = Modifier.padding(top = 4.dp),
@@ -322,3 +322,7 @@ private fun CenteredMessage(content: @Composable () -> Unit) {
 		content()
 	}
 }
+
+/** „1 członek", ale „2 członków", „5 członków" — rzeczownik męskoosobowy, więc odmienia się tylko jedynka. */
+internal fun membersLabel(count: Long): String =
+	if (count == 1L) "1 członek" else "$count członków"

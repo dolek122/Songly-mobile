@@ -227,7 +227,7 @@ private fun CurrentStatusCard(status: NowPlayingStatus?) {
 				val meta = buildString {
 					append(if (status.playing) "▶ odtwarzane" else "❚❚ wstrzymane")
 					append("  •  ")
-					append(status.provider)
+					append(status.providerLabel)
 				}
 				Text(
 					text = meta,

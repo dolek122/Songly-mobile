@@ -122,8 +122,17 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		runAction("Wysłano zaproszenie", "wysłać zaproszenia") {
 			client.sendFriendRequest(userId)
 			// Usuń zaproszonego z wyników — od razu wędruje do „wysłanych".
-			uiState = uiState.copy(searchResults = uiState.searchResults.filterNot { it.userId == userId })
+			dropSearchResult(userId)
 		}
+	}
+
+	/**
+	 * Gdy z wyników zniknie ostatnia osoba, chowamy też „brak użytkowników dla tej
+	 * frazy" — ta osoba istnieje, tylko przeszła do innej sekcji.
+	 */
+	private fun dropSearchResult(userId: String) {
+		val remaining = uiState.searchResults.filterNot { it.userId == userId }
+		uiState = uiState.copy(searchResults = remaining, searched = uiState.searched && remaining.isNotEmpty())
 	}
 
 	fun accept(requestId: String) =
@@ -143,7 +152,7 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		runAction("Zablokowano", "zablokować użytkownika") {
 			client.blockUser(userId)
 			// Zablokowany znika z ewentualnych wyników wyszukiwania.
-			uiState = uiState.copy(searchResults = uiState.searchResults.filterNot { it.userId == userId })
+			dropSearchResult(userId)
 		}
 
 	fun unblock(userId: String) =

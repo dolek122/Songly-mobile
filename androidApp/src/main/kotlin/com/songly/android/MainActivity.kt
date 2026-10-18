@@ -415,13 +415,14 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 		showCommunities -> ({ showCommunities = false })
 		// Otwierane z powiadomień, więc zamyka się przed nimi.
 		showMailPreferences -> ({ showMailPreferences = false })
+		// Też otwierane z powiadomień (zaproszenie do znajomych).
+		showFriends -> ({ showFriends = false })
 		// Powrót z powiadomień odświeża feed tak samo jak „Wróć" — inaczej badge
 		// nieprzeczytanych zostawałby po lekturze.
 		showNotifications -> ({ showNotifications = false; feedViewModel.refresh() })
 		showFriendsPresence -> ({ showFriendsPresence = false })
 		showNowPlaying -> ({ showNowPlaying = false })
 		showProfile -> ({ showProfile = false })
-		showFriends -> ({ showFriends = false })
 		creatingPost -> ({ creatingPost = false })
 		// Na feedzie zostawiamy Wstecz systemowi — tam wyjście z aplikacji jest
 		// zachowaniem oczekiwanym.
@@ -578,6 +579,19 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 			)
 		}
 
+		showFriends -> {
+			val friendsViewModel: FriendsViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { FriendsViewModel(client) }
+				},
+			)
+			FriendsScreen(
+				viewModel = friendsViewModel,
+				onBack = { showFriends = false },
+				onOpenUserProfile = openUserProfile,
+			)
+		}
+
 		showNotifications -> {
 			val notificationsViewModel: NotificationsViewModel = viewModel(
 				factory = viewModelFactory {
@@ -591,6 +605,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 				onOpenUserProfile = openUserProfile,
 				onOpenPost = openPost,
 				onOpenCommunity = { communityDetailId = it },
+				onOpenFriends = { showFriends = true },
 				onOpenMailPreferences = { showMailPreferences = true },
 			)
 		}
@@ -635,19 +650,6 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 					showProfile = false
 					onLoggedOut("Hasło zostało zmienione, a wszystkie sesje zakończone. Zaloguj się nowym hasłem.")
 				},
-			)
-		}
-
-		showFriends -> {
-			val friendsViewModel: FriendsViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { FriendsViewModel(client) }
-				},
-			)
-			FriendsScreen(
-				viewModel = friendsViewModel,
-				onBack = { showFriends = false },
-				onOpenUserProfile = openUserProfile,
 			)
 		}
 

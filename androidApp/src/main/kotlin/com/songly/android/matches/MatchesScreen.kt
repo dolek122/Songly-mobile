@@ -94,7 +94,10 @@ fun MatchesScreen(
 
 				state.isEmpty -> CenteredMessage {
 					Text(
-						"Brak dopasowań. Dodaj ulubione gatunki w profilu, aby znaleźć podobne osoby.",
+						// Pusto bywa też przy wybranych gatunkach: nikt inny ich nie wskazał albo
+						// wskazali je tylko znajomi, których backend z dopasowań pomija. Nie
+						// twierdzimy więc, że użytkownikowi czegoś brakuje.
+						"Brak nowych osób o podobnym guście. Znajomych tu nie pokazujemy. Sprawdź, czy masz wybrane ulubione gatunki w profilu, albo zajrzyj później.",
 						style = MaterialTheme.typography.bodyMedium,
 					)
 				}
