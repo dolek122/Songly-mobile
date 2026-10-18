@@ -40,8 +40,9 @@ import com.songly.android.ui.Avatar
 
 /**
  * Ekran cudzego profilu (read-only, §14 natywny UI): avatar, nazwa, bio i ulubione
- * gatunki innego użytkownika. Dane z [UserProfileViewModel]; akcje relacji
- * (zaproszenie/blokada) żyją na razie w ekranie znajomych i dopasowań.
+ * gatunki innego użytkownika. Dane z [UserProfileViewModel]; akcje relacji:
+ * zaproszenie i blokada — ta druga tu przede wszystkim, bo na profil trafia się
+ * z powiadomienia albo komentarza osoby, która nas zaczepia.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -65,6 +66,13 @@ fun UserProfileScreen(
 
 	if (state.showSuspendDialog) {
 		SuspendDialog(state, viewModel)
+	}
+	if (state.showBlockDialog) {
+		BlockDialog(
+			state = state,
+			onConfirm = { viewModel.block(onChanged = postsViewModel::refresh) },
+			onDismiss = viewModel::dismissBlockDialog,
+		)
 	}
 
 	Scaffold(
@@ -97,7 +105,14 @@ fun UserProfileScreen(
 					verticalArrangement = Arrangement.spacedBy(12.dp),
 					modifier = Modifier.fillMaxSize(),
 				) {
-					item(key = "profile") { ProfileContent(state, onInvite = viewModel::invite) }
+					item(key = "profile") {
+						ProfileContent(
+							state,
+							onInvite = viewModel::invite,
+							onBlock = viewModel::openBlockDialog,
+							onUnblock = { viewModel.unblock(onChanged = postsViewModel::refresh) },
+						)
+					}
 					if (isAdminViewer && !state.isSelf) {
 						item(key = "admin-actions") {
 							AdminActions(
@@ -126,7 +141,12 @@ fun UserProfileScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileContent(state: UserProfileUiState, onInvite: () -> Unit) {
+private fun ProfileContent(
+	state: UserProfileUiState,
+	onInvite: () -> Unit,
+	onBlock: () -> Unit,
+	onUnblock: () -> Unit,
+) {
 	val profile = state.profile ?: return
 	Column(
 		modifier = Modifier.fillMaxWidth(),
@@ -151,9 +171,10 @@ private fun ProfileContent(state: UserProfileUiState, onInvite: () -> Unit) {
 			)
 		}
 
-		// Zaproszenie do znajomych — nie na własnym profilu. Status znajomości nie jest
-		// znany z góry, więc ewentualne odrzucenie pokazujemy po kliknięciu.
-		if (!state.isSelf) {
+		// Zaproszenie do znajomych — nie na własnym profilu i nie po blokadzie (backend
+		// i tak by je odrzucił). Status znajomości nie jest znany z góry, więc
+		// ewentualne odrzucenie pokazujemy po kliknięciu.
+		if (!state.isSelf && !state.blocked) {
 			if (state.inviteSent) {
 				Text(
 					text = state.inviteMessage ?: "Zaproszenie wysłane",
@@ -172,6 +193,28 @@ private fun ProfileContent(state: UserProfileUiState, onInvite: () -> Unit) {
 						textAlign = TextAlign.Center,
 					)
 				}
+			}
+		}
+
+		if (!state.isSelf) {
+			if (state.blockMessage != null) {
+				Text(
+					text = state.blockMessage,
+					style = MaterialTheme.typography.bodySmall,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+					textAlign = TextAlign.Center,
+				)
+			}
+			if (state.blocked) {
+				TextButton(onClick = onUnblock, enabled = !state.isBlocking) {
+					Text(if (state.isBlocking) "Odblokowywanie…" else "Odblokuj")
+				}
+			} else {
+				TextButton(
+					onClick = onBlock,
+					enabled = !state.isBlocking,
+					colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+				) { Text("Zablokuj") }
 			}
 		}
 
@@ -224,6 +267,33 @@ private fun AdminActions(
 			}
 		}
 	}
+}
+
+@Composable
+private fun BlockDialog(state: UserProfileUiState, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+	val name = state.profile?.displayName ?: "tego użytkownika"
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text("Zablokować $name?") },
+		text = {
+			Text(
+				"Nie zobaczycie nawzajem swoich postów i komentarzy, nie będziecie mogli się " +
+					"zaczepiać ani zapraszać. Znajomość i oczekujące zaproszenia zostaną usunięte — " +
+					"po odblokowaniu nie wrócą same.",
+				style = MaterialTheme.typography.bodySmall,
+			)
+		},
+		confirmButton = {
+			TextButton(
+				onClick = onConfirm,
+				enabled = !state.isBlocking,
+				colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+			) { Text(if (state.isBlocking) "Blokowanie…" else "Zablokuj") }
+		},
+		dismissButton = {
+			TextButton(onClick = onDismiss, enabled = !state.isBlocking) { Text("Anuluj") }
+		},
+	)
 }
 
 @Composable
