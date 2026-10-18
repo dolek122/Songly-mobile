@@ -103,6 +103,22 @@ class RegisterViewModel(private val client: SonglyApiClient) : ViewModel() {
 		)
 	}
 
+	/**
+	 * Wejście z linku w mailu (`songly://verify-email`, ADR 0037): od razu potwierdza
+	 * adres. Kliknięcie linku *jest* decyzją użytkownika, więc nie każemy mu jeszcze
+	 * raz naciskać „Potwierdź". Adresu nie znamy — link mógł przyjść z rejestracji
+	 * zaczętej na innym urządzeniu — i ekran musi to uwzględnić.
+	 */
+	fun openVerificationLink(token: String) {
+		uiState = uiState.copy(
+			awaitingVerification = true,
+			verificationInput = token,
+			errorMessage = null,
+			infoMessage = null,
+		)
+		verify()
+	}
+
 	fun verify() {
 		if (!uiState.canVerify) return
 		val token = LinkToken.extract(uiState.verificationInput) ?: return

@@ -12,12 +12,25 @@
 
         <!-- usesCleartextTraffic tylko dla debug (dev backend po http). W release
              ruch idzie po https, więc cleartext jest domyślnie wyłączony. -->
+        <!-- singleTask: link z maila przy otwartej aplikacji trafia do onNewIntent
+             istniejącej Activity, zamiast otwierać drugą kopię aplikacji nad pierwszą. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Linki z maili (backend ADR 0037): weryfikacja adresu i reset hasła.
+                 Wyłącznie te dwa hosty — reszta schematu songly:// nie jest nasza. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="songly" />
+                <data android:host="verify-email" />
+                <data android:host="reset-password" />
             </intent-filter>
         </activity>
     </application>

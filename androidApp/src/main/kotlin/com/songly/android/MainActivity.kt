@@ -1,18 +1,23 @@
 package com.songly.android
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -65,6 +70,8 @@ import com.songly.android.profile.UserProfileScreen
 import com.songly.android.profile.UserProfileViewModel
 import com.songly.android.ui.theme.SonglyTheme
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.util.AuthLink
+import kotlinx.coroutines.launch
 
 /**
  * Punkt wejścia aplikacji Androida. UI natywny (Jetpack Compose, §14); logika
@@ -78,26 +85,44 @@ import com.songly.shared.network.SonglyApiClient
  */
 class MainActivity : ComponentActivity() {
 
+	// Link z maila czekający na obsłużenie (ADR 0037 backendu). Trzymany w Activity,
+	// nie w kompozycji, bo przy otwartej aplikacji przychodzi przez onNewIntent.
+	private var pendingAuthLink by mutableStateOf<AuthLink?>(null)
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		// Po obrocie albo odtworzeniu procesu Activity dostaje ten sam intent jeszcze
+		// raz — obsłużony już link nie może potwierdzać adresu drugi raz.
+		if (savedInstanceState == null) pendingAuthLink = authLinkFrom(intent)
 		val apiClient = (application as SonglyApplication).apiClient
 		setContent {
 			SonglyTheme {
 				Surface(modifier = Modifier.fillMaxSize()) {
-					AppRoot(apiClient)
+					AppRoot(apiClient, authLink = pendingAuthLink, onAuthLinkHandled = { pendingAuthLink = null })
 				}
 			}
 		}
 	}
+
+	// launchMode="singleTask": link otwarty przy działającej aplikacji trafia tutaj,
+	// zamiast tworzyć drugą kopię aplikacji nad pierwszą.
+	override fun onNewIntent(intent: Intent) {
+		super.onNewIntent(intent)
+		authLinkFrom(intent)?.let { pendingAuthLink = it }
+	}
+
+	private fun authLinkFrom(intent: Intent?): AuthLink? =
+		intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString?.let(AuthLink::parse)
 }
 
 @Composable
-private fun AppRoot(client: SonglyApiClient) {
+private fun AppRoot(client: SonglyApiClient, authLink: AuthLink?, onAuthLinkHandled: () -> Unit) {
 	// null = jeszcze sprawdzamy zapisaną sesję (Keystore, I/O poza głównym wątkiem).
 	var loggedIn by rememberSaveable { mutableStateOf<Boolean?>(null) }
 	// Powód powrotu do logowania (np. zmiana hasła odwołała sesję) — bez niego
 	// użytkownik zostałby nagle wylogowany bez słowa wyjaśnienia.
 	var authNotice by rememberSaveable { mutableStateOf<String?>(null) }
+	val scope = rememberCoroutineScope()
 
 	LaunchedEffect(Unit) {
 		loggedIn = client.isLoggedIn()
@@ -108,15 +133,54 @@ private fun AppRoot(client: SonglyApiClient) {
 			CircularProgressIndicator()
 		}
 
-		true -> LoggedInNav(client = client, onLoggedOut = { notice -> authNotice = notice; loggedIn = false })
+		true -> {
+			LoggedInNav(client = client, onLoggedOut = { notice -> authNotice = notice; loggedIn = false })
+			if (authLink != null) {
+				LinkWhileLoggedInDialog(
+					link = authLink,
+					onLogout = {
+						// Link zostaje oczekujący — po wylogowaniu obsłuży go AuthNav.
+						scope.launch {
+							client.logout()
+							authNotice = null
+							loggedIn = false
+						}
+					},
+					onDismiss = onAuthLinkHandled,
+				)
+			}
+		}
 
 		false -> AuthNav(
 			client = client,
 			notice = authNotice,
 			onNotice = { authNotice = it },
 			onAuthenticated = { authNotice = null; loggedIn = true },
+			authLink = authLink,
+			onAuthLinkHandled = onAuthLinkHandled,
 		)
 	}
+}
+
+/**
+ * Link z maila przy zalogowanej sesji. Oba linki dotyczą konta, do którego trzeba
+ * się dopiero dostać (nowego albo z zapomnianym hasłem), więc wymagają wylogowania —
+ * ale wylogowanie bez pytania zabrałoby komuś sesję przez przypadkowe kliknięcie
+ * w starego maila, a zignorowanie linku wyglądałoby jak awaria.
+ */
+@Composable
+private fun LinkWhileLoggedInDialog(link: AuthLink, onLogout: () -> Unit, onDismiss: () -> Unit) {
+	val purpose = when (link) {
+		is AuthLink.VerifyEmail -> "potwierdzić adres z tego linku"
+		is AuthLink.ResetPassword -> "ustawić nowe hasło z tego linku"
+	}
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text("Otworzyć link z maila?") },
+		text = { Text("To urządzenie jest zalogowane do Songly. Żeby $purpose, trzeba się najpierw wylogować.") },
+		confirmButton = { TextButton(onClick = onLogout) { Text("Wyloguj się") } },
+		dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } },
+	)
 }
 
 private enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
@@ -132,12 +196,38 @@ private fun AuthNav(
 	notice: String?,
 	onNotice: (String?) -> Unit,
 	onAuthenticated: () -> Unit,
+	authLink: AuthLink?,
+	onAuthLinkHandled: () -> Unit,
 ) {
 	var screen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
 	// Każde wejście w reset dostaje świeży ViewModel — zcache'owany pamiętałby
 	// „hasło ustawione" i od razu wyrzucał z ekranu przy kolejnej próbie.
 	var forgotAttempt by rememberSaveable { mutableStateOf(0) }
 	val backToLogin = { screen = AuthScreen.LOGIN }
+
+	// Link z maila najpierw przełącza ekran; sam token przekazuje ekranowi docelowemu
+	// jego własny efekt niżej, kiedy jego ViewModel już istnieje.
+	LaunchedEffect(authLink) {
+		when (authLink) {
+			is AuthLink.VerifyEmail -> {
+				onNotice(null)
+				screen = AuthScreen.REGISTER
+			}
+
+			is AuthLink.ResetPassword -> {
+				onNotice(null)
+				// Nowy ViewModel tylko przy wejściu na ekran. Gdyby reset był już otwarty,
+				// zmiana klucza w tej samej klatce oddałaby token staremu ViewModelowi,
+				// który zaraz potem zostałby podmieniony na pusty.
+				if (screen != AuthScreen.FORGOT_PASSWORD) {
+					forgotAttempt++
+					screen = AuthScreen.FORGOT_PASSWORD
+				}
+			}
+
+			null -> Unit
+		}
+	}
 
 	// Wstecz z rejestracji i resetu wraca do logowania, a nie zamyka aplikację.
 	BackHandler(enabled = screen != AuthScreen.LOGIN) { backToLogin() }
@@ -149,6 +239,12 @@ private fun AuthNav(
 					initializer { RegisterViewModel(client) }
 				},
 			)
+			LaunchedEffect(authLink) {
+				if (authLink is AuthLink.VerifyEmail) {
+					registerViewModel.openVerificationLink(authLink.token)
+					onAuthLinkHandled()
+				}
+			}
 			RegisterScreen(
 				viewModel = registerViewModel,
 				onRegistered = onAuthenticated,
@@ -163,6 +259,12 @@ private fun AuthNav(
 					initializer { ForgotPasswordViewModel(client) }
 				},
 			)
+			LaunchedEffect(authLink) {
+				if (authLink is AuthLink.ResetPassword) {
+					forgotViewModel.openResetLink(authLink.token)
+					onAuthLinkHandled()
+				}
+			}
 			ForgotPasswordScreen(
 				viewModel = forgotViewModel,
 				onPasswordReset = {

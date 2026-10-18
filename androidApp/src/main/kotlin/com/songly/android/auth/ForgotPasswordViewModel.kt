@@ -79,6 +79,20 @@ class ForgotPasswordViewModel(private val client: SonglyApiClient) : ViewModel()
 		}) { client.requestPasswordReset(uiState.email.trim()) }
 	}
 
+	/**
+	 * Wejście z linku w mailu (`songly://reset-password`, ADR 0037): od razu krok
+	 * „ustaw nowe hasło" z tokenem w polu. Hasła oczywiście nie zgadniemy, więc tu —
+	 * inaczej niż przy weryfikacji adresu — nic nie wysyłamy sami.
+	 */
+	fun openResetLink(token: String) {
+		uiState = uiState.copy(
+			linkRequested = true,
+			linkInput = token,
+			errorMessage = null,
+			infoMessage = "Ustaw nowe hasło do swojego konta.",
+		)
+	}
+
 	/** Wraca do kroku 1 — np. po literówce albo żeby zamówić nowy link. */
 	fun backToEmail() {
 		uiState = uiState.copy(linkRequested = false, errorMessage = null, infoMessage = null)
