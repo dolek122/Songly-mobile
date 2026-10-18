@@ -197,9 +197,12 @@ private fun ProfileContent(
 		}
 
 		if (!state.isSelf) {
-			if (state.blockMessage != null) {
+			// Blokada sprzed wejścia na ekran nie ma komunikatu z akcji — bez tego
+			// zdania „Odblokuj" wisiałoby bez wyjaśnienia, skąd się wzięło.
+			val blockText = state.blockMessage ?: if (state.blocked) "Blokujesz tę osobę." else null
+			if (blockText != null) {
 				Text(
-					text = state.blockMessage,
+					text = blockText,
 					style = MaterialTheme.typography.bodySmall,
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 					textAlign = TextAlign.Center,

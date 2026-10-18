@@ -2,10 +2,12 @@ package com.songly.android.profile
 
 import com.songly.android.FakeBackend
 import com.songly.android.MainDispatcherRule
+import com.songly.android.profileJson
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -29,6 +31,59 @@ class UserProfileBlockTest {
 	private fun backend() = FakeBackend().apply {
 		on(HttpMethod.Put, "/api/v1/blocks/u2", HttpStatusCode.NoContent) { "" }
 		on(HttpMethod.Delete, "/api/v1/blocks/u2", HttpStatusCode.NoContent) { "" }
+	}
+
+	private fun FakeBackend.withProfile() = apply {
+		onJson("/api/v1/profiles/me", profileJson("me-1"))
+		onJson("/api/v1/profiles/u2", """{"userId":"u2","displayName":"Ola","bio":null,"favoriteGenres":[]}""")
+	}
+
+	/** Blokada sprzed wejścia na profil: ekran ma od razu pokazać „Odblokuj" (ADR 0039 backendu). */
+	@Test
+	fun loadPicksUpExistingBlock() {
+		val backend = backend().withProfile().apply {
+			on(HttpMethod.Get, "/api/v1/blocks/u2") { """{"blocked":true}""" }
+		}
+		val viewModel = UserProfileViewModel(backend.client(), "u2")
+
+		viewModel.load()
+		awaitUntil { !viewModel.uiState.isLoading }
+
+		assertTrue(viewModel.uiState.blocked)
+	}
+
+	/** Stan blokady to dodatek — jego awaria (np. starszy backend) nie zasłania profilu. */
+	@Test
+	fun failingBlockStatusStillShowsProfile() {
+		val backend = backend().withProfile().apply {
+			on(HttpMethod.Get, "/api/v1/blocks/u2", HttpStatusCode.MethodNotAllowed) {
+				"""{"code":"METHOD_NOT_ALLOWED","message":"x","timestamp":"2026-01-01T00:00:00Z","path":"/p"}"""
+			}
+		}
+		val viewModel = UserProfileViewModel(backend.client(), "u2")
+
+		viewModel.load()
+		awaitUntil { !viewModel.uiState.isLoading }
+
+		assertNull(viewModel.uiState.errorMessage)
+		assertEquals("Ola", viewModel.uiState.profile?.displayName)
+		assertFalse(viewModel.uiState.blocked)
+	}
+
+	/** Własny profil nie pyta o blokadę — zablokować siebie i tak się nie da. */
+	@Test
+	fun ownProfileDoesNotAskAboutBlock() {
+		val backend = FakeBackend().apply {
+			onJson("/api/v1/profiles/me", profileJson("u2"))
+			onJson("/api/v1/profiles/u2", """{"userId":"u2","displayName":"Ja","bio":null,"favoriteGenres":[]}""")
+		}
+		val viewModel = UserProfileViewModel(backend.client(), "u2")
+
+		viewModel.load()
+		awaitUntil { !viewModel.uiState.isLoading }
+
+		assertTrue(viewModel.uiState.isSelf)
+		assertEquals(0, backend.callCount(HttpMethod.Get, "/api/v1/blocks/u2"))
 	}
 
 	@Test

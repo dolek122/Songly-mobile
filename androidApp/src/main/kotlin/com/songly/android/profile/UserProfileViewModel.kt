@@ -25,10 +25,9 @@ data class UserProfileUiState(
 	val isInviting: Boolean = false,
 	val inviteSent: Boolean = false,
 	val inviteMessage: String? = null,
-	// Blokada (Claude.md backendu §9). Stan blokady nie jest znany z góry — backend
-	// nie ma zapytania „czy blokuję tę osobę" poza stronicowaną listą — więc
-	// [blocked] mówi tylko o blokadzie założonej na tym ekranie. Ponowna blokada
-	// jest idempotentna, więc przycisk przy nieznanym stanie niczego nie psuje.
+	// Blokada (Claude.md backendu §9). [blocked] pobieramy razem z profilem
+	// (ADR 0039 backendu). Gdy to zapytanie zawiedzie, zostaje `false`, a ponowna
+	// blokada jest idempotentna, więc „Zablokuj" przy nieznanym stanie niczego nie psuje.
 	val showBlockDialog: Boolean = false,
 	val isBlocking: Boolean = false,
 	val blocked: Boolean = false,
@@ -66,7 +65,10 @@ class UserProfileViewModel(
 			try {
 				val profile = client.profile(userId)
 				val isSelf = runCatching { client.currentUserId() }.getOrNull() == userId
-				uiState = UserProfileUiState(isLoading = false, profile = profile, isSelf = isSelf)
+				// Stan blokady jest dodatkiem do profilu — jego awaria (albo starszy backend
+				// bez tego endpointu) nie może zasłonić całego ekranu.
+				val blocked = !isSelf && runCatching { client.isBlocking(userId) }.getOrDefault(false)
+				uiState = UserProfileUiState(isLoading = false, profile = profile, isSelf = isSelf, blocked = blocked)
 			} catch (e: SonglyApiException) {
 				val message = if (e.status == 404) {
 					"Nie znaleziono tego użytkownika."
