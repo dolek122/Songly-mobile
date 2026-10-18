@@ -57,6 +57,7 @@ fun NotificationsScreen(
 	onOpenUserProfile: (String) -> Unit,
 	onOpenPost: (postId: String) -> Unit,
 	onOpenCommunity: (communityId: String) -> Unit = {},
+	onOpenFriends: () -> Unit = {},
 	onOpenMailPreferences: () -> Unit = {},
 ) {
 	val state = viewModel.uiState
@@ -126,6 +127,7 @@ fun NotificationsScreen(
 								when (val target = targetOf(notification)) {
 									is NotificationTarget.Post -> onOpenPost(target.postId)
 									is NotificationTarget.Community -> onOpenCommunity(target.communityId)
+									NotificationTarget.Friends -> onOpenFriends()
 									null -> Unit
 								}
 							},
@@ -209,13 +211,15 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 internal sealed interface NotificationTarget {
 	data class Post(val postId: String) : NotificationTarget
 	data class Community(val communityId: String) : NotificationTarget
+	data object Friends : NotificationTarget
 }
 
 /**
  * Cel powiadomienia według tego, co backend wkłada do `resourceId`: post przy
  * lajku, komentarzu, udostępnieniu i zgłoszeniach; społeczność przy członkostwie,
- * banach, odwołaniach i rolach. Zaproszenia do znajomych nie prowadzą nigdzie
- * poza profilem nadawcy (awatar).
+ * banach, odwołaniach i rolach. Otrzymane zaproszenie prowadzi do ekranu
+ * znajomych, bo tylko tam da się je przyjąć albo odrzucić; przyjęte — do profilu
+ * nadawcy (awatar), bo nie ma tu już nic do zrobienia.
  *
  * `POST_REPORT_DISMISSED` i `COMMUNITY_POST_REMOVED` celowo nie prowadzą do
  * posta: pierwszy dotyczy cudzego posta, który zostaje, ale zgłaszający niczego
@@ -229,6 +233,8 @@ internal fun targetOf(notification: Notification): NotificationTarget? = when (n
 	"BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED",
 	"COMMUNITY_MODERATOR_GRANTED", "COMMUNITY_MODERATOR_REVOKED",
 	-> NotificationTarget.Community(notification.resourceId)
+
+	"FRIEND_REQUEST_RECEIVED" -> NotificationTarget.Friends
 
 	else -> null
 }

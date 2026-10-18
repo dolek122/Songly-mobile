@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.util.SpotifyConnectResult
 import kotlinx.coroutines.launch
 
 /** Stan ekranu „teraz słucham": aktualny status + formularz ręcznego statusu. */
@@ -65,8 +66,8 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	/**
 	 * Rozpoczyna łączenie ze Spotify i przekazuje URL autoryzacji do otwarcia w
-	 * przeglądarce ([onAuthorizeUrl]). Sam OAuth kończy się na callbacku backendu;
-	 * po powrocie do aplikacji odśwież [load].
+	 * przeglądarce ([onAuthorizeUrl]). Sam OAuth kończy się na callbacku backendu,
+	 * który odsyła do aplikacji linkiem — ten trafia do [onSpotifyConnectResult].
 	 */
 	fun connectSpotify(onAuthorizeUrl: (String) -> Unit) {
 		if (uiState.isBusy) return
@@ -79,6 +80,27 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 			} catch (e: Exception) {
 				uiState = uiState.copy(isBusy = false, statusMessage = errorText(e, "połączyć ze Spotify"))
 			}
+		}
+	}
+
+	/**
+	 * Wynik OAuth z linku powrotnego (backend ADR 0038). Status pobieramy na nowo
+	 * przy każdym wyniku, nie tylko po sukcesie — ekran mógł wisieć w pamięci od
+	 * dawna, a odmowa nie znaczy, że wcześniejsze połączenie zniknęło.
+	 */
+	fun onSpotifyConnectResult(result: SpotifyConnectResult) {
+		uiState = uiState.copy(statusMessage = connectResultText(result))
+		load()
+	}
+
+	private fun connectResultText(result: SpotifyConnectResult): String = when (result) {
+		SpotifyConnectResult.Connected -> "Połączono ze Spotify"
+		SpotifyConnectResult.Denied -> "Anulowano łączenie ze Spotify"
+		is SpotifyConnectResult.Failed -> when (result.code) {
+			"INVALID_OAUTH_STATE", "INVALID_AUTHORIZATION_CODE" ->
+				"Logowanie do Spotify wygasło. Połącz jeszcze raz."
+			"MUSIC_PROVIDER_ERROR" -> "Spotify nie odpowiada. Spróbuj ponownie później."
+			else -> "Nie udało się połączyć ze Spotify."
 		}
 	}
 

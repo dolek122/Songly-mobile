@@ -32,8 +32,9 @@ jobs:
 
       # Testy współdzielonej logiki (KMP commonTest na targecie Android/JVM) oraz
       # pełny build aplikacji Android — łapie zarówno regresje logiki, jak i błędy
-      # kompilacji UI. iOS nie buduje się na Linuksie (wymaga macOS) i jest pomijany.
+      # kompilacji UI. Release (bez klucza, więc niepodpisany) sprawdza, że R8 przechodzi.
+      # iOS nie buduje się na Linuksie (wymaga macOS) i jest pomijany.
       - name: Build & test
         run: |
           chmod +x gradlew
-          ./gradlew :shared:testDebugUnitTest :androidApp:testDebugUnitTest :androidApp:assembleDebug --console=plain
+          ./gradlew :shared:testDebugUnitTest :androidApp:testDebugUnitTest :androidApp:assembleDebug :androidApp:bundleRelease --console=plain

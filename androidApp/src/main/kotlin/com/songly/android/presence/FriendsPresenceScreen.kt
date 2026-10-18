@@ -128,7 +128,7 @@ private fun FriendPresenceCard(friend: FriendNowPlaying, onClick: () -> Unit) {
 					style = MaterialTheme.typography.bodyMedium,
 				)
 				Text(
-					text = if (status.playing) status.provider else "${status.provider} · zatrzymane",
+					text = if (status.playing) status.providerLabel else "${status.providerLabel} · zatrzymane",
 					style = MaterialTheme.typography.labelSmall,
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 				)

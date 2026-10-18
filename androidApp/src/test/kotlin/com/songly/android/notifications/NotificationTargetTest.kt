@@ -38,8 +38,9 @@ class NotificationTargetTest {
 	}
 
 	@Test
-	fun friendRequestsHaveNoTarget() {
-		assertNull(targetOf(notification("FRIEND_REQUEST_RECEIVED")))
+	fun receivedFriendRequestOpensFriends() {
+		assertEquals(NotificationTarget.Friends, targetOf(notification("FRIEND_REQUEST_RECEIVED")))
+		assertNull(targetOf(notification("FRIEND_REQUEST_ACCEPTED")))
 	}
 
 	/** Decyzję moderacyjną podpisuje funkcja, nie osoba (ADR 0015). */

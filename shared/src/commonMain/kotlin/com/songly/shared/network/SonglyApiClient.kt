@@ -504,6 +504,11 @@ class SonglyApiClient internal constructor(
 	/**
 	 * Aktualny status „teraz słucham" zalogowanego użytkownika, albo `null` gdy nic
 	 * nie gra (backend zwraca wtedy 204 bez ciała).
+	 *
+	 * Bez Spotify i bez ręcznego statusu backend odpowiada 404
+	 * `PROVIDER_NOT_CONNECTED` (nieopisane w OpenAPI) — to stan każdego nowego
+	 * konta, więc też `null`. Jako błąd zasłaniał cały ekran, łącznie z formularzem
+	 * ręcznego statusu i przyciskiem połączenia ze Spotify.
 	 */
 	@Throws(Exception::class)
 	suspend fun nowPlaying(): NowPlayingStatus? {
@@ -511,7 +516,10 @@ class SonglyApiClient internal constructor(
 		return when {
 			response.status.value == 204 -> null
 			response.status.isSuccess() -> response.body()
-			else -> throw response.toApiException()
+			else -> {
+				val error = response.toApiException()
+				if (error.error?.code == "PROVIDER_NOT_CONNECTED") null else throw error
+			}
 		}
 	}
 
@@ -586,10 +594,10 @@ class SonglyApiClient internal constructor(
 				http.sse(
 					"$base/api/v1/now-playing/stream",
 					request = {
-						// Domyślny read timeout silników (OkHttp: 10 s) jest krótszy niż
-						// heartbeat backendu (20 s), więc bez tego zdrowy, tylko cichy
-						// strumień zrywałby się w kółko. Zapas 3× heartbeat: dłuższa cisza
-						// naprawdę znaczy, że połączenie umarło.
+						// Okno odczytu liczone od heartbeatu backendu (20 s), nie od
+						// przebudzenia serwera jak dla zwykłych żądań (HttpClientFactory).
+						// Zapas 3× heartbeat: dłuższa cisza naprawdę znaczy, że połączenie
+						// umarło, a strumień i tak wraca sam z backoffem.
 						timeout {
 							socketTimeoutMillis = STREAM_SOCKET_TIMEOUT_MILLIS
 							requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS

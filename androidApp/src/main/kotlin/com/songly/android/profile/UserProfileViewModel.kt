@@ -127,14 +127,19 @@ class UserProfileViewModel(
 		else -> "Brak połączenia z serwerem."
 	}
 
-	/** Wysyła zaproszenie do znajomych; po sukcesie blokuje przycisk, błąd pokazuje po fakcie. */
+	/**
+	 * Wysyła zaproszenie do znajomych; po sukcesie blokuje przycisk, błąd pokazuje po fakcie.
+	 * Gdy ta osoba zaprosiła nas pierwsza, backend od razu łączy znajomość (`ACCEPTED`)
+	 * — to jedyna droga przyjęcia zaproszenia z profilu, więc mówimy, co zaszło.
+	 */
 	fun invite() {
 		if (uiState.isInviting || uiState.inviteSent) return
 		uiState = uiState.copy(isInviting = true, inviteMessage = null)
 		viewModelScope.launch {
 			try {
-				client.sendFriendRequest(userId)
-				uiState = uiState.copy(isInviting = false, inviteSent = true, inviteMessage = "Wysłano zaproszenie")
+				val request = client.sendFriendRequest(userId)
+				val message = if (request.status == "ACCEPTED") "Jesteście znajomymi" else "Zaproszenie wysłane"
+				uiState = uiState.copy(isInviting = false, inviteSent = true, inviteMessage = message)
 			} catch (e: SonglyApiException) {
 				uiState = uiState.copy(
 					isInviting = false,

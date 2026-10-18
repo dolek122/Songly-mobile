@@ -156,7 +156,7 @@ private fun ProfileContent(state: UserProfileUiState, onInvite: () -> Unit) {
 		if (!state.isSelf) {
 			if (state.inviteSent) {
 				Text(
-					text = "Zaproszenie wysłane",
+					text = state.inviteMessage ?: "Zaproszenie wysłane",
 					style = MaterialTheme.typography.labelLarge,
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 				)
