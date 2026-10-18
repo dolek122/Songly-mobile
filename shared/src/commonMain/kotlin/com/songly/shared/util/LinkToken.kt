@@ -4,10 +4,10 @@ package com.songly.shared.util
  * Wyciąga token z tego, co użytkownik wkleił: cały link z maila
  * (`…/verify-email?token=abc`) albo sam token.
  *
- * Wklejanie jest dziś jedyną drogą od maila do aplikacji — link prowadzi pod adres
- * ustawiony na serwerze (`EMAIL_VERIFICATION_URL`), a aplikacja nie przechwytuje
- * go jeszcze jako deep link. Akceptujemy oba kształty, bo kopiując link z maila
- * nikt nie będzie wycinał z niego parametru ręcznie.
+ * Wklejanie to zapasowa droga od maila do aplikacji — dla klientów poczty, które
+ * nie podlinkują schematu `songly://` (pierwszą drogą jest [AuthLink]). Akceptujemy
+ * oba kształty, bo kopiując link z maila nikt nie będzie wycinał z niego parametru
+ * ręcznie.
  *
  * Zwraca `null` dla pustego wejścia albo linku bez parametru `token`.
  */

@@ -32,9 +32,10 @@ import androidx.compose.ui.unit.dp
  * dopiero po potwierdzeniu adresu; wtedy [RegisterUiState.registered] wyzwala
  * [onRegistered] i trafiamy prosto do zalogowanej aplikacji.
  *
- * Link z maila trzeba na razie wkleić — aplikacja nie przechwytuje go jeszcze
- * jako deep link. Lokalnie (backend z `MAIL_PROVIDER=log`) mail ląduje w konsoli
- * backendu.
+ * Link z maila (`songly://verify-email`) otwiera aplikację i od razu potwierdza
+ * adres; wklejenie zostaje dla klientów poczty, które nie podlinkują nieznanego
+ * schematu (backend ADR 0037). Lokalnie (backend z `MAIL_PROVIDER=log`) mail ląduje
+ * w konsoli backendu.
  */
 @Composable
 fun RegisterScreen(
@@ -169,9 +170,16 @@ private fun ColumnScope.VerificationStep(state: RegisterUiState, viewModel: Regi
 		style = MaterialTheme.typography.titleMedium,
 		modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
 	)
+	// Wejście z linku w mailu: adresu nie znamy (rejestrację mogło zacząć inne
+	// urządzenie), więc nie ma czego wpisać w zdanie ani na co wysłać nowego linku.
+	val fromLink = state.email.isBlank()
 	Text(
-		text = "Wysłaliśmy link potwierdzający na ${state.email.trim()}. " +
-			"Konto powstanie po potwierdzeniu adresu — wklej tutaj link z wiadomości.",
+		text = if (fromLink) {
+			"Potwierdzamy adres z linku. Jeśli link wygasł, wpisz adres i wyślij nowy."
+		} else {
+			"Wysłaliśmy link potwierdzający na ${state.email.trim()}. " +
+				"Konto powstanie po potwierdzeniu adresu — wklej tutaj link z wiadomości."
+		},
 		style = MaterialTheme.typography.bodyMedium,
 		textAlign = TextAlign.Center,
 		modifier = Modifier.padding(bottom = 16.dp),
@@ -196,11 +204,13 @@ private fun ColumnScope.VerificationStep(state: RegisterUiState, viewModel: Regi
 		onClick = viewModel::verify,
 	)
 
-	TextButton(onClick = viewModel::resend, enabled = !state.isSubmitting, modifier = Modifier.padding(top = 8.dp)) {
-		Text("Wyślij link ponownie")
+	if (!fromLink) {
+		TextButton(onClick = viewModel::resend, enabled = !state.isSubmitting, modifier = Modifier.padding(top = 8.dp)) {
+			Text("Wyślij link ponownie")
+		}
 	}
 	TextButton(onClick = viewModel::editEmail, enabled = !state.isSubmitting) {
-		Text("Zmień adres e-mail")
+		Text(if (fromLink) "Wpisz adres i wyślij nowy link" else "Zmień adres e-mail")
 	}
 }
 

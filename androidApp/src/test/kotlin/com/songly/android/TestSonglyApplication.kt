@@ -1,6 +1,7 @@
 package com.songly.android
 
 import com.songly.shared.network.SonglyApiClient
+import kotlinx.coroutines.runBlocking
 
 /**
  * Aplikacja z atrapą backendu — do testów całej `MainActivity` (np. obrotu ekranu),
@@ -9,9 +10,13 @@ import com.songly.shared.network.SonglyApiClient
  */
 class TestSonglyApplication : SonglyApplication() {
 
-	override fun createClient(): SonglyApiClient = backend.client()
+	override fun createClient(): SonglyApiClient = backend.client().also { client ->
+		// Atrapa zakłada sesję z góry; test ekranów sprzed logowania ją zdejmuje.
+		if (!startLoggedIn) runBlocking { client.logout() }
+	}
 
 	companion object {
 		var backend = FakeBackend()
+		var startLoggedIn = true
 	}
 }
