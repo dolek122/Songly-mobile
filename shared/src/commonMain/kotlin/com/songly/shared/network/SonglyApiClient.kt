@@ -139,6 +139,7 @@ class SonglyApiClient internal constructor(
 	private var cachedUserId: String? = null
 
 	/** Czy istnieje zapisana sesja (są tokeny). Nie gwarantuje ich ważności. */
+	@Throws(Exception::class)
 	suspend fun isLoggedIn(): Boolean = storage.getTokens() != null
 
 	/**
@@ -146,6 +147,7 @@ class SonglyApiClient internal constructor(
 	 * UI używa go do rozpoznania własnych postów/komentarzy. Rzuca [SonglyApiException]
 	 * jak każde inne żądanie, gdy sesja jest nieważna.
 	 */
+	@Throws(Exception::class)
 	suspend fun currentUserId(): String =
 		cachedUserId ?: myProfile().userId.also { cachedUserId = it }
 
@@ -158,6 +160,7 @@ class SonglyApiClient internal constructor(
 	 * kto ma konto), więc UI zawsze pokazuje „sprawdź skrzynkę", nigdy „adres
 	 * zajęty". Ponowne wywołanie po minucie wysyła nowy link (resend-interval).
 	 */
+	@Throws(Exception::class)
 	suspend fun register(email: String, password: String) =
 		http.post("$base/api/v1/auth/register") {
 			contentType(ContentType.Application.Json)
@@ -170,12 +173,14 @@ class SonglyApiClient internal constructor(
 	 * Token nieznany, wygasły i zużyty dają ten sam błąd 400
 	 * `INVALID_VERIFICATION_TOKEN`.
 	 */
+	@Throws(Exception::class)
 	suspend fun verifyRegistration(token: String): AuthTokens =
 		http.post("$base/api/v1/auth/register/verify") {
 			contentType(ContentType.Application.Json)
 			setBody(VerifyEmailRequest(token))
 		}.decodeOrThrow<AuthTokens>().also { startSession(it) }
 
+	@Throws(Exception::class)
 	suspend fun login(email: String, password: String): AuthTokens =
 		http.post("$base/api/v1/auth/login") {
 			contentType(ContentType.Application.Json)
@@ -186,6 +191,7 @@ class SonglyApiClient internal constructor(
 	 * Kończy sesję: unieważnia refresh token na serwerze (best-effort) i czyści
 	 * lokalny stan. Nawet gdy żądanie do serwera padnie, lokalnie wylogowujemy.
 	 */
+	@Throws(Exception::class)
 	suspend fun logout() {
 		val refreshToken = storage.getTokens()?.refreshToken
 		if (refreshToken != null) {
@@ -204,6 +210,7 @@ class SonglyApiClient internal constructor(
 	 * Wymaga ponownego podania hasła. Po sukcesie czyści lokalną sesję, więc UI wraca
 	 * do ekranu logowania. Błędne hasło zwraca [SonglyApiException] (serwer: 4xx).
 	 */
+	@Throws(Exception::class)
 	suspend fun deleteAccount(password: String) {
 		http.delete("$base/api/v1/auth/me") {
 			contentType(ContentType.Application.Json)
@@ -218,6 +225,7 @@ class SonglyApiClient internal constructor(
 	 * a UI wraca do logowania nowym hasłem. Złe obecne hasło to 401
 	 * `INVALID_CREDENTIALS`, nowe równe staremu — 400 `NEW_PASSWORD_SAME_AS_CURRENT`.
 	 */
+	@Throws(Exception::class)
 	suspend fun changePassword(currentPassword: String, newPassword: String) {
 		http.put("$base/api/v1/auth/password") {
 			contentType(ContentType.Application.Json)
@@ -230,6 +238,7 @@ class SonglyApiClient internal constructor(
 	 * Zamawia link resetujący hasło (ADR 0008). Zawsze 202 — backend nie zdradza,
 	 * czy konto istnieje, więc UI nie może tego twierdzić w żadną stronę.
 	 */
+	@Throws(Exception::class)
 	suspend fun requestPasswordReset(email: String) =
 		http.post("$base/api/v1/auth/password/reset-request") {
 			contentType(ContentType.Application.Json)
@@ -241,6 +250,7 @@ class SonglyApiClient internal constructor(
 	 * sam 400 `INVALID_PASSWORD_RESET_TOKEN`. Reset odwołuje wszystkie sesje, więc
 	 * potem trzeba się zalogować — dlatego nie zakłada też sesji tutaj.
 	 */
+	@Throws(Exception::class)
 	suspend fun resetPassword(token: String, newPassword: String) =
 		http.post("$base/api/v1/auth/password/reset") {
 			contentType(ContentType.Application.Json)
@@ -252,11 +262,13 @@ class SonglyApiClient internal constructor(
 	 * `UNSUPPORTED_IMAGE`) i przyjmuje najwyżej 5 MB (413), więc nazwa pliku i typ
 	 * są tu tylko formalnością multiparta.
 	 */
+	@Throws(Exception::class)
 	suspend fun uploadAvatar(image: ByteArray, contentType: String): Profile =
 		http.post("$base/api/v1/profiles/me/avatar") {
 			setBody(imageForm(image, contentType))
 		}.decodeOrThrow()
 
+	@Throws(Exception::class)
 	suspend fun deleteAvatar() =
 		http.delete("$base/api/v1/profiles/me/avatar").ensureSuccessOrThrow()
 
@@ -264,6 +276,7 @@ class SonglyApiClient internal constructor(
 	 * Wgrywa zdjęcie do posta. Samo w sobie niczego nie publikuje — zwrócony
 	 * [PostImage.key] podaje się potem w [createPost] / [createCommunityPost].
 	 */
+	@Throws(Exception::class)
 	suspend fun uploadPostImage(image: ByteArray, contentType: String): PostImage =
 		http.post("$base/api/v1/posts/image") {
 			setBody(imageForm(image, contentType))
@@ -282,6 +295,7 @@ class SonglyApiClient internal constructor(
 		},
 	)
 
+	@Throws(Exception::class)
 	suspend fun feed(page: Int = 0, size: Int = 20): Page<Post> =
 		http.get("$base/api/v1/feed") {
 			parameter("page", page)
@@ -293,6 +307,7 @@ class SonglyApiClient internal constructor(
 	 * [uploadPostImage]; backend przyjmuje tylko klucz z własnego wgrania (400
 	 * `UNKNOWN_POST_IMAGE`).
 	 */
+	@Throws(Exception::class)
 	suspend fun createPost(content: String, imageKey: String? = null): Post =
 		http.post("$base/api/v1/posts") {
 			contentType(ContentType.Application.Json)
@@ -304,6 +319,7 @@ class SonglyApiClient internal constructor(
 	 * autor zablokowany albo zawieszony) to 404 `POST_NOT_FOUND`: backend celowo nie
 	 * odróżnia „nie ma" od „nie wolno Ci widzieć".
 	 */
+	@Throws(Exception::class)
 	suspend fun post(postId: String): Post =
 		http.get("$base/api/v1/posts/$postId").decodeOrThrow()
 
@@ -311,6 +327,7 @@ class SonglyApiClient internal constructor(
 	 * Posty jednego autora, najnowsze pierwsze. Bez postów publikowanych w
 	 * społecznościach — te nie trafiają na profil autora (backend §8).
 	 */
+	@Throws(Exception::class)
 	suspend fun postsByAuthor(authorId: String, page: Int = 0, size: Int = 20): Page<Post> =
 		http.get("$base/api/v1/posts") {
 			parameter("authorId", authorId)
@@ -319,26 +336,32 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Usuwa własny post (backend: tylko autor; obcym zwraca błąd). */
+	@Throws(Exception::class)
 	suspend fun deletePost(postId: String) =
 		http.delete("$base/api/v1/posts/$postId").ensureSuccessOrThrow()
 
 	/** Polubienie posta (idempotentne po stronie serwera). */
+	@Throws(Exception::class)
 	suspend fun likePost(postId: String) =
 		http.put("$base/api/v1/posts/$postId/likes").ensureSuccessOrThrow()
 
 	/** Cofnięcie polubienia. */
+	@Throws(Exception::class)
 	suspend fun unlikePost(postId: String) =
 		http.delete("$base/api/v1/posts/$postId/likes").ensureSuccessOrThrow()
 
 	/** Udostępnienie posta (idempotentne po stronie serwera). */
+	@Throws(Exception::class)
 	suspend fun sharePost(postId: String) =
 		http.put("$base/api/v1/posts/$postId/shares").ensureSuccessOrThrow()
 
 	/** Cofnięcie udostępnienia. */
+	@Throws(Exception::class)
 	suspend fun unsharePost(postId: String) =
 		http.delete("$base/api/v1/posts/$postId/shares").ensureSuccessOrThrow()
 
 	/** Komentarze posta, stronicowane. */
+	@Throws(Exception::class)
 	suspend fun comments(postId: String, page: Int = 0, size: Int = 50): Page<Comment> =
 		http.get("$base/api/v1/posts/$postId/comments") {
 			parameter("page", page)
@@ -346,6 +369,7 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Dodaje komentarz do posta i zwraca go. */
+	@Throws(Exception::class)
 	suspend fun addComment(postId: String, content: String): Comment =
 		http.post("$base/api/v1/posts/$postId/comments") {
 			contentType(ContentType.Application.Json)
@@ -353,20 +377,24 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Usuwa własny komentarz (backend: tylko autor; obcym zwraca błąd). */
+	@Throws(Exception::class)
 	suspend fun deleteComment(postId: String, commentId: String) =
 		http.delete("$base/api/v1/posts/$postId/comments/$commentId").ensureSuccessOrThrow()
 
 	// --- Profil i ulubione gatunki (moduł profile) ---
 
 	/** Profil zalogowanego użytkownika. */
+	@Throws(Exception::class)
 	suspend fun myProfile(): Profile =
 		http.get("$base/api/v1/profiles/me").decodeOrThrow()
 
 	/** Publiczny profil innego użytkownika (dane profilowe + ulubione gatunki). */
+	@Throws(Exception::class)
 	suspend fun profile(userId: String): PublicProfile =
 		http.get("$base/api/v1/profiles/$userId").decodeOrThrow()
 
 	/** Aktualizuje profil i zwraca zaktualizowaną wersję. */
+	@Throws(Exception::class)
 	suspend fun updateProfile(displayName: String, bio: String?): Profile =
 		http.put("$base/api/v1/profiles/me") {
 			contentType(ContentType.Application.Json)
@@ -374,10 +402,12 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Ulubione gatunki zalogowanego użytkownika. */
+	@Throws(Exception::class)
 	suspend fun myFavoriteGenres(): List<Genre> =
 		http.get("$base/api/v1/profiles/me/genres").decodeOrThrow()
 
 	/** Ustawia ulubione gatunki (backend wymaga zbioru niepustego). */
+	@Throws(Exception::class)
 	suspend fun setFavoriteGenres(genreIds: Set<String>) =
 		http.put("$base/api/v1/profiles/me/genres") {
 			contentType(ContentType.Application.Json)
@@ -385,6 +415,7 @@ class SonglyApiClient internal constructor(
 		}.ensureSuccessOrThrow()
 
 	/** Wszystkie dostępne gatunki, stronicowane. */
+	@Throws(Exception::class)
 	suspend fun genres(page: Int = 0, size: Int = 100): Page<Genre> =
 		http.get("$base/api/v1/genres") {
 			parameter("page", page)
@@ -394,6 +425,7 @@ class SonglyApiClient internal constructor(
 	// --- Znajomi i zaproszenia (moduł social-graph) ---
 
 	/** Wysyła zaproszenie do znajomych do użytkownika o danym id. */
+	@Throws(Exception::class)
 	suspend fun sendFriendRequest(addresseeId: String): FriendRequest =
 		http.post("$base/api/v1/friends/requests") {
 			contentType(ContentType.Application.Json)
@@ -401,6 +433,7 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Zaproszenia otrzymane (INCOMING) lub wysłane (OUTGOING). */
+	@Throws(Exception::class)
 	suspend fun friendRequests(direction: String, page: Int = 0, size: Int = 20): Page<FriendRequest> =
 		http.get("$base/api/v1/friends/requests") {
 			parameter("direction", direction)
@@ -409,18 +442,22 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Akceptuje otrzymane zaproszenie. */
+	@Throws(Exception::class)
 	suspend fun acceptFriendRequest(requestId: String): FriendRequest =
 		http.post("$base/api/v1/friends/requests/$requestId/accept").decodeOrThrow()
 
 	/** Odrzuca otrzymane zaproszenie. */
+	@Throws(Exception::class)
 	suspend fun declineFriendRequest(requestId: String): FriendRequest =
 		http.post("$base/api/v1/friends/requests/$requestId/decline").decodeOrThrow()
 
 	/** Anuluje wysłane przez siebie zaproszenie. */
+	@Throws(Exception::class)
 	suspend fun cancelFriendRequest(requestId: String) =
 		http.delete("$base/api/v1/friends/requests/$requestId").ensureSuccessOrThrow()
 
 	/** Lista znajomych, stronicowana. */
+	@Throws(Exception::class)
 	suspend fun friends(page: Int = 0, size: Int = 20): Page<Friend> =
 		http.get("$base/api/v1/friends") {
 			parameter("page", page)
@@ -428,10 +465,12 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Usuwa znajomego. */
+	@Throws(Exception::class)
 	suspend fun removeFriend(userId: String) =
 		http.delete("$base/api/v1/friends/$userId").ensureSuccessOrThrow()
 
 	/** Wyszukuje użytkowników po fragmencie nazwy (do dodawania znajomych). */
+	@Throws(Exception::class)
 	suspend fun searchUsers(query: String, page: Int = 0, size: Int = 20): Page<UserSearchResult> =
 		http.get("$base/api/v1/profiles/search") {
 			parameter("query", query)
@@ -443,14 +482,17 @@ class SonglyApiClient internal constructor(
 	 * Blokuje użytkownika (idempotentne). Po stronie serwera usuwa też znajomość
 	 * i anuluje zaproszenia w obie strony — dlatego UI po blokadzie przeładowuje listy.
 	 */
+	@Throws(Exception::class)
 	suspend fun blockUser(userId: String) =
 		http.put("$base/api/v1/blocks/$userId").ensureSuccessOrThrow()
 
 	/** Odblokowuje użytkownika. */
+	@Throws(Exception::class)
 	suspend fun unblockUser(userId: String) =
 		http.delete("$base/api/v1/blocks/$userId").ensureSuccessOrThrow()
 
 	/** Lista zablokowanych użytkowników, stronicowana. */
+	@Throws(Exception::class)
 	suspend fun blockedUsers(page: Int = 0, size: Int = 20): Page<BlockedUser> =
 		http.get("$base/api/v1/blocks") {
 			parameter("page", page)
@@ -463,6 +505,7 @@ class SonglyApiClient internal constructor(
 	 * Aktualny status „teraz słucham" zalogowanego użytkownika, albo `null` gdy nic
 	 * nie gra (backend zwraca wtedy 204 bez ciała).
 	 */
+	@Throws(Exception::class)
 	suspend fun nowPlaying(): NowPlayingStatus? {
 		val response = http.get("$base/api/v1/now-playing/me")
 		return when {
@@ -477,14 +520,17 @@ class SonglyApiClient internal constructor(
 	 * przeglądarce. Po zgodzie Spotify przekierowuje na publiczny callback backendu,
 	 * który dokańcza połączenie; aplikacja po powrocie odświeża [nowPlaying].
 	 */
+	@Throws(Exception::class)
 	suspend fun connectSpotify(): String =
 		http.post("$base/api/v1/now-playing/spotify/connect").decodeOrThrow<ConnectResponse>().authorizeUrl
 
 	/** Odłącza konto Spotify. */
+	@Throws(Exception::class)
 	suspend fun disconnectSpotify() =
 		http.delete("$base/api/v1/now-playing/spotify").ensureSuccessOrThrow()
 
 	/** Ustawia ręczny status „teraz słucham" (uniwersalny fallback dla dowolnego serwisu). */
+	@Throws(Exception::class)
 	suspend fun setManualNowPlaying(title: String, artist: String?, album: String?, source: String?) =
 		http.put("$base/api/v1/now-playing/manual") {
 			contentType(ContentType.Application.Json)
@@ -492,6 +538,7 @@ class SonglyApiClient internal constructor(
 		}.ensureSuccessOrThrow()
 
 	/** Czyści ręczny status. */
+	@Throws(Exception::class)
 	suspend fun clearManualNowPlaying() =
 		http.delete("$base/api/v1/now-playing/manual").ensureSuccessOrThrow()
 
@@ -499,14 +546,17 @@ class SonglyApiClient internal constructor(
 	 * Statusy znajomych „teraz". Backend zwraca tylko tych, którzy coś grają i nie
 	 * wyłączyli widoczności — lista bywa krótsza niż lista znajomych.
 	 */
+	@Throws(Exception::class)
 	suspend fun friendsNowPlaying(): List<FriendNowPlaying> =
 		http.get("$base/api/v1/now-playing/friends").decodeOrThrow()
 
 	/** Czy własny status jest pokazywany znajomym. */
+	@Throws(Exception::class)
 	suspend fun nowPlayingSettings(): NowPlayingSettings =
 		http.get("$base/api/v1/now-playing/settings").decodeOrThrow()
 
 	/** Włącza/wyłącza pokazywanie własnego statusu znajomym. */
+	@Throws(Exception::class)
 	suspend fun updateNowPlayingSettings(shareWithFriends: Boolean) =
 		http.put("$base/api/v1/now-playing/settings") {
 			contentType(ContentType.Application.Json)
@@ -572,6 +622,7 @@ class SonglyApiClient internal constructor(
 	// --- Powiadomienia (moduł notification) ---
 
 	/** Powiadomienia zalogowanego użytkownika, najnowsze pierwsze, stronicowane. */
+	@Throws(Exception::class)
 	suspend fun notifications(page: Int = 0, size: Int = 20): Page<Notification> =
 		http.get("$base/api/v1/notifications") {
 			parameter("page", page)
@@ -579,22 +630,27 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Liczba nieprzeczytanych powiadomień (do badge'a). */
+	@Throws(Exception::class)
 	suspend fun unreadNotificationCount(): Long =
 		http.get("$base/api/v1/notifications/unread-count").decodeOrThrow<UnreadCount>().count
 
 	/** Oznacza pojedyncze powiadomienie jako przeczytane (idempotentne po stronie serwera). */
+	@Throws(Exception::class)
 	suspend fun markNotificationRead(notificationId: String) =
 		http.post("$base/api/v1/notifications/$notificationId/read").ensureSuccessOrThrow()
 
 	/** Oznacza wszystkie powiadomienia jako przeczytane. */
+	@Throws(Exception::class)
 	suspend fun markAllNotificationsRead() =
 		http.post("$base/api/v1/notifications/read-all").ensureSuccessOrThrow()
 
 	/** Które powiadomienia wychodzą też e-mailem (ADR 0020). */
+	@Throws(Exception::class)
 	suspend fun mailPreferences(): MailPreferences =
 		http.get("$base/api/v1/notifications/mail-preferences").decodeOrThrow()
 
 	/** Zastępuje preferencje poczty w całości — stąd oba pola naraz. */
+	@Throws(Exception::class)
 	suspend fun updateMailPreferences(preferences: MailPreferences) =
 		http.put("$base/api/v1/notifications/mail-preferences") {
 			contentType(ContentType.Application.Json)
@@ -604,6 +660,7 @@ class SonglyApiClient internal constructor(
 	// --- Społeczności (moduł community) ---
 
 	/** Wszystkie społeczności, stronicowane. [Community.myRole] mówi, czy jesteś członkiem. */
+	@Throws(Exception::class)
 	suspend fun communities(page: Int = 0, size: Int = 20): Page<Community> =
 		http.get("$base/api/v1/communities") {
 			parameter("page", page)
@@ -611,6 +668,7 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Społeczności, do których należy zalogowany użytkownik. */
+	@Throws(Exception::class)
 	suspend fun myCommunities(page: Int = 0, size: Int = 20): Page<Community> =
 		http.get("$base/api/v1/communities/mine") {
 			parameter("page", page)
@@ -618,10 +676,12 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Szczegóły jednej społeczności. */
+	@Throws(Exception::class)
 	suspend fun community(communityId: String): Community =
 		http.get("$base/api/v1/communities/$communityId").decodeOrThrow()
 
 	/** Tworzy nową społeczność (zakładający zostaje jej właścicielem). */
+	@Throws(Exception::class)
 	suspend fun createCommunity(name: String, description: String?): Community =
 		http.post("$base/api/v1/communities") {
 			contentType(ContentType.Application.Json)
@@ -629,6 +689,7 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Edytuje społeczność (tylko właściciel — serwer waliduje). Zwraca zaktualizowaną wersję. */
+	@Throws(Exception::class)
 	suspend fun updateCommunity(communityId: String, name: String, description: String?): Community =
 		http.put("$base/api/v1/communities/$communityId") {
 			contentType(ContentType.Application.Json)
@@ -636,18 +697,22 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Usuwa społeczność (tylko właściciel — serwer waliduje). */
+	@Throws(Exception::class)
 	suspend fun deleteCommunity(communityId: String) =
 		http.delete("$base/api/v1/communities/$communityId").ensureSuccessOrThrow()
 
 	/** Dołącza do społeczności (idempotentne po stronie serwera). */
+	@Throws(Exception::class)
 	suspend fun joinCommunity(communityId: String) =
 		http.put("$base/api/v1/communities/$communityId/membership").ensureSuccessOrThrow()
 
 	/** Opuszcza społeczność (właściciel nie może — serwer zwróci błąd). */
+	@Throws(Exception::class)
 	suspend fun leaveCommunity(communityId: String) =
 		http.delete("$base/api/v1/communities/$communityId/membership").ensureSuccessOrThrow()
 
 	/** Członkowie społeczności, stronicowane. */
+	@Throws(Exception::class)
 	suspend fun communityMembers(communityId: String, page: Int = 0, size: Int = 20): Page<CommunityMember> =
 		http.get("$base/api/v1/communities/$communityId/members") {
 			parameter("page", page)
@@ -659,10 +724,12 @@ class SonglyApiClient internal constructor(
 	 * terminem) albo nic. Powód bana dociera wyłącznie tym kanałem — nie ma go w
 	 * mailu ani w błędzie `BANNED_FROM_COMMUNITY` (backend ADR 0015).
 	 */
+	@Throws(Exception::class)
 	suspend fun membershipStatus(communityId: String): MembershipStatus =
 		http.get("$base/api/v1/communities/$communityId/membership").decodeOrThrow()
 
 	/** Posty opublikowane w społeczności. Czytać może każdy zalogowany. */
+	@Throws(Exception::class)
 	suspend fun communityPosts(communityId: String, page: Int = 0, size: Int = 20): Page<Post> =
 		http.get("$base/api/v1/communities/$communityId/posts") {
 			parameter("page", page)
@@ -674,6 +741,7 @@ class SonglyApiClient internal constructor(
 	 * (403 `NOT_COMMUNITY_MEMBER` / `BANNED_FROM_COMMUNITY`). Lajki, komentarze i
 	 * usuwanie takiego posta idą zwykłymi endpointami postów.
 	 */
+	@Throws(Exception::class)
 	suspend fun createCommunityPost(communityId: String, content: String, imageKey: String? = null): Post =
 		http.post("$base/api/v1/communities/$communityId/posts") {
 			contentType(ContentType.Application.Json)
@@ -687,6 +755,7 @@ class SonglyApiClient internal constructor(
 	 * ma kto ich rozpatrzyć. Odmowy: własny post, już zgłoszony (409), ban w tej
 	 * społeczności, limit zgłoszeń (429 `REPORT_RATE_LIMIT_EXCEEDED`).
 	 */
+	@Throws(Exception::class)
 	suspend fun reportPost(postId: String, reason: String, details: String?) =
 		http.post("$base/api/v1/posts/$postId/reports") {
 			contentType(ContentType.Application.Json)
@@ -694,6 +763,7 @@ class SonglyApiClient internal constructor(
 		}.ensureSuccessOrThrow()
 
 	/** Kolejka zgłoszeń — tylko właściciel i moderatorzy. */
+	@Throws(Exception::class)
 	suspend fun postReports(communityId: String, page: Int = 0, size: Int = 20): Page<PostReport> =
 		http.get("$base/api/v1/communities/$communityId/post-reports") {
 			parameter("page", page)
@@ -704,9 +774,11 @@ class SonglyApiClient internal constructor(
 	 * Odrzuca zgłoszenie (post zostaje). Uwzględnienie zgłoszenia to po prostu
 	 * usunięcie posta zwykłym [deletePost] — osobnego endpointu nie ma.
 	 */
+	@Throws(Exception::class)
 	suspend fun dismissReport(communityId: String, reportId: String) =
 		http.post("$base/api/v1/communities/$communityId/post-reports/$reportId/dismissal").ensureSuccessOrThrow()
 
+	@Throws(Exception::class)
 	suspend fun communityBans(communityId: String, page: Int = 0, size: Int = 20): Page<CommunityBan> =
 		http.get("$base/api/v1/communities/$communityId/bans") {
 			parameter("page", page)
@@ -718,6 +790,7 @@ class SonglyApiClient internal constructor(
 	 * moderatora (403). Aktywny ban jest nietykalny — zmiana terminu to zdjęcie i
 	 * ponowne nałożenie (ADR 0014).
 	 */
+	@Throws(Exception::class)
 	suspend fun banMember(communityId: String, userId: String, reason: String?, durationDays: Int?) =
 		http.put("$base/api/v1/communities/$communityId/bans/$userId") {
 			contentType(ContentType.Application.Json)
@@ -725,20 +798,24 @@ class SonglyApiClient internal constructor(
 		}.ensureSuccessOrThrow()
 
 	/** Zdejmuje ban. Przy oczekującym odwołaniu to jest **uznanie odwołania** (ADR 0017). */
+	@Throws(Exception::class)
 	suspend fun unbanMember(communityId: String, userId: String) =
 		http.delete("$base/api/v1/communities/$communityId/bans/$userId").ensureSuccessOrThrow()
 
 	/** Odrzuca oczekujące odwołanie — ban zostaje, a ukarany może eskalować do administracji. */
+	@Throws(Exception::class)
 	suspend fun rejectBanAppeal(communityId: String, userId: String) =
 		http.post("$base/api/v1/communities/$communityId/bans/$userId/appeal/rejection").ensureSuccessOrThrow()
 
 	/** Nadaje (`MODERATOR`) albo odbiera (`MEMBER`) rolę — wyłącznie właściciel. */
+	@Throws(Exception::class)
 	suspend fun setMemberRole(communityId: String, userId: String, role: String) =
 		http.put("$base/api/v1/communities/$communityId/members/$userId/role") {
 			contentType(ContentType.Application.Json)
 			setBody(SetMemberRoleRequest(role))
 		}.ensureSuccessOrThrow()
 
+	@Throws(Exception::class)
 	suspend fun communityModerationLog(communityId: String, page: Int = 0, size: Int = 20): Page<ModerationLogEntry> =
 		http.get("$base/api/v1/communities/$communityId/moderation-log") {
 			parameter("page", page)
@@ -746,6 +823,7 @@ class SonglyApiClient internal constructor(
 		}.decodeOrThrow()
 
 	/** Moje odwołanie od bana — jedno na ban (409 `BAN_APPEAL_ALREADY_SUBMITTED`). */
+	@Throws(Exception::class)
 	suspend fun appealBan(communityId: String, text: String) =
 		http.post("$base/api/v1/communities/$communityId/ban-appeal") {
 			contentType(ContentType.Application.Json)
@@ -756,6 +834,7 @@ class SonglyApiClient internal constructor(
 	 * Przekazuje odrzucone odwołanie administracji platformy (ADR 0028) — tylko ze
 	 * stanu `REJECTED` i tylko raz (409 `BAN_APPEAL_NOT_ESCALATABLE`).
 	 */
+	@Throws(Exception::class)
 	suspend fun escalateBanAppeal(communityId: String) =
 		http.post("$base/api/v1/communities/$communityId/ban-appeal/escalation").ensureSuccessOrThrow()
 
@@ -766,10 +845,12 @@ class SonglyApiClient internal constructor(
 	 * zawieszone konto może zrobić (obok odwołania i usunięcia konta) — reszta API
 	 * odpowiada mu 403 `ACCOUNT_SUSPENDED`.
 	 */
+	@Throws(Exception::class)
 	suspend fun mySuspension(): Suspension =
 		http.get("$base/api/v1/auth/me/suspension").decodeOrThrow()
 
 	/** Odwołanie od zawieszenia — jedno na zawieszenie (409 `SUSPENSION_APPEAL_ALREADY_SUBMITTED`). */
+	@Throws(Exception::class)
 	suspend fun appealSuspension(text: String) =
 		http.post("$base/api/v1/auth/me/suspension/appeal") {
 			contentType(ContentType.Application.Json)
@@ -778,6 +859,7 @@ class SonglyApiClient internal constructor(
 
 	// --- Administracja platformy (ADR 0021–0031; wszystko poniżej: 403 dla nie-admina) ---
 
+	@Throws(Exception::class)
 	suspend fun admins(): AdminList =
 		http.get("$base/api/v1/admin/admins").decodeOrThrow()
 
@@ -787,20 +869,24 @@ class SonglyApiClient internal constructor(
 	 * z własnym id. Rola jest czytana na żywo (ADR 0006), więc wynik bywa nieaktualny
 	 * po degradacji — wtedy kolejne żądania panelu po prostu dostaną 403.
 	 */
+	@Throws(Exception::class)
 	suspend fun isCurrentUserAdmin(): Boolean = try {
 		currentUserId() in admins().userIds
 	} catch (e: SonglyApiException) {
 		if (e.status == 403) false else throw e
 	}
 
+	@Throws(Exception::class)
 	suspend fun grantAdmin(userId: String) =
 		http.put("$base/api/v1/admin/users/$userId/admin").ensureSuccessOrThrow()
 
 	/** Odebranie roli — nie sobie samemu (403 `CANNOT_REVOKE_OWN_ADMIN`). */
+	@Throws(Exception::class)
 	suspend fun revokeAdmin(userId: String) =
 		http.delete("$base/api/v1/admin/users/$userId/admin").ensureSuccessOrThrow()
 
 	/** Wykaz zawieszeń — zarazem kolejka odwołań od nich. Bez paginacji: to lista do audytu. */
+	@Throws(Exception::class)
 	suspend fun suspensions(): List<SuspendedAccount> =
 		http.get("$base/api/v1/admin/suspensions").decodeOrThrow()
 
@@ -808,6 +894,7 @@ class SonglyApiClient internal constructor(
 	 * Zawiesza konto (nie siebie i nie innego admina). Działa od razu, bez
 	 * wylogowania zawieszonego — stan jest czytany na żywo przy każdym żądaniu.
 	 */
+	@Throws(Exception::class)
 	suspend fun suspendUser(userId: String, reason: String, durationDays: Int?) =
 		http.put("$base/api/v1/admin/users/$userId/suspension") {
 			contentType(ContentType.Application.Json)
@@ -815,25 +902,31 @@ class SonglyApiClient internal constructor(
 		}.ensureSuccessOrThrow()
 
 	/** Zdejmuje zawieszenie. Przy oczekującym odwołaniu to jest jego uznanie (ADR 0023). */
+	@Throws(Exception::class)
 	suspend fun liftSuspension(userId: String) =
 		http.delete("$base/api/v1/admin/users/$userId/suspension").ensureSuccessOrThrow()
 
+	@Throws(Exception::class)
 	suspend fun rejectSuspensionAppeal(userId: String) =
 		http.post("$base/api/v1/admin/users/$userId/suspension/appeal/rejection").ensureSuccessOrThrow()
 
 	/** Odwołania od banów przekazane administracji (ADR 0028). */
+	@Throws(Exception::class)
 	suspend fun escalatedBanAppeals(): List<EscalatedAppeal> =
 		http.get("$base/api/v1/admin/ban-appeals").decodeOrThrow()
 
 	/** Uchyla ban na wniosek ukaranego — moderatorzy dostają powiadomienie. */
+	@Throws(Exception::class)
 	suspend fun overturnBan(communityId: String, userId: String) =
 		http.delete("$base/api/v1/admin/communities/$communityId/bans/$userId").ensureSuccessOrThrow()
 
 	/** Utrzymuje ban — stan końcowy, nad administracją nie ma nikogo. */
+	@Throws(Exception::class)
 	suspend fun upholdBan(communityId: String, userId: String) =
 		http.post("$base/api/v1/admin/communities/$communityId/bans/$userId/escalation-rejection").ensureSuccessOrThrow()
 
 	/** Dziennik moderacji całej platformy; [userId] zawęża do wpisów o tej osobie. */
+	@Throws(Exception::class)
 	suspend fun platformModerationLog(userId: String? = null, page: Int = 0, size: Int = 20): Page<ModerationLogEntry> =
 		http.get("$base/api/v1/admin/moderation-log") {
 			userId?.let { parameter("userId", it) }
@@ -846,11 +939,13 @@ class SonglyApiClient internal constructor(
 	 * których `GET /profiles/{id}` nie pokaże (404, ADR 0026). Backend przyjmuje
 	 * najwyżej 100 id naraz; nieznane id po prostu nie wracają.
 	 */
+	@Throws(Exception::class)
 	suspend fun adminProfileSummaries(userIds: Collection<String>): List<ProfileSummary> =
 		http.get("$base/api/v1/admin/profiles") {
 			parameter("userIds", userIds.joinToString(","))
 		}.decodeOrThrow()
 
+	@Throws(Exception::class)
 	suspend fun analyticsSummary(days: Int): AnalyticsSummary =
 		http.get("$base/api/v1/analytics/summary") {
 			parameter("days", days)
@@ -859,6 +954,7 @@ class SonglyApiClient internal constructor(
 	// --- Dopasowywanie po gatunkach (moduł matching) ---
 
 	/** Ranking użytkowników o podobnym guście (Jaccard na gatunkach), malejąco po score. */
+	@Throws(Exception::class)
 	suspend fun matches(page: Int = 0, size: Int = 20): Page<Match> =
 		http.get("$base/api/v1/matches") {
 			parameter("page", page)
