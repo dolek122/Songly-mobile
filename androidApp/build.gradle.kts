@@ -34,6 +34,8 @@ android {
 
 	buildFeatures {
 		compose = true
+		// BuildConfig.DEBUG wybiera backend (SonglyApplication.apiConfigFor).
+		buildConfig = true
 	}
 
 	compileOptions {
