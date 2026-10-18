@@ -29,3 +29,19 @@ data class Notification(
 /** Liczba nieprzeczytanych powiadomień (backend: notification.dto.UnreadCountResponse). */
 @Serializable
 data class UnreadCount(val count: Long)
+
+/**
+ * Które powiadomienia wychodzą też e-mailem (backend: notification.dto.MailPreferencesResponse,
+ * ADR 0020). Dotyczy wyłącznie poczty — skrzynki w aplikacji nie da się wyłączyć.
+ * Dwie kategorie odpowiadają rolom: [decisionsAboutMe] to decyzje moderacji wobec
+ * mnie, [moderationQueue] to wezwania do kolejki (zgłoszenia, odwołania).
+ */
+@Serializable
+data class MailPreferences(val decisionsAboutMe: Boolean, val moderationQueue: Boolean)
+
+/**
+ * Zmiana preferencji poczty (backend: notification.dto.UpdateMailPreferencesRequest).
+ * Oba pola obowiązkowe — `PUT` zastępuje ustawienia w całości.
+ */
+@Serializable
+data class UpdateMailPreferencesRequest(val decisionsAboutMe: Boolean, val moderationQueue: Boolean)

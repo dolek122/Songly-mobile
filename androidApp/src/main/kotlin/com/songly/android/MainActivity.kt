@@ -44,6 +44,8 @@ import com.songly.android.moderation.CommunityModerationViewModel
 import com.songly.android.moderation.ReportPostViewModel
 import com.songly.android.matches.MatchesScreen
 import com.songly.android.matches.MatchesViewModel
+import com.songly.android.notifications.MailPreferencesScreen
+import com.songly.android.notifications.MailPreferencesViewModel
 import com.songly.android.notifications.NotificationsScreen
 import com.songly.android.notifications.NotificationsViewModel
 import com.songly.android.nowplaying.NowPlayingScreen
@@ -219,6 +221,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 	var showNowPlaying by remember { mutableStateOf(false) }
 	var showFriendsPresence by remember { mutableStateOf(false) }
 	var showNotifications by remember { mutableStateOf(false) }
+	var showMailPreferences by remember { mutableStateOf(false) }
 	var showCommunities by remember { mutableStateOf(false) }
 	var communityDetailId by remember { mutableStateOf<String?>(null) }
 	var showMatches by remember { mutableStateOf(false) }
@@ -289,6 +292,8 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 		showMatches -> ({ showMatches = false })
 		communityDetailId != null -> ({ communityDetailId = null })
 		showCommunities -> ({ showCommunities = false })
+		// Otwierane z powiadomień, więc zamyka się przed nimi.
+		showMailPreferences -> ({ showMailPreferences = false })
 		// Powrót z powiadomień odświeża feed tak samo jak „Wróć" — inaczej badge
 		// nieprzeczytanych zostawałby po lekturze.
 		showNotifications -> ({ showNotifications = false; feedViewModel.refresh() })
@@ -440,6 +445,18 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 			)
 		}
 
+		showMailPreferences -> {
+			val mailPreferencesViewModel: MailPreferencesViewModel = viewModel(
+				factory = viewModelFactory {
+					initializer { MailPreferencesViewModel(client) }
+				},
+			)
+			MailPreferencesScreen(
+				viewModel = mailPreferencesViewModel,
+				onBack = { showMailPreferences = false },
+			)
+		}
+
 		showNotifications -> {
 			val notificationsViewModel: NotificationsViewModel = viewModel(
 				factory = viewModelFactory {
@@ -453,6 +470,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 				onOpenUserProfile = openUserProfile,
 				onOpenPost = openPost,
 				onOpenCommunity = { communityDetailId = it },
+				onOpenMailPreferences = { showMailPreferences = true },
 			)
 		}
 
