@@ -25,6 +25,14 @@ data class UserProfileUiState(
 	val isInviting: Boolean = false,
 	val inviteSent: Boolean = false,
 	val inviteMessage: String? = null,
+	// Blokada (Claude.md backendu §9). Stan blokady nie jest znany z góry — backend
+	// nie ma zapytania „czy blokuję tę osobę" poza stronicowaną listą — więc
+	// [blocked] mówi tylko o blokadzie założonej na tym ekranie. Ponowna blokada
+	// jest idempotentna, więc przycisk przy nieznanym stanie niczego nie psuje.
+	val showBlockDialog: Boolean = false,
+	val isBlocking: Boolean = false,
+	val blocked: Boolean = false,
+	val blockMessage: String? = null,
 	// Akcje administratora platformy (widoczne tylko dla admina, nie na własnym profilu).
 	val showSuspendDialog: Boolean = false,
 	val suspendReason: String = "",
@@ -72,6 +80,62 @@ class UserProfileViewModel(
 		}
 	}
 
+	// --- Blokada ---
+
+	fun openBlockDialog() {
+		uiState = uiState.copy(showBlockDialog = true, blockMessage = null)
+	}
+
+	fun dismissBlockDialog() {
+		if (uiState.isBlocking) return
+		uiState = uiState.copy(showBlockDialog = false)
+	}
+
+	/**
+	 * Blokada zrywa znajomość i oczekujące zaproszenia w obu kierunkach i działa w
+	 * obie strony — stąd potwierdzenie, którego ekran znajomych nie ma (tam skutek
+	 * widać od razu na liście). [onChanged] odświeża posty: po blokadzie znikają.
+	 */
+	fun block(onChanged: () -> Unit = {}) {
+		if (uiState.isBlocking) return
+		uiState = uiState.copy(isBlocking = true, blockMessage = null)
+		viewModelScope.launch {
+			uiState = try {
+				client.blockUser(userId)
+				onChanged()
+				uiState.copy(
+					isBlocking = false,
+					showBlockDialog = false,
+					blocked = true,
+					inviteSent = false,
+					inviteMessage = null,
+					blockMessage = "Zablokowano. Nie zobaczycie nawzajem swoich postów i nie możecie się zaczepiać.",
+				)
+			} catch (e: Exception) {
+				uiState.copy(isBlocking = false, showBlockDialog = false, blockMessage = actionErrorText(e, "zablokować"))
+			}
+		}
+	}
+
+	/** Znajomość zerwana blokadą nie wraca — mówimy o tym, żeby nikt jej nie szukał. */
+	fun unblock(onChanged: () -> Unit = {}) {
+		if (uiState.isBlocking) return
+		uiState = uiState.copy(isBlocking = true, blockMessage = null)
+		viewModelScope.launch {
+			uiState = try {
+				client.unblockUser(userId)
+				onChanged()
+				uiState.copy(
+					isBlocking = false,
+					blocked = false,
+					blockMessage = "Odblokowano. Jeśli byliście znajomymi, zaproszenie trzeba wysłać od nowa.",
+				)
+			} catch (e: Exception) {
+				uiState.copy(isBlocking = false, blockMessage = actionErrorText(e, "odblokować"))
+			}
+		}
+	}
+
 	// --- Akcje administratora (ADR 0021, 0022) ---
 
 	fun openSuspendDialog() {
@@ -104,7 +168,7 @@ class UserProfileViewModel(
 				client.suspendUser(userId, uiState.suspendReason.trim(), uiState.suspendDays)
 				uiState.copy(isAdminActionRunning = false, showSuspendDialog = false, adminMessage = "Konto zawieszone")
 			} catch (e: Exception) {
-				uiState.copy(isAdminActionRunning = false, suspendError = adminErrorText(e, "zawiesić konta"))
+				uiState.copy(isAdminActionRunning = false, suspendError = actionErrorText(e, "zawiesić konta"))
 			}
 		}
 	}
@@ -117,12 +181,12 @@ class UserProfileViewModel(
 				client.grantAdmin(userId)
 				uiState.copy(isAdminActionRunning = false, adminMessage = "Nadano rolę administratora")
 			} catch (e: Exception) {
-				uiState.copy(isAdminActionRunning = false, adminMessage = adminErrorText(e, "nadać roli"))
+				uiState.copy(isAdminActionRunning = false, adminMessage = actionErrorText(e, "nadać roli"))
 			}
 		}
 	}
 
-	private fun adminErrorText(e: Exception, action: String): String = when (e) {
+	private fun actionErrorText(e: Exception, action: String): String = when (e) {
 		is SonglyApiException -> e.error?.message ?: "Nie udało się $action (HTTP ${e.status})"
 		else -> "Brak połączenia z serwerem."
 	}
