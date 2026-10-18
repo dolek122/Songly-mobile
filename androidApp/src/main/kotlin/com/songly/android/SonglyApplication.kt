@@ -1,9 +1,13 @@
 package com.songly.android
 
 import android.app.Application
+import com.songly.android.push.PushRegistration
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.session.AndroidKeystoreTokenStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Właściciel [SonglyApiClient] — jeden klient na proces, nie na Activity.
@@ -20,6 +24,17 @@ import com.songly.shared.session.AndroidKeystoreTokenStorage
 open class SonglyApplication : Application() {
 
 	val apiClient: SonglyApiClient by lazy { createClient() }
+
+	/**
+	 * Zakres na pracę, która ma przeżyć ekran: rejestracja tokenu push kończy się w
+	 * callbacku FCM, często już po wyjściu z ekranu, który ją zaczął.
+	 */
+	val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+	override fun onCreate() {
+		super.onCreate()
+		PushRegistration.createChannel(this)
+	}
 
 	protected open fun createClient(): SonglyApiClient = SonglyApiClient(
 		config = apiConfigFor(debug = BuildConfig.DEBUG),

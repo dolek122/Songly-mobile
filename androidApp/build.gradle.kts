@@ -4,6 +4,14 @@ plugins {
 	alias(libs.plugins.composeCompiler)
 }
 
+// Push (backend ADR 0040): plugin google-services tylko, gdy jest konfiguracja
+// projektu Firebase. Plik nie trafia do repo, więc CI i każdy bez niego budują
+// aplikację bez pushy — w kodzie pilnuje tego PushRegistration (brak FirebaseApp
+// = brak rejestracji), zamiast wywalać build na brakującym pliku.
+if (file("google-services.json").exists()) {
+	apply(plugin = libs.plugins.googleServices.get().pluginId)
+}
+
 // Klucz wydania nigdy nie trafia do repo: ścieżka i hasła przychodzą ze zmiennych
 // środowiskowych (CI) albo z ~/.gradle/gradle.properties (maszyna wydającego).
 // Bez nich release buduje się niepodpisany — CI dalej sprawdza, że R8 przechodzi,
@@ -90,6 +98,8 @@ dependencies {
 	implementation(libs.androidx.compose.material3)
 	implementation(libs.androidx.compose.ui.tooling.preview)
 	implementation(libs.coil.compose)
+	implementation(platform(libs.firebase.bom))
+	implementation(libs.firebase.messaging)
 	debugImplementation(libs.androidx.compose.ui.tooling)
 
 	// Testy bez urządzenia: kontrast palety (czysta matematyka) oraz testy UI na

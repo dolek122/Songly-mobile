@@ -68,6 +68,7 @@ import com.songly.android.profile.ProfileScreen
 import com.songly.android.profile.ProfileViewModel
 import com.songly.android.profile.UserProfileScreen
 import com.songly.android.profile.UserProfileViewModel
+import com.songly.android.push.PushSetup
 import com.songly.android.ui.theme.SonglyTheme
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.util.AuthLink
@@ -94,6 +95,9 @@ class MainActivity : ComponentActivity() {
 	// powodów trzymany w Activity co link z maila.
 	private var pendingSpotifyResult by mutableStateOf<SpotifyConnectResult?>(null)
 
+	// Stuknięcie w push (ADR 0040 backendu) — otwiera skrzynkę powiadomień.
+	private var pendingOpenNotifications by mutableStateOf(false)
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		// Po obrocie albo odtworzeniu procesu Activity dostaje ten sam intent jeszcze
@@ -109,6 +113,8 @@ class MainActivity : ComponentActivity() {
 						onAuthLinkHandled = { pendingAuthLink = null },
 						spotifyResult = pendingSpotifyResult,
 						onSpotifyResultHandled = { pendingSpotifyResult = null },
+						openNotifications = pendingOpenNotifications,
+						onOpenNotificationsHandled = { pendingOpenNotifications = false },
 					)
 				}
 			}
@@ -123,9 +129,18 @@ class MainActivity : ComponentActivity() {
 	}
 
 	private fun takeLink(intent: Intent?) {
+		if (intent?.action == ACTION_OPEN_NOTIFICATIONS) {
+			pendingOpenNotifications = true
+			return
+		}
 		val url = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
 		AuthLink.parse(url)?.let { pendingAuthLink = it }
 		SpotifyConnectResult.parse(url)?.let { pendingSpotifyResult = it }
+	}
+
+	companion object {
+		/** Akcja intencji z pusha — nie jest w manifeście, bo wysyła ją wyłącznie nasz PendingIntent. */
+		const val ACTION_OPEN_NOTIFICATIONS = "com.songly.android.OPEN_NOTIFICATIONS"
 	}
 }
 
@@ -136,6 +151,8 @@ private fun AppRoot(
 	onAuthLinkHandled: () -> Unit,
 	spotifyResult: SpotifyConnectResult?,
 	onSpotifyResultHandled: () -> Unit,
+	openNotifications: Boolean,
+	onOpenNotificationsHandled: () -> Unit,
 ) {
 	// null = jeszcze sprawdzamy zapisaną sesję (Keystore, I/O poza głównym wątkiem).
 	var loggedIn by rememberSaveable { mutableStateOf<Boolean?>(null) }
@@ -174,6 +191,8 @@ private fun AppRoot(
 			onAuthLinkHandled = onAuthLinkHandled,
 			spotifyResult = spotifyResult,
 			onSpotifyResultHandled = onSpotifyResultHandled,
+			openNotifications = openNotifications,
+			onOpenNotificationsHandled = onOpenNotificationsHandled,
 		)
 	}
 }
@@ -190,11 +209,16 @@ private fun AuthOrApp(
 	onAuthLinkHandled: () -> Unit,
 	spotifyResult: SpotifyConnectResult?,
 	onSpotifyResultHandled: () -> Unit,
+	openNotifications: Boolean,
+	onOpenNotificationsHandled: () -> Unit,
 ) {
 	// Wynik łączenia Spotify bez sesji nie ma już czego dotyczyć — sesja, która
-	// zaczęła OAuth, zdążyła się skończyć.
+	// zaczęła OAuth, zdążyła się skończyć. To samo ze stuknięciem w push.
 	if (loggedIn == false && spotifyResult != null) {
 		LaunchedEffect(spotifyResult) { onSpotifyResultHandled() }
+	}
+	if (loggedIn == false && openNotifications) {
+		LaunchedEffect(Unit) { onOpenNotificationsHandled() }
 	}
 	when (loggedIn) {
 		null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -207,6 +231,8 @@ private fun AuthOrApp(
 				onLoggedOut = { notice -> onAuthNotice(notice); onLoggedInChange(false) },
 				spotifyResult = spotifyResult,
 				onSpotifyResultHandled = onSpotifyResultHandled,
+				openNotifications = openNotifications,
+				onOpenNotificationsHandled = onOpenNotificationsHandled,
 			)
 			if (authLink != null) {
 				LinkWhileLoggedInDialog(link = authLink, onLogout = onLogoutForLink, onDismiss = onAuthLinkHandled)
@@ -377,6 +403,8 @@ private fun LoggedInNav(
 	onLoggedOut: (notice: String?) -> Unit,
 	spotifyResult: SpotifyConnectResult?,
 	onSpotifyResultHandled: () -> Unit,
+	openNotifications: Boolean,
+	onOpenNotificationsHandled: () -> Unit,
 ) {
 	val feedViewModel: FeedViewModel = viewModel(
 		factory = viewModelFactory {
@@ -406,6 +434,23 @@ private fun LoggedInNav(
 			onSpotifyResultHandled()
 		}
 	}
+
+	// Stuknięcie w push: skrzynka na wierzch. Ekrany, które w `when` niżej stoją
+	// przed nią, zamykamy — inaczej skrzynka otworzyłaby się pod nimi, niewidoczna.
+	if (openNotifications) {
+		LaunchedEffect(Unit) {
+			showAdmin = false
+			showMatches = false
+			communityDetailId = null
+			showCommunities = false
+			showMailPreferences = false
+			showFriends = false
+			showNotifications = true
+			onOpenNotificationsHandled()
+		}
+	}
+
+	PushSetup(client)
 
 	// Stan konta sprawdzany na starcie sesji: zawieszone konto dostaje 403 na
 	// prawie wszystko (ADR 0022), więc zamiast zepsutego feedu pokazujemy mu jego
