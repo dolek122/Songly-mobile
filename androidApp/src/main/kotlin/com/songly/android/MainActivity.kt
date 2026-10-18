@@ -71,6 +71,7 @@ import com.songly.android.profile.UserProfileViewModel
 import com.songly.android.ui.theme.SonglyTheme
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.util.AuthLink
+import com.songly.shared.util.SpotifyConnectResult
 import kotlinx.coroutines.launch
 
 /**
@@ -89,16 +90,26 @@ class MainActivity : ComponentActivity() {
 	// nie w kompozycji, bo przy otwartej aplikacji przychodzi przez onNewIntent.
 	private var pendingAuthLink by mutableStateOf<AuthLink?>(null)
 
+	// Wynik OAuth Spotify z linku powrotnego (ADR 0038 backendu), z tych samych
+	// powodów trzymany w Activity co link z maila.
+	private var pendingSpotifyResult by mutableStateOf<SpotifyConnectResult?>(null)
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		// Po obrocie albo odtworzeniu procesu Activity dostaje ten sam intent jeszcze
 		// raz — obsłużony już link nie może potwierdzać adresu drugi raz.
-		if (savedInstanceState == null) pendingAuthLink = authLinkFrom(intent)
+		if (savedInstanceState == null) takeLink(intent)
 		val apiClient = (application as SonglyApplication).apiClient
 		setContent {
 			SonglyTheme {
 				Surface(modifier = Modifier.fillMaxSize()) {
-					AppRoot(apiClient, authLink = pendingAuthLink, onAuthLinkHandled = { pendingAuthLink = null })
+					AppRoot(
+						apiClient,
+						authLink = pendingAuthLink,
+						onAuthLinkHandled = { pendingAuthLink = null },
+						spotifyResult = pendingSpotifyResult,
+						onSpotifyResultHandled = { pendingSpotifyResult = null },
+					)
 				}
 			}
 		}
@@ -108,15 +119,24 @@ class MainActivity : ComponentActivity() {
 	// zamiast tworzyć drugą kopię aplikacji nad pierwszą.
 	override fun onNewIntent(intent: Intent) {
 		super.onNewIntent(intent)
-		authLinkFrom(intent)?.let { pendingAuthLink = it }
+		takeLink(intent)
 	}
 
-	private fun authLinkFrom(intent: Intent?): AuthLink? =
-		intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString?.let(AuthLink::parse)
+	private fun takeLink(intent: Intent?) {
+		val url = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
+		AuthLink.parse(url)?.let { pendingAuthLink = it }
+		SpotifyConnectResult.parse(url)?.let { pendingSpotifyResult = it }
+	}
 }
 
 @Composable
-private fun AppRoot(client: SonglyApiClient, authLink: AuthLink?, onAuthLinkHandled: () -> Unit) {
+private fun AppRoot(
+	client: SonglyApiClient,
+	authLink: AuthLink?,
+	onAuthLinkHandled: () -> Unit,
+	spotifyResult: SpotifyConnectResult?,
+	onSpotifyResultHandled: () -> Unit,
+) {
 	// null = jeszcze sprawdzamy zapisaną sesję (Keystore, I/O poza głównym wątkiem).
 	var loggedIn by rememberSaveable { mutableStateOf<Boolean?>(null) }
 	// Powód powrotu do logowania (np. zmiana hasła odwołała sesję) — bez niego
@@ -152,6 +172,8 @@ private fun AppRoot(client: SonglyApiClient, authLink: AuthLink?, onAuthLinkHand
 			},
 			authLink = authLink,
 			onAuthLinkHandled = onAuthLinkHandled,
+			spotifyResult = spotifyResult,
+			onSpotifyResultHandled = onSpotifyResultHandled,
 		)
 	}
 }
@@ -166,14 +188,26 @@ private fun AuthOrApp(
 	onLogoutForLink: () -> Unit,
 	authLink: AuthLink?,
 	onAuthLinkHandled: () -> Unit,
+	spotifyResult: SpotifyConnectResult?,
+	onSpotifyResultHandled: () -> Unit,
 ) {
+	// Wynik łączenia Spotify bez sesji nie ma już czego dotyczyć — sesja, która
+	// zaczęła OAuth, zdążyła się skończyć.
+	if (loggedIn == false && spotifyResult != null) {
+		LaunchedEffect(spotifyResult) { onSpotifyResultHandled() }
+	}
 	when (loggedIn) {
 		null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
 			CircularProgressIndicator()
 		}
 
 		true -> {
-			LoggedInNav(client = client, onLoggedOut = { notice -> onAuthNotice(notice); onLoggedInChange(false) })
+			LoggedInNav(
+				client = client,
+				onLoggedOut = { notice -> onAuthNotice(notice); onLoggedInChange(false) },
+				spotifyResult = spotifyResult,
+				onSpotifyResultHandled = onSpotifyResultHandled,
+			)
 			if (authLink != null) {
 				LinkWhileLoggedInDialog(link = authLink, onLogout = onLogoutForLink, onDismiss = onAuthLinkHandled)
 			}
@@ -324,13 +358,26 @@ private fun AuthNav(
 	}
 }
 
+/** Jedna fabryka dla obu miejsc, które sięgają po ten ViewModel. */
+@Composable
+private fun nowPlayingViewModel(client: SonglyApiClient): NowPlayingViewModel = viewModel(
+	factory = viewModelFactory {
+		initializer { NowPlayingViewModel(client) }
+	},
+)
+
 /**
  * Nawigacja w obrębie zalogowanej sesji: feed ↔ tworzenie posta. [feedViewModel]
  * jest tu (a nie w gałęzi feedu), żeby po dodaniu posta odświeżyć feed tą samą
  * instancją. Prosty stan zamiast Navigation-Compose — wystarcza na dwa ekrany.
  */
 @Composable
-private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) -> Unit) {
+private fun LoggedInNav(
+	client: SonglyApiClient,
+	onLoggedOut: (notice: String?) -> Unit,
+	spotifyResult: SpotifyConnectResult?,
+	onSpotifyResultHandled: () -> Unit,
+) {
 	val feedViewModel: FeedViewModel = viewModel(
 		factory = viewModelFactory {
 			initializer { FeedViewModel(client) }
@@ -347,6 +394,18 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 	var communityDetailId by rememberSaveable { mutableStateOf<String?>(null) }
 	var showMatches by rememberSaveable { mutableStateOf(false) }
 	var showAdmin by rememberSaveable { mutableStateOf(false) }
+
+	// Powrót z OAuth Spotify: wynik trafia do tego samego ViewModelu, który
+	// pokazuje ekran „teraz gram" (viewModel() bez klucza oddaje jedną instancję),
+	// a ekran wraca na wierzch, bo proces zostawił go pod przeglądarką.
+	if (spotifyResult != null) {
+		val nowPlayingViewModel = nowPlayingViewModel(client)
+		LaunchedEffect(spotifyResult) {
+			nowPlayingViewModel.onSpotifyConnectResult(spotifyResult)
+			showNowPlaying = true
+			onSpotifyResultHandled()
+		}
+	}
 
 	// Stan konta sprawdzany na starcie sesji: zawieszone konto dostaje 403 na
 	// prawie wszystko (ADR 0022), więc zamiast zepsutego feedu pokazujemy mu jego
@@ -624,11 +683,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 		}
 
 		showNowPlaying -> {
-			val nowPlayingViewModel: NowPlayingViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { NowPlayingViewModel(client) }
-				},
-			)
+			val nowPlayingViewModel = nowPlayingViewModel(client)
 			NowPlayingScreen(
 				viewModel = nowPlayingViewModel,
 				onBack = { showNowPlaying = false },

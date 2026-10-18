@@ -32,6 +32,17 @@
                 <data android:host="verify-email" />
                 <data android:host="reset-password" />
             </intent-filter>
+            <!-- Powrót z OAuth Spotify (backend ADR 0038). Osobny filtr, bo atrybuty
+                 <data> w jednym filtrze łączą się krzyżowo — ścieżka zawęziłaby
+                 też linki z maili. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="songly" />
+                <data android:host="now-playing" />
+                <data android:pathPrefix="/spotify" />
+            </intent-filter>
         </activity>
     </application>
 

@@ -2,6 +2,7 @@ package com.songly.android.nowplaying
 
 import com.songly.android.FakeBackend
 import com.songly.android.MainDispatcherRule
+import com.songly.shared.util.SpotifyConnectResult
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
@@ -64,5 +65,38 @@ class NowPlayingViewModelTest {
 		awaitIdle(viewModel)
 
 		assertEquals("Wyczyszczono status", viewModel.uiState.statusMessage)
+	}
+
+	/**
+	 * Powrót z OAuth (backend ADR 0038): ekran wisiał pod przeglądarką ze starym
+	 * statusem, więc wynik musi go odświeżyć, a nie tylko pokazać komunikat.
+	 */
+	@Test
+	fun spotifyConnectResultRefreshesStatusAndExplainsOutcome() {
+		val backend = backend()
+		val viewModel = NowPlayingViewModel(backend.client())
+		viewModel.load()
+		awaitIdle(viewModel)
+		val callsBefore = backend.callCount("/api/v1/now-playing/me")
+
+		viewModel.onSpotifyConnectResult(SpotifyConnectResult.Connected)
+		awaitIdle(viewModel)
+
+		assertEquals(callsBefore + 1, backend.callCount("/api/v1/now-playing/me"))
+		assertEquals("Połączono ze Spotify", viewModel.uiState.statusMessage)
+	}
+
+	/** Odmowa zgody to decyzja użytkownika, nie awaria — bez słowa o błędzie. */
+	@Test
+	fun spotifyDenialAndFailureGetDistinctMessages() {
+		val viewModel = NowPlayingViewModel(backend().client())
+
+		viewModel.onSpotifyConnectResult(SpotifyConnectResult.Denied)
+		awaitIdle(viewModel)
+		assertEquals("Anulowano łączenie ze Spotify", viewModel.uiState.statusMessage)
+
+		viewModel.onSpotifyConnectResult(SpotifyConnectResult.Failed("MUSIC_PROVIDER_ERROR"))
+		awaitIdle(viewModel)
+		assertEquals("Spotify nie odpowiada. Spróbuj ponownie później.", viewModel.uiState.statusMessage)
 	}
 }
