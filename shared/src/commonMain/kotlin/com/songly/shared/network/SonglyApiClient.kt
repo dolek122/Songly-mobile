@@ -2,6 +2,7 @@ package com.songly.shared.network
 
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.model.ApiError
+import com.songly.shared.model.BlockStatus
 import com.songly.shared.model.ProfileSummary
 import com.songly.shared.model.AdminList
 import com.songly.shared.model.AnalyticsSummary
@@ -490,6 +491,11 @@ class SonglyApiClient internal constructor(
 	@Throws(Exception::class)
 	suspend fun unblockUser(userId: String) =
 		http.delete("$base/api/v1/blocks/$userId").ensureSuccessOrThrow()
+
+	/** Czy blokuję tego użytkownika — dla ekranu cudzego profilu (ADR 0039 backendu). */
+	@Throws(Exception::class)
+	suspend fun isBlocking(userId: String): Boolean =
+		http.get("$base/api/v1/blocks/$userId").decodeOrThrow<BlockStatus>().blocked
 
 	/** Lista zablokowanych użytkowników, stronicowana. */
 	@Throws(Exception::class)

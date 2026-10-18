@@ -29,6 +29,13 @@ data class FriendRequest(
 @Serializable
 data class SendFriendRequestRequest(val addresseeId: String)
 
+/**
+ * Czy blokuję danego użytkownika (backend: social.dto.BlockStatusResponse, ADR 0039).
+ * Tylko w moim kierunku — to, czy ktoś blokuje mnie, backend celowo ukrywa.
+ */
+@Serializable
+data class BlockStatus(val blocked: Boolean)
+
 /** Zablokowany użytkownik (backend: social.dto.BlockedUserResponse). */
 @Serializable
 data class BlockedUser(
