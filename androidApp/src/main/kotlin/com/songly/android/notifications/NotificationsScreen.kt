@@ -33,10 +33,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.accessibleAction
 import com.songly.shared.model.Notification
 import com.songly.shared.util.RelativeTime
 
@@ -149,7 +152,12 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 	val unread = notification.isUnread
 	Card(
 		// Klikalna, gdy jest co zrobić: oznaczyć jako przeczytane albo otworzyć cel.
-		modifier = Modifier.fillMaxWidth().clickable(enabled = unread || targetOf(notification) != null, onClick = onClick),
+		// Nieprzeczytane wyróżnia tylko kolor tła i kropka — czytnik ekranu dostaje to
+		// samo słowem.
+		modifier = Modifier
+			.fillMaxWidth()
+			.clickable(enabled = unread || targetOf(notification) != null, onClick = onClick)
+			.semantics { if (unread) stateDescription = "nieprzeczytane" },
 		colors = if (unread) {
 			CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 		} else {
@@ -166,7 +174,10 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 				displayName = notification.actorDisplayName ?: "?",
 				avatarUrl = notification.actorAvatarUrl,
 				size = 40.dp,
-				modifier = Modifier.clickable(onClick = onOpenProfile),
+				modifier = Modifier.accessibleAction(
+					description = "Profil: ${notification.actorDisplayName ?: "nieznany użytkownik"}",
+					onClick = onOpenProfile,
+				),
 			)
 			Column(modifier = Modifier.weight(1f)) {
 				Text(

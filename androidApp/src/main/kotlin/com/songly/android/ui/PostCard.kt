@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -54,7 +55,9 @@ fun PostCard(
 			) {
 				// Avatar + nazwa autora prowadzą do jego profilu; kosz zostaje osobno.
 				Row(
-					modifier = Modifier.weight(1f).clickable(onClick = onOpenAuthor),
+					modifier = Modifier
+						.weight(1f)
+						.clickable(role = Role.Button, onClickLabel = "Otwórz profil", onClick = onOpenAuthor),
 					verticalAlignment = Alignment.CenterVertically,
 					horizontalArrangement = Arrangement.spacedBy(10.dp),
 				) {
@@ -77,7 +80,7 @@ fun PostCard(
 						text = "Zgłoś",
 						style = MaterialTheme.typography.labelMedium,
 						color = MaterialTheme.colorScheme.onSurfaceVariant,
-						modifier = Modifier.clickable(onClick = onReport),
+						modifier = Modifier.accessibleAction(description = "Zgłoś post", onClick = onReport),
 					)
 				}
 				if (canDelete) {
@@ -85,7 +88,7 @@ fun PostCard(
 						text = "Usuń",
 						style = MaterialTheme.typography.labelMedium,
 						color = MaterialTheme.colorScheme.error,
-						modifier = Modifier.clickable(onClick = onDelete),
+						modifier = Modifier.accessibleAction(description = "Usuń post", onClick = onDelete),
 					)
 				}
 			}
@@ -106,28 +109,38 @@ fun PostCard(
 						.clip(RoundedCornerShape(8.dp)),
 				)
 			}
+			// Ikony-znaki czytnik ekranu czytał dosłownie („biały kier, trzy"), bez roli
+			// przycisku i bez stanu — stąd opis i stan podane wprost. Cel dotyku 48 dp
+			// sam robi odstęp od treści, więc rząd nie potrzebuje już górnego paddingu.
 			Row(
-				horizontalArrangement = Arrangement.spacedBy(20.dp),
+				horizontalArrangement = Arrangement.spacedBy(12.dp),
 				verticalAlignment = Alignment.CenterVertically,
-				modifier = Modifier.padding(top = 10.dp),
 			) {
 				Text(
 					text = "${if (post.likedByMe) "♥" else "♡"} ${post.likeCount}",
 					style = MaterialTheme.typography.labelLarge,
 					color = if (post.likedByMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-					modifier = Modifier.clickable(onClick = onToggleLike),
+					modifier = Modifier.accessibleAction(
+						description = "Polubienia: ${post.likeCount}",
+						state = if (post.likedByMe) "polubiony" else "niepolubiony",
+						onClick = onToggleLike,
+					),
 				)
 				Text(
 					text = "💬 ${post.commentCount}",
 					style = MaterialTheme.typography.labelLarge,
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
-					modifier = Modifier.clickable(onClick = onOpenComments),
+					modifier = Modifier.accessibleAction(description = "Komentarze: ${post.commentCount}", onClick = onOpenComments),
 				)
 				Text(
 					text = "↗ ${post.shareCount}",
 					style = MaterialTheme.typography.labelLarge,
 					color = if (post.sharedByMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-					modifier = Modifier.clickable(onClick = onToggleShare),
+					modifier = Modifier.accessibleAction(
+						description = "Udostępnienia: ${post.shareCount}",
+						state = if (post.sharedByMe) "udostępniony" else "nieudostępniony",
+						onClick = onToggleShare,
+					),
 				)
 			}
 		}

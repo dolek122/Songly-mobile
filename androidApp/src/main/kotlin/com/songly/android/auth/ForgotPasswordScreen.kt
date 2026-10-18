@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.announcedWhenChanged
 
 /**
  * „Nie pamiętam hasła" (backend ADR 0008). Lokalnie (`MAIL_PROVIDER=log`) link
@@ -124,6 +125,7 @@ fun ForgotPasswordScreen(
 				color = MaterialTheme.colorScheme.error,
 				style = MaterialTheme.typography.bodySmall,
 				textAlign = TextAlign.Center,
+				modifier = Modifier.announcedWhenChanged(),
 			)
 		}
 

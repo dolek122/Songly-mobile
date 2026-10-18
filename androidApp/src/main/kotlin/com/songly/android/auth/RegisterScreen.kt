@@ -25,6 +25,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.announcedWhenChanged
 
 /**
  * Ekran rejestracji (Compose, natywny UI — §14) w dwóch krokach, jak w backendzie
@@ -78,7 +79,7 @@ fun RegisterScreen(
 				text = state.errorMessage,
 				color = MaterialTheme.colorScheme.error,
 				style = MaterialTheme.typography.bodySmall,
-				modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+				modifier = Modifier.fillMaxWidth().padding(top = 12.dp).announcedWhenChanged(),
 			)
 		}
 
