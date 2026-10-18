@@ -128,34 +128,62 @@ private fun AppRoot(client: SonglyApiClient, authLink: AuthLink?, onAuthLinkHand
 		loggedIn = client.isLoggedIn()
 	}
 
+	// Każde zalogowanie i wylogowanie to nowe pokolenie ViewModeli (SessionViewModels).
+	var generation by rememberSaveable { mutableStateOf(0) }
+	val changeLoggedIn: (Boolean) -> Unit = { value ->
+		if (value != loggedIn) generation++
+		loggedIn = value
+	}
+
+	SessionViewModels(generation) {
+		AuthOrApp(
+			client = client,
+			loggedIn = loggedIn,
+			authNotice = authNotice,
+			onAuthNotice = { authNotice = it },
+			onLoggedInChange = changeLoggedIn,
+			onLogoutForLink = {
+				// Link zostaje oczekujący — po wylogowaniu obsłuży go AuthNav.
+				scope.launch {
+					client.logout()
+					authNotice = null
+					changeLoggedIn(false)
+				}
+			},
+			authLink = authLink,
+			onAuthLinkHandled = onAuthLinkHandled,
+		)
+	}
+}
+
+@Composable
+private fun AuthOrApp(
+	client: SonglyApiClient,
+	loggedIn: Boolean?,
+	authNotice: String?,
+	onAuthNotice: (String?) -> Unit,
+	onLoggedInChange: (Boolean) -> Unit,
+	onLogoutForLink: () -> Unit,
+	authLink: AuthLink?,
+	onAuthLinkHandled: () -> Unit,
+) {
 	when (loggedIn) {
 		null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
 			CircularProgressIndicator()
 		}
 
 		true -> {
-			LoggedInNav(client = client, onLoggedOut = { notice -> authNotice = notice; loggedIn = false })
+			LoggedInNav(client = client, onLoggedOut = { notice -> onAuthNotice(notice); onLoggedInChange(false) })
 			if (authLink != null) {
-				LinkWhileLoggedInDialog(
-					link = authLink,
-					onLogout = {
-						// Link zostaje oczekujący — po wylogowaniu obsłuży go AuthNav.
-						scope.launch {
-							client.logout()
-							authNotice = null
-							loggedIn = false
-						}
-					},
-					onDismiss = onAuthLinkHandled,
-				)
+				LinkWhileLoggedInDialog(link = authLink, onLogout = onLogoutForLink, onDismiss = onAuthLinkHandled)
 			}
 		}
 
 		false -> AuthNav(
 			client = client,
 			notice = authNotice,
-			onNotice = { authNotice = it },
-			onAuthenticated = { authNotice = null; loggedIn = true },
+			onNotice = onAuthNotice,
+			onAuthenticated = { onAuthNotice(null); onLoggedInChange(true) },
 			authLink = authLink,
 			onAuthLinkHandled = onAuthLinkHandled,
 		)

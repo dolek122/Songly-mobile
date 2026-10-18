@@ -4,6 +4,15 @@ plugins {
 	alias(libs.plugins.composeCompiler)
 }
 
+// Klucz wydania nigdy nie trafia do repo: ścieżka i hasła przychodzą ze zmiennych
+// środowiskowych (CI) albo z ~/.gradle/gradle.properties (maszyna wydającego).
+// Bez nich release buduje się niepodpisany — CI dalej sprawdza, że R8 przechodzi,
+// tylko nie powstaje paczka, którą da się wgrać do sklepu.
+fun releaseSecret(name: String): String? =
+	providers.environmentVariable(name).orElse(providers.gradleProperty(name)).orNull
+
+val releaseKeystore = releaseSecret("SONGLY_KEYSTORE_FILE")
+
 android {
 	namespace = "com.songly.android"
 	compileSdk = libs.versions.compileSdk.get().toInt()
@@ -47,9 +56,25 @@ android {
 		jvmTarget = "17"
 	}
 
+	signingConfigs {
+		if (releaseKeystore != null) {
+			create("release") {
+				storeFile = file(releaseKeystore)
+				storePassword = releaseSecret("SONGLY_KEYSTORE_PASSWORD")
+				keyAlias = releaseSecret("SONGLY_KEY_ALIAS")
+				keyPassword = releaseSecret("SONGLY_KEY_PASSWORD")
+			}
+		}
+	}
+
 	buildTypes {
 		release {
-			isMinifyEnabled = false
+			// R8: usuwa nieużywany kod i zasoby. Reguły serializacji, Ktora i OkHttp
+			// przychodzą z samych bibliotek; nasze są w proguard-rules.pro.
+			isMinifyEnabled = true
+			isShrinkResources = true
+			proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+			signingConfig = signingConfigs.findByName("release")
 		}
 	}
 }

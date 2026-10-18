@@ -14,6 +14,8 @@ import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.sse.SSE
@@ -58,9 +60,23 @@ internal fun createHttpClient(config: ApiConfig, storage: TokenStorage, engine: 
 		install(SSE)
 		// Bez tej wtyczki nie da się ustawić timeoutów per żądanie, a strumień presence
 		// potrzebuje dłuższego okna niż zwykłe REST-y (cisza między heartbeatami).
-		install(HttpTimeout)
+		//
+		// Domyślne okno odczytu OkHttp (10 s) jest krótsze niż przebudzenie
+		// uśpionego backendu na Renderze (30–60 s): proxy przyjmuje połączenie od
+		// razu i trzyma żądanie, aż instancja wstanie. Z domyślnym oknem pierwsze
+		// żądanie po kwadransie ciszy kończyło się „Brak połączenia", choć serwer
+		// odpowiedziałby kilkadziesiąt sekund później. Połączenie zostaje krótkie —
+		// martwy adres ma się ujawnić szybko.
+		install(HttpTimeout) {
+			connectTimeoutMillis = CONNECT_TIMEOUT_MILLIS
+			socketTimeoutMillis = SOCKET_TIMEOUT_MILLIS
+		}
 		if (config.enableNetworkLogging) {
 			install(Logging) {
+				// SIMPLE = println, czyli Logcat (System.out) i konsola Xcode. DEFAULT
+				// pisze przez SLF4J, którego na Androidzie nie ma — logowanie było
+				// włączone, ale nie wypisywało niczego.
+				logger = Logger.SIMPLE
 				level = LogLevel.INFO
 			}
 		}
@@ -99,3 +115,8 @@ internal fun createHttpClient(config: ApiConfig, storage: TokenStorage, engine: 
 	// bez sieci. Produkcyjnie zawsze null, czyli silnik platformy.
 	return if (engine != null) HttpClient(engine, configure) else HttpClient(httpClientEngineFactory(), configure)
 }
+
+internal const val CONNECT_TIMEOUT_MILLIS = 15_000L
+
+/** Z zapasem ponad najdłuższe obserwowane przebudzenie stagingu (~60 s). */
+internal const val SOCKET_TIMEOUT_MILLIS = 90_000L

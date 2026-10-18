@@ -84,6 +84,36 @@ Rzeczy, o które łatwo się potknąć przy zmianach:
 `ApiConfig` (w `shared`) trzyma URL backendu per środowisko: `LOCAL_ANDROID_EMULATOR`,
 `LOCAL_HOST`, `STAGING`. Staging działa pod `https://songly-backend-q7zm.onrender.com`
 (Render free tier — usypia po ~15 min, pierwszy request po przebudzeniu trwa ~30–60 s).
+Klient czeka na odpowiedź do 90 s (`SOCKET_TIMEOUT_MILLIS`), żeby budzący się serwer nie
+kończył się komunikatem „Brak połączenia".
+
+## Wydanie (Google Play)
+
+Release łączy się ze stagingiem, przechodzi przez R8 (zmniejszanie kodu i zasobów) i jest
+podpisywany kluczem spoza repo. Klucz wygeneruj raz i trzymaj w bezpiecznym miejscu (Play
+App Signing pozwala go zresetować, ale to kilka dni czekania na Google):
+
+```
+keytool -genkeypair -v -keystore songly-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias songly-upload
+```
+
+Ścieżka i hasła idą do `~/.gradle/gradle.properties` (albo do zmiennych środowiskowych
+o tych samych nazwach — tak w CI):
+
+```
+SONGLY_KEYSTORE_FILE=C:/sciezka/songly-upload.jks
+SONGLY_KEYSTORE_PASSWORD=...
+SONGLY_KEY_ALIAS=songly-upload
+SONGLY_KEY_PASSWORD=...
+```
+
+Paczka do sklepu: `./gradlew :androidApp:bundleRelease` →
+`androidApp/build/outputs/bundle/release/androidApp-release.aab`. Każde wgranie do Play
+wymaga wyższego `versionCode` w `androidApp/build.gradle.kts`.
+
+Bez klucza release buduje się niepodpisany — CI sprawdza w ten sposób, że R8 przechodzi.
+Żeby przeklikać build release na emulatorze, można go podpisać kluczem debug
+(`~/.android/debug.keystore`, alias `androiddebugkey`, hasła `android`).
 
 ## Testy i kontrakt API
 

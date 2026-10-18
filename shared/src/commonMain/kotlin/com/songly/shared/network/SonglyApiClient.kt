@@ -586,10 +586,10 @@ class SonglyApiClient internal constructor(
 				http.sse(
 					"$base/api/v1/now-playing/stream",
 					request = {
-						// Domyślny read timeout silników (OkHttp: 10 s) jest krótszy niż
-						// heartbeat backendu (20 s), więc bez tego zdrowy, tylko cichy
-						// strumień zrywałby się w kółko. Zapas 3× heartbeat: dłuższa cisza
-						// naprawdę znaczy, że połączenie umarło.
+						// Okno odczytu liczone od heartbeatu backendu (20 s), nie od
+						// przebudzenia serwera jak dla zwykłych żądań (HttpClientFactory).
+						// Zapas 3× heartbeat: dłuższa cisza naprawdę znaczy, że połączenie
+						// umarło, a strumień i tak wraca sam z backoffem.
 						timeout {
 							socketTimeoutMillis = STREAM_SOCKET_TIMEOUT_MILLIS
 							requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
