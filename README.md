@@ -87,6 +87,25 @@ Rzeczy, o które łatwo się potknąć przy zmianach:
 Klient czeka na odpowiedź do 90 s (`SOCKET_TIMEOUT_MILLIS`), żeby budzący się serwer nie
 kończył się komunikatem „Brak połączenia".
 
+## Powiadomienia push (Firebase)
+
+Push działa przez Firebase Cloud Messaging (backend: ADR 0040). Bez konfiguracji
+Firebase aplikacja buduje się i działa normalnie, tylko bez pushy — tak buduje ją CI.
+
+Włączenie:
+
+1. W [konsoli Firebase](https://console.firebase.google.com) załóż projekt i dodaj
+   aplikację Android z pakietem `com.songly.android`.
+2. Pobierz `google-services.json` i połóż go w `androidApp/` (jest w `.gitignore`).
+   Gradle sam włączy wtedy plugin `google-services`.
+3. W ustawieniach projektu → Konta usługi wygeneruj klucz prywatny (JSON) i ustaw go
+   na backendzie: `PUSH_PROVIDER=fcm` oraz `FCM_CREDENTIALS_JSON` = cała treść pliku.
+
+Po zalogowaniu aplikacja zgłasza token urządzenia i (Android 13+) prosi o zgodę na
+powiadomienia. Wylogowanie wyrejestrowuje urządzenie, a zmiana hasła odpina je po
+stronie backendu. iOS nie rejestruje się jeszcze — wymaga APNs, czyli konta Apple
+Developer i Maca.
+
 ## Wydanie (Google Play)
 
 Release łączy się ze stagingiem, przechodzi przez R8 (zmniejszanie kodu i zasobów) i jest

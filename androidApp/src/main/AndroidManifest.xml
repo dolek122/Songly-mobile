@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+: bez tej zgody pushe (backend ADR 0040) nie pojawią się na ekranie. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".SonglyApplication"
@@ -44,6 +46,16 @@
                 <data android:pathPrefix="/spotify" />
             </intent-filter>
         </activity>
+
+        <!-- Odbiór pushy (backend ADR 0040). exported=false: wiadomości dostarcza
+             wyłącznie Firebase z wnętrza procesu, nikt z zewnątrz. -->
+        <service
+            android:name=".push.SonglyMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

@@ -50,7 +50,9 @@ import com.songly.shared.model.Post
 import com.songly.shared.model.Profile
 import com.songly.shared.model.PublicProfile
 import com.songly.shared.model.RefreshRequest
+import com.songly.shared.model.RegisterPushDeviceRequest
 import com.songly.shared.model.RegisterRequest
+import com.songly.shared.model.RemovePushDeviceRequest
 import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.SonglyApiException
@@ -139,6 +141,10 @@ class SonglyApiClient internal constructor(
 	// treści (np. pokazać usuwanie tylko autorowi). Czyszczone przy końcu sesji.
 	private var cachedUserId: String? = null
 
+	// Token push zgłoszony w tej sesji — logout wyrejestrowuje go sam, bo backend
+	// nie wie, które urządzenie należy do której sesji (ADR 0040).
+	private var registeredPushToken: String? = null
+
 	/** Czy istnieje zapisana sesja (są tokeny). Nie gwarantuje ich ważności. */
 	@Throws(Exception::class)
 	suspend fun isLoggedIn(): Boolean = storage.getTokens() != null
@@ -195,6 +201,9 @@ class SonglyApiClient internal constructor(
 	@Throws(Exception::class)
 	suspend fun logout() {
 		val refreshToken = storage.getTokens()?.refreshToken
+		// Przed odwołaniem sesji — potem żądanie nie miałoby już ważnego tokenu.
+		// Inaczej wylogowany telefon dalej dostawałby pushe z cudzymi nazwami.
+		registeredPushToken?.let { token -> runCatching { unregisterPushDevice(token) } }
 		if (refreshToken != null) {
 			runCatching {
 				http.post("$base/api/v1/auth/logout") {
@@ -663,6 +672,29 @@ class SonglyApiClient internal constructor(
 	suspend fun mailPreferences(): MailPreferences =
 		http.get("$base/api/v1/notifications/mail-preferences").decodeOrThrow()
 
+	/**
+	 * Zgłasza urządzenie do pushy (backend ADR 0040). Idempotentne — woła się je
+	 * przy każdym starcie i przy każdej wymianie tokenu przez FCM.
+	 */
+	@Throws(Exception::class)
+	suspend fun registerPushDevice(token: String, platform: String) {
+		http.put("$base/api/v1/notifications/push-devices") {
+			contentType(ContentType.Application.Json)
+			setBody(RegisterPushDeviceRequest(token, platform))
+		}.ensureSuccessOrThrow()
+		registeredPushToken = token
+	}
+
+	/** Wyrejestrowuje urządzenie. [logout] robi to sam dla tokenu z tej sesji. */
+	@Throws(Exception::class)
+	suspend fun unregisterPushDevice(token: String) {
+		http.post("$base/api/v1/notifications/push-devices/removal") {
+			contentType(ContentType.Application.Json)
+			setBody(RemovePushDeviceRequest(token))
+		}.ensureSuccessOrThrow()
+		if (registeredPushToken == token) registeredPushToken = null
+	}
+
 	/** Zastępuje preferencje poczty w całości — stąd oba pola naraz. */
 	@Throws(Exception::class)
 	suspend fun updateMailPreferences(preferences: MailPreferences) =
@@ -987,6 +1019,8 @@ class SonglyApiClient internal constructor(
 	private suspend fun endSession() {
 		storage.clear()
 		cachedUserId = null
+		// Po usunięciu konta i zmianie hasła backend odpiął urządzenia sam (ADR 0040).
+		registeredPushToken = null
 		http.authProvider<BearerAuthProvider>()?.clearToken()
 	}
 

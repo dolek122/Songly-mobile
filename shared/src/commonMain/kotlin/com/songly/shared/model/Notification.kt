@@ -45,3 +45,14 @@ data class MailPreferences(val decisionsAboutMe: Boolean, val moderationQueue: B
  */
 @Serializable
 data class UpdateMailPreferencesRequest(val decisionsAboutMe: Boolean, val moderationQueue: Boolean)
+
+/**
+ * Rejestracja urządzenia push (backend: notification.dto.RegisterPushDeviceRequest,
+ * ADR 0040). [platform]: `ANDROID` albo `IOS`.
+ */
+@Serializable
+data class RegisterPushDeviceRequest(val token: String, val platform: String)
+
+/** Wyrejestrowanie urządzenia push (backend: notification.dto.RemovePushDeviceRequest). */
+@Serializable
+data class RemovePushDeviceRequest(val token: String)
