@@ -41,6 +41,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
@@ -122,9 +125,20 @@ fun FeedScreen(
 			TopAppBar(
 				title = { Text("Songly") },
 				actions = {
-					IconButton(onClick = { menuOpen = true }) {
+					// Znak „⋮" czytnik czytał jako „pionowy wielokropek", a plakietka z liczbą
+					// nieprzeczytanych była wyłącznie wizualna — opis mówi jedno i drugie.
+					val menuDescription = if (state.unreadNotifications > 0) {
+						"Menu, nieprzeczytane powiadomienia: ${state.unreadNotifications}"
+					} else {
+						"Menu"
+					}
+					IconButton(
+						onClick = { menuOpen = true },
+						modifier = Modifier.semantics { contentDescription = menuDescription },
+					) {
 						// Kropka na ikonie menu sygnalizuje nieprzeczytane powiadomienia.
 						BadgedBox(
+							modifier = Modifier.clearAndSetSemantics {},
 							badge = {
 								if (state.unreadNotifications > 0) {
 									Badge { Text(badgeLabel(state.unreadNotifications)) }

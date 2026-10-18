@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -95,8 +97,16 @@ fun NowPlayingScreen(
 
 					HorizontalDivider()
 
+					// Cały wiersz jest przełącznikiem — TalkBack czyta etykietę razem ze stanem.
 					Row(
-						modifier = Modifier.fillMaxWidth(),
+						modifier = Modifier
+							.fillMaxWidth()
+							.toggleable(
+								value = state.shareWithFriends,
+								enabled = !state.isBusy,
+								role = Role.Switch,
+								onValueChange = viewModel::onShareWithFriendsChange,
+							),
 						verticalAlignment = Alignment.CenterVertically,
 						horizontalArrangement = Arrangement.SpaceBetween,
 					) {
@@ -115,7 +125,7 @@ fun NowPlayingScreen(
 						}
 						Switch(
 							checked = state.shareWithFriends,
-							onCheckedChange = viewModel::onShareWithFriendsChange,
+							onCheckedChange = null,
 							enabled = !state.isBusy,
 						)
 					}

@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -33,7 +34,9 @@ fun Avatar(
 	if (!avatarUrl.isNullOrBlank()) {
 		AsyncImage(
 			model = avatarUrl,
-			contentDescription = "Awatar: $displayName",
+			// Ozdoba: nazwa stoi zawsze obok, a czytnik czytał ją dwa razy („Awatar: Ola,
+			// Ola"). Klikalny awatar dostaje opis od wywołującego.
+			contentDescription = null,
 			contentScale = ContentScale.Crop,
 			modifier = modifier
 				.size(size)
@@ -50,6 +53,8 @@ fun Avatar(
 		) {
 			Text(
 				text = initials(displayName),
+				// Inicjały czytane litera po literze („O L") niczego nie mówią.
+				modifier = Modifier.clearAndSetSemantics {},
 				style = MaterialTheme.typography.labelLarge,
 				color = MaterialTheme.colorScheme.onPrimaryContainer,
 			)

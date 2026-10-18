@@ -29,9 +29,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.accessibleAction
 import com.songly.shared.model.Comment
 import com.songly.shared.util.RelativeTime
 
@@ -149,12 +151,13 @@ private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Uni
 		modifier = Modifier.fillMaxWidth(),
 		horizontalArrangement = Arrangement.spacedBy(10.dp),
 	) {
-		// Avatar i nazwa autora prowadzą do jego profilu.
+		// Avatar i nazwa autora prowadzą do jego profilu. Czytnik ekranu dostaje tylko
+		// nazwę — dwa przyciski robiące to samo to dla niego wyłącznie szum.
 		Avatar(
 			displayName = comment.authorDisplayName,
 			avatarUrl = comment.authorAvatarUrl,
 			size = 36.dp,
-			modifier = Modifier.clickable(onClick = onOpenProfile),
+			modifier = Modifier.clickable(onClick = onOpenProfile).clearAndSetSemantics {},
 		)
 		Column(modifier = Modifier.weight(1f)) {
 			Row(verticalAlignment = Alignment.CenterVertically) {
@@ -162,7 +165,7 @@ private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Uni
 					text = comment.authorDisplayName,
 					style = MaterialTheme.typography.titleSmall,
 					fontWeight = FontWeight.SemiBold,
-					modifier = Modifier.clickable(onClick = onOpenProfile),
+					modifier = Modifier.accessibleAction(onClick = onOpenProfile),
 				)
 				Text(
 					text = RelativeTime.format(comment.createdAt),
@@ -176,7 +179,7 @@ private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Uni
 						text = "Usuń",
 						style = MaterialTheme.typography.labelMedium,
 						color = MaterialTheme.colorScheme.error,
-						modifier = Modifier.clickable(onClick = onDelete),
+						modifier = Modifier.accessibleAction(description = "Usuń komentarz", onClick = onDelete),
 					)
 				}
 			}

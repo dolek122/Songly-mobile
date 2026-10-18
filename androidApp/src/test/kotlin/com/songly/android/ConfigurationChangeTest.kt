@@ -2,6 +2,7 @@ package com.songly.android
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.ktor.http.HttpMethod
@@ -84,7 +85,7 @@ class ConfigurationChangeTest {
 	@Test
 	fun openScreenSurvivesRotation() {
 		waitForText("Pierwszy post")
-		compose.onNodeWithText("⋮").performClick()
+		compose.onNodeWithContentDescription("Menu").performClick()
 		compose.onNodeWithText("Powiadomienia").performClick()
 		waitForText("Brak powiadomień.")
 

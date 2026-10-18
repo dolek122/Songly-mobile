@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.announcedWhenChanged
 
 /**
  * Ekran logowania (Compose, natywny UI — §14). Bezstanowy względem logiki:
@@ -99,7 +100,7 @@ fun LoginScreen(
 				text = state.errorMessage,
 				color = MaterialTheme.colorScheme.error,
 				style = MaterialTheme.typography.bodySmall,
-				modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+				modifier = Modifier.fillMaxWidth().padding(top = 12.dp).announcedWhenChanged(),
 			)
 		}
 
