@@ -16,6 +16,9 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
 
+// Limit backendu na jedno zapytanie o nazwy (ADR 0036).
+private const val MAX_NAME_LOOKUP = 100
+
 enum class AdminSection { SUSPENSIONS, ESCALATIONS, ADMINS, ANALYTICS, LOG }
 
 /** Okna analityki do wyboru (backend przyjmuje dowolną liczbę dni). */
@@ -78,7 +81,11 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 				// siedzieć wewnątrz wyrażenia, którego wynik przypisujemy później —
 				// przypisanie nadpisałoby świeżo pobrane nazwy.
 				when (section) {
-					AdminSection.SUSPENSIONS -> uiState = uiState.copy(suspensions = client.suspensions())
+					AdminSection.SUSPENSIONS -> {
+						val list = client.suspensions()
+						uiState = uiState.copy(suspensions = list)
+						resolveNames(list.map { it.userId })
+					}
 					AdminSection.ESCALATIONS -> {
 						val list = client.escalatedBanAppeals()
 						uiState = uiState.copy(escalations = list)
@@ -90,9 +97,11 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 						resolveNames(ids)
 					}
 					AdminSection.ANALYTICS -> uiState = uiState.copy(analytics = client.analyticsSummary(uiState.analyticsDays))
-					AdminSection.LOG -> uiState = uiState.copy(
-						log = uiState.log.replaceWith(client.platformModerationLog(uiState.logUserId, 0, PAGE_SIZE)),
-					)
+					AdminSection.LOG -> {
+						val page = client.platformModerationLog(uiState.logUserId, 0, PAGE_SIZE)
+						uiState = uiState.copy(log = uiState.log.replaceWith(page))
+						resolveNames(page.content.flatMap { listOfNotNull(it.actorId, it.subjectId) } + listOfNotNull(uiState.logUserId))
+					}
 				}
 				uiState = uiState.copy(isLoading = false)
 			} catch (e: Exception) {
@@ -105,10 +114,12 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 		if (!uiState.log.canLoadMore) return
 		uiState = uiState.copy(log = uiState.log.loadingMore())
 		viewModelScope.launch {
-			uiState = try {
-				uiState.copy(log = uiState.log.append(client.platformModerationLog(uiState.logUserId, uiState.log.nextPage, PAGE_SIZE)))
+			try {
+				val page = client.platformModerationLog(uiState.logUserId, uiState.log.nextPage, PAGE_SIZE)
+				uiState = uiState.copy(log = uiState.log.append(page))
+				resolveNames(page.content.flatMap { listOfNotNull(it.actorId, it.subjectId) })
 			} catch (e: Exception) {
-				uiState.copy(log = uiState.log.failed(errorText(e, "doczytać dziennika")))
+				uiState = uiState.copy(log = uiState.log.failed(errorText(e, "doczytać dziennika")))
 			}
 		}
 	}
@@ -160,16 +171,17 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 	}
 
 	/**
-	 * Nazwy z profili. Zawieszonego profilu nie ma (404, ADR 0026), więc dla niego
-	 * nazwy nie będzie — UI pokazuje wtedy identyfikator.
+	 * Nazwy z `GET /admin/profiles` (ADR 0036) — wsadowo i także dla zawieszonych,
+	 * których zwykły profil to 404 (ADR 0026). Brak nazwy (konto usunięte, błąd
+	 * sieci) nie jest błędem ekranu: UI pokazuje wtedy skrócony identyfikator.
 	 */
 	private suspend fun resolveNames(ids: List<String>) {
-		val missing = ids.filterNot { it in uiState.names }
+		val missing = ids.distinct().filterNot { it in uiState.names }
 		if (missing.isEmpty()) return
-		val resolved = missing.mapNotNull { id ->
-			runCatching { client.profile(id) }.getOrNull()?.let { id to it.displayName }
+		val resolved = missing.chunked(MAX_NAME_LOOKUP).flatMap { chunk ->
+			runCatching { client.adminProfileSummaries(chunk) }.getOrDefault(emptyList())
 		}
-		uiState = uiState.copy(names = uiState.names + resolved)
+		uiState = uiState.copy(names = uiState.names + resolved.associate { it.userId to it.displayName })
 	}
 
 	private fun act(id: String, success: String, block: suspend () -> Unit) {

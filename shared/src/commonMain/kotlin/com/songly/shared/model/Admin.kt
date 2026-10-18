@@ -82,3 +82,15 @@ data class Suspension(
 /** Odwołanie od zawieszenia (backend: identity.dto.SuspensionAppealRequest; max 1000). */
 @Serializable
 data class SuspensionAppealRequest(val text: String)
+
+/**
+ * Nazwa i awatar dla administracji (backend: profile.dto.ProfileSummaryResponse,
+ * ADR 0036) — także zawieszonych, których profil jest dla reszty ukryty.
+ */
+@Serializable
+data class ProfileSummary(
+	val userId: String,
+	val displayName: String,
+	val avatarUrl: String? = null,
+	val suspended: Boolean = false,
+)

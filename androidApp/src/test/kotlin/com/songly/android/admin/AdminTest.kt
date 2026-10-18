@@ -96,6 +96,27 @@ class AdminTest {
 		assertEquals("REJECTED", viewModel.uiState.suspensions.single().appealStatus)
 	}
 
+	/**
+	 * Profil zawieszonego jest ukryty (404, ADR 0026), więc nazwa musi przyjść z
+	 * endpointu administracji (ADR 0036) — inaczej wykaz zawieszeń pokazywałby same id.
+	 */
+	@Test
+	fun suspendedAccountsGetNamesFromAdminEndpoint() {
+		val backend = FakeBackend().apply {
+			onJson("/api/v1/profiles/me", profileJson("me-1"))
+			onJson("/api/v1/admin/suspensions", "[${suspensionJson("u1", null)}]")
+			on("/api/v1/profiles/u1", HttpStatusCode.NotFound) { error("PROFILE_NOT_FOUND") }
+			onJson("/api/v1/admin/profiles", """[{"userId":"u1","displayName":"Troll","suspended":true}]""")
+		}
+		val viewModel = AdminViewModel(backend.client())
+
+		viewModel.select(AdminSection.SUSPENSIONS)
+		awaitUntil { !viewModel.uiState.isLoading && viewModel.uiState.suspensions.isNotEmpty() }
+
+		assertEquals("Troll", viewModel.uiState.names["u1"])
+		assertEquals(1, backend.callCount("/api/v1/admin/profiles"))
+	}
+
 	// --- Eskalacje ---
 
 	/** Wykaz niesie same id — nazwy dociągamy z profili, i nie mogą zginąć przy zapisie stanu. */
@@ -108,7 +129,7 @@ class AdminTest {
 				"""[{"userId":"u1","communityId":"c1","communityName":"Jazz","reason":"spam",""" +
 					""""bannedAt":"2026-01-01T10:00:00Z","appealText":"nie spamowałem"}]""",
 			)
-			onJson("/api/v1/profiles/u1", """{"userId":"u1","displayName":"Bartek","favoriteGenres":[]}""")
+			onJson("/api/v1/admin/profiles", """[{"userId":"u1","displayName":"Bartek","suspended":false}]""")
 			on(HttpMethod.Delete, "/api/v1/admin/communities/c1/bans/u1", HttpStatusCode.NoContent) { "" }
 		}
 		val viewModel = AdminViewModel(backend.client())
