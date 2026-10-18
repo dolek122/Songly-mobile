@@ -15,10 +15,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Konto bez Spotify i bez ręcznego statusu dostaje z `GET /now-playing/me` 404
- * `PROVIDER_NOT_CONNECTED`, nie 204. Traktowane jako błąd zasłaniało cały ekran
+ * Konto bez Spotify i bez ręcznego statusu dostawało z `GET /now-playing/me` 404
+ * `PROVIDER_NOT_CONNECTED`. Traktowane jako błąd zasłaniało cały ekran
  * „Spróbuj ponownie" — razem z formularzem ręcznego statusu i przyciskiem
  * połączenia ze Spotify, czyli jedynymi drogami wyjścia z tego stanu.
+ *
+ * Backend od PR #66 odpowiada w tej sytuacji 204. Oba warianty muszą dawać pusty
+ * status: stara instancja backendu może jeszcze działać, gdy klient już jest nowy.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -46,6 +49,27 @@ class NowPlayingViewModelTest {
 	@Test
 	fun accountWithoutProviderShowsEmptyStatusNotError() {
 		val viewModel = NowPlayingViewModel(backend().client())
+
+		viewModel.load()
+		awaitIdle(viewModel)
+
+		assertFalse(viewModel.uiState.isLoading)
+		assertNull(viewModel.uiState.errorMessage)
+		assertNull(viewModel.uiState.status)
+	}
+
+	/**
+	 * To samo co wyżej, w wariancie obecnego backendu: 204 z pustym ciałem.
+	 * Sprawdza zachowanie, nie mechanizm — jawna gałąź 204 w kliencie nie jest
+	 * jedyną ochroną, bo Ktor 3 sam czyta puste ciało jako `null` dla typu
+	 * nullowalnego. Test pada, gdy którakolwiek droga zamieni 204 w błąd.
+	 */
+	@Test
+	fun noContentShowsEmptyStatusNotError() {
+		val backend = backend().apply {
+			on("/api/v1/now-playing/me", HttpStatusCode.NoContent) { "" }
+		}
+		val viewModel = NowPlayingViewModel(backend.client())
 
 		viewModel.load()
 		awaitIdle(viewModel)
