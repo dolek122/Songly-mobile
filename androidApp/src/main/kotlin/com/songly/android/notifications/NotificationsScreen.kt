@@ -54,6 +54,7 @@ fun NotificationsScreen(
 	onOpenUserProfile: (String) -> Unit,
 	onOpenPost: (postId: String) -> Unit,
 	onOpenCommunity: (communityId: String) -> Unit = {},
+	onOpenMailPreferences: () -> Unit = {},
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
@@ -83,6 +84,7 @@ fun NotificationsScreen(
 					if (state.hasUnread) {
 						TextButton(onClick = viewModel::markAllRead) { Text("Oznacz wszystkie") }
 					}
+					TextButton(onClick = onOpenMailPreferences) { Text("E-mail") }
 				},
 			)
 		},

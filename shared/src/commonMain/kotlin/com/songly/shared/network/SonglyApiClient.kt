@@ -32,6 +32,7 @@ import com.songly.shared.model.PostImage
 import com.songly.shared.model.UpdateCommunityRequest
 import com.songly.shared.model.DeleteAccountRequest
 import com.songly.shared.model.ManualNowPlayingRequest
+import com.songly.shared.model.MailPreferences
 import com.songly.shared.model.Notification
 import com.songly.shared.model.NowPlayingSettings
 import com.songly.shared.model.NowPlayingStatus
@@ -53,6 +54,7 @@ import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.model.UnreadCount
+import com.songly.shared.model.UpdateMailPreferencesRequest
 import com.songly.shared.model.UpdateNowPlayingSettingsRequest
 import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.model.UserSearchResult
@@ -587,6 +589,17 @@ class SonglyApiClient internal constructor(
 	/** Oznacza wszystkie powiadomienia jako przeczytane. */
 	suspend fun markAllNotificationsRead() =
 		http.post("$base/api/v1/notifications/read-all").ensureSuccessOrThrow()
+
+	/** Które powiadomienia wychodzą też e-mailem (ADR 0020). */
+	suspend fun mailPreferences(): MailPreferences =
+		http.get("$base/api/v1/notifications/mail-preferences").decodeOrThrow()
+
+	/** Zastępuje preferencje poczty w całości — stąd oba pola naraz. */
+	suspend fun updateMailPreferences(preferences: MailPreferences) =
+		http.put("$base/api/v1/notifications/mail-preferences") {
+			contentType(ContentType.Application.Json)
+			setBody(UpdateMailPreferencesRequest(preferences.decisionsAboutMe, preferences.moderationQueue))
+		}.ensureSuccessOrThrow()
 
 	// --- Społeczności (moduł community) ---
 

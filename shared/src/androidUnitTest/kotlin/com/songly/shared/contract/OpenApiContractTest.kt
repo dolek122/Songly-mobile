@@ -40,6 +40,7 @@ import com.songly.shared.model.ManualNowPlayingRequest
 import com.songly.shared.model.Match
 import com.songly.shared.model.MembershipStatus
 import com.songly.shared.model.BanDetails
+import com.songly.shared.model.MailPreferences
 import com.songly.shared.model.Notification
 import com.songly.shared.model.NowPlayingSettings
 import com.songly.shared.model.NowPlayingStatus
@@ -53,6 +54,7 @@ import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.UnreadCount
 import com.songly.shared.model.UpdateCommunityRequest
+import com.songly.shared.model.UpdateMailPreferencesRequest
 import com.songly.shared.model.UpdateNowPlayingSettingsRequest
 import com.songly.shared.model.UpdateProfileRequest
 import com.songly.shared.model.UserSearchResult
@@ -104,6 +106,8 @@ class OpenApiContractTest {
 		UserSearchResult.serializer() to "UserSearchResponse",
 		Notification.serializer() to "NotificationResponse",
 		UnreadCount.serializer() to "UnreadCountResponse",
+		MailPreferences.serializer() to "MailPreferencesResponse",
+		UpdateMailPreferencesRequest.serializer() to "UpdateMailPreferencesRequest",
 		Match.serializer() to "MatchResponse",
 		Profile.serializer() to "ProfileResponse",
 		Genre.serializer() to "GenreResponse",
