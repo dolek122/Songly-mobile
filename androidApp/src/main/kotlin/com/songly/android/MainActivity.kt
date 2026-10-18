@@ -13,7 +13,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,29 +64,23 @@ import com.songly.android.profile.ProfileViewModel
 import com.songly.android.profile.UserProfileScreen
 import com.songly.android.profile.UserProfileViewModel
 import com.songly.android.ui.theme.SonglyTheme
-import com.songly.shared.config.ApiConfig
 import com.songly.shared.network.SonglyApiClient
-import com.songly.shared.session.AndroidKeystoreTokenStorage
 
 /**
  * Punkt wejścia aplikacji Androida. UI natywny (Jetpack Compose, §14); logika
  * sieci i sesji żyje w module `shared` (KMP), współdzielona z iOS.
  *
- * [SonglyApiClient] tworzymy raz na Activity (trzyma sesję i klienta HTTP) i
- * zamykamy w [onDestroy]. Docelowo wstrzykniemy go przez DI zamiast trzymać w
- * Activity — na tym etapie prostota wygrywa.
+ * [SonglyApiClient] należy do [SonglyApplication], nie do Activity — Activity ginie
+ * przy każdym obrocie ekranu, a ViewModele, które trzymają klienta, nie.
+ *
+ * Stan nawigacji jest w `rememberSaveable`: zwykłe `remember` znika razem z
+ * Activity, więc obrót ekranu wyrzucał z dowolnego miejsca z powrotem na feed.
  */
 class MainActivity : ComponentActivity() {
 
-	private val apiClient: SonglyApiClient by lazy {
-		SonglyApiClient(
-			config = ApiConfig.LOCAL_ANDROID_EMULATOR,
-			storage = AndroidKeystoreTokenStorage(applicationContext),
-		)
-	}
-
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		val apiClient = (application as SonglyApplication).apiClient
 		setContent {
 			SonglyTheme {
 				Surface(modifier = Modifier.fillMaxSize()) {
@@ -93,20 +89,15 @@ class MainActivity : ComponentActivity() {
 			}
 		}
 	}
-
-	override fun onDestroy() {
-		super.onDestroy()
-		apiClient.close()
-	}
 }
 
 @Composable
 private fun AppRoot(client: SonglyApiClient) {
 	// null = jeszcze sprawdzamy zapisaną sesję (Keystore, I/O poza głównym wątkiem).
-	var loggedIn by remember { mutableStateOf<Boolean?>(null) }
+	var loggedIn by rememberSaveable { mutableStateOf<Boolean?>(null) }
 	// Powód powrotu do logowania (np. zmiana hasła odwołała sesję) — bez niego
 	// użytkownik zostałby nagle wylogowany bez słowa wyjaśnienia.
-	var authNotice by remember { mutableStateOf<String?>(null) }
+	var authNotice by rememberSaveable { mutableStateOf<String?>(null) }
 
 	LaunchedEffect(Unit) {
 		loggedIn = client.isLoggedIn()
@@ -142,10 +133,10 @@ private fun AuthNav(
 	onNotice: (String?) -> Unit,
 	onAuthenticated: () -> Unit,
 ) {
-	var screen by remember { mutableStateOf(AuthScreen.LOGIN) }
+	var screen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
 	// Każde wejście w reset dostaje świeży ViewModel — zcache'owany pamiętałby
 	// „hasło ustawione" i od razu wyrzucał z ekranu przy kolejnej próbie.
-	var forgotAttempt by remember { mutableStateOf(0) }
+	var forgotAttempt by rememberSaveable { mutableStateOf(0) }
 	val backToLogin = { screen = AuthScreen.LOGIN }
 
 	// Wstecz z rejestracji i resetu wraca do logowania, a nie zamyka aplikację.
@@ -215,24 +206,24 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 			initializer { FeedViewModel(client) }
 		},
 	)
-	var creatingPost by remember { mutableStateOf(false) }
-	var showProfile by remember { mutableStateOf(false) }
-	var showFriends by remember { mutableStateOf(false) }
-	var showNowPlaying by remember { mutableStateOf(false) }
-	var showFriendsPresence by remember { mutableStateOf(false) }
-	var showNotifications by remember { mutableStateOf(false) }
-	var showMailPreferences by remember { mutableStateOf(false) }
-	var showCommunities by remember { mutableStateOf(false) }
-	var communityDetailId by remember { mutableStateOf<String?>(null) }
-	var showMatches by remember { mutableStateOf(false) }
-	var showAdmin by remember { mutableStateOf(false) }
+	var creatingPost by rememberSaveable { mutableStateOf(false) }
+	var showProfile by rememberSaveable { mutableStateOf(false) }
+	var showFriends by rememberSaveable { mutableStateOf(false) }
+	var showNowPlaying by rememberSaveable { mutableStateOf(false) }
+	var showFriendsPresence by rememberSaveable { mutableStateOf(false) }
+	var showNotifications by rememberSaveable { mutableStateOf(false) }
+	var showMailPreferences by rememberSaveable { mutableStateOf(false) }
+	var showCommunities by rememberSaveable { mutableStateOf(false) }
+	var communityDetailId by rememberSaveable { mutableStateOf<String?>(null) }
+	var showMatches by rememberSaveable { mutableStateOf(false) }
+	var showAdmin by rememberSaveable { mutableStateOf(false) }
 
 	// Stan konta sprawdzany na starcie sesji: zawieszone konto dostaje 403 na
 	// prawie wszystko (ADR 0022), więc zamiast zepsutego feedu pokazujemy mu jego
 	// stan. null = jeszcze sprawdzamy. Brak sieci traktujemy jak „niezawieszone"
 	// — feed i tak pokaże wtedy błąd połączenia, a nie fałszywe zawieszenie.
-	var suspended by remember { mutableStateOf<Boolean?>(null) }
-	var isAdmin by remember { mutableStateOf(false) }
+	var suspended by rememberSaveable { mutableStateOf<Boolean?>(null) }
+	var isAdmin by rememberSaveable { mutableStateOf(false) }
 	LaunchedEffect(suspended) {
 		if (suspended == null) {
 			suspended = runCatching { client.mySuspension().suspended }.getOrDefault(false)
@@ -267,7 +258,7 @@ private fun LoggedInNav(client: SonglyApiClient, onLoggedOut: (notice: String?) 
 	// nawzajem (profil → post → komentarze → profil komentującego…), więc nie da się
 	// ich ułożyć w stałą kolejność gałęzi `when` jak ekranów niżej. Trzymamy je na
 	// stosie: rysujemy wierzch, Wstecz zdejmuje jedną warstwę.
-	val overlays = remember { mutableStateListOf<Overlay>() }
+	val overlays = rememberSaveable(saver = OverlayStackSaver) { mutableStateListOf<Overlay>() }
 	val openUserProfile: (String) -> Unit = { overlays.add(Overlay.UserProfile(it)) }
 	val openComments: (String) -> Unit = { overlays.add(Overlay.Comments(it)) }
 	val openPost: (String) -> Unit = { overlays.add(Overlay.PostDetail(it)) }
@@ -577,3 +568,31 @@ private sealed interface Overlay {
 	data class PostDetail(val postId: String) : Overlay
 	data class Comments(val postId: String) : Overlay
 }
+
+/**
+ * Stos nakładek zapisany jako lista napisów `rodzaj:id` — `Bundle` nie przyjmie
+ * zwykłej klasy Kotlina, a sam identyfikator wystarcza, żeby odtworzyć warstwę
+ * (dane i tak trzyma ViewModel, który przeżywa obrót).
+ */
+private val OverlayStackSaver = listSaver<SnapshotStateList<Overlay>, String>(
+	save = { stack ->
+		stack.map {
+			when (it) {
+				is Overlay.UserProfile -> "profile:${it.userId}"
+				is Overlay.PostDetail -> "post:${it.postId}"
+				is Overlay.Comments -> "comments:${it.postId}"
+			}
+		}
+	},
+	restore = { saved ->
+		saved.mapNotNullTo(mutableStateListOf()) {
+			val id = it.substringAfter(':')
+			when (it.substringBefore(':')) {
+				"profile" -> Overlay.UserProfile(id)
+				"post" -> Overlay.PostDetail(id)
+				"comments" -> Overlay.Comments(id)
+				else -> null
+			}
+		}
+	},
+)
