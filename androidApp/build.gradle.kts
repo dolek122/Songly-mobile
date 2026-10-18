@@ -21,6 +21,14 @@ android {
 			// Robolectric potrzebuje zasobów aplikacji (motyw, stringi) — bez tego
 			// testy UI wywalają się na inflacji themu.
 			isIncludeAndroidResources = true
+			// Każda klasa testowa w świeżej JVM. Compose trzyma globalny
+			// GlobalSnapshotManager uruchamiany raz na JVM i przywiązany do pętli
+			// Robolectrica pierwszego testu z Compose. Gdy test bez Compose (np.
+			// ViewModel) zapisze potem stan, powiadomienie trafia do pętli, którą
+			// Robolectric czyści między testami — manager staje na zawsze, a każdy
+			// kolejny test z polem tekstowym wisi 60 s na „Compose did not get idle".
+			// Wynik zależał więc od kolejności klas, a nie od kodu.
+			all { it.forkEvery = 1 }
 		}
 	}
 
