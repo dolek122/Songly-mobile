@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Musi zgadzać się z SonglyPalette.Background, żeby okno startowe nie
-         różniło się od pierwszego narysowanego ekranu. -->
-    <color name="window_background">#FDFCFF</color>
+    <!-- Muszą zgadzać się z SonglyPalette: tło okna startowego z Background, żeby
+         okno nie różniło się od pierwszego narysowanego ekranu, a pasek nawigacji
+         systemu z Black, czyli z dolnym paskiem aplikacji, który stoi tuż nad nim. -->
+    <color name="window_background">#121212</color>
+    <color name="navigation_bar">#000000</color>
 </resources>

@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.BackButton
 import com.songly.android.moderation.ReportPostDialog
 import com.songly.android.moderation.ReportPostViewModel
 import com.songly.android.ui.DeletePostDialog
@@ -72,7 +73,7 @@ fun PostDetailScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text("Post") },
-				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				navigationIcon = { BackButton(onBack) },
 			)
 		},
 	) { padding ->

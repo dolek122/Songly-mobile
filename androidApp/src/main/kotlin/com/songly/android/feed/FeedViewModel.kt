@@ -21,7 +21,7 @@ data class FeedUiState(
 	val errorMessage: String? = null, // błąd pierwszego wczytania (pusta lista)
 	val appendErrorMessage: String? = null, // błąd doczytywania (lista zostaje)
 	val endReached: Boolean = false, // ostatnia strona wczytana
-	val unreadNotifications: Long = 0, // do badge'a w menu (best-effort, nie blokuje feedu)
+	val unreadNotifications: Long = 0, // do plakietki na dzwonku (best-effort, nie blokuje feedu)
 	val currentUserId: String? = null, // do rozpoznania własnych postów (usuwanie)
 	val pendingDeletePostId: String? = null, // post czekający na potwierdzenie usunięcia
 	val isDeleting: Boolean = false,

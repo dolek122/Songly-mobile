@@ -2,9 +2,9 @@ package com.songly.android
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
@@ -68,8 +68,9 @@ class LogoutTest {
 		compose.onAllNodesWithText("Zaloguj się")[1].performClick()
 		waitForText("Pierwszy post")
 
-		compose.onNodeWithContentDescription("Menu").performClick()
-		compose.onNodeWithText("Wyloguj").performClick()
+		// Wylogowanie siedzi w zakładce „Profil" dolnego paska.
+		compose.onNodeWithText("Profil").performClick()
+		compose.onNodeWithText("Wyloguj się").performScrollTo().performClick()
 		waitForText("Nie masz konta? Zarejestruj się")
 		val feedCalls = backend.callCount("/api/v1/feed")
 		compose.mainClock.advanceTimeBy(2_000)

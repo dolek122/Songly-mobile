@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.BackButton
 import com.songly.android.moderation.logActionLabel
 import com.songly.android.ui.formatDateTime
 import com.songly.shared.model.EscalatedAppeal
@@ -53,7 +54,7 @@ fun AdminScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text("Panel administratora") },
-				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				navigationIcon = { BackButton(onBack) },
 			)
 		},
 	) { padding ->

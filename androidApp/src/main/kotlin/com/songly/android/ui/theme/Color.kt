@@ -3,67 +3,52 @@ package com.songly.android.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Paleta marki Songly. Indygo jako kolor wiodący, ciepły amber na akcenty
- * (polubienia, wyróżnienia) i morski na trzeci plan.
+ * Paleta marki Songly: zieleń na czerni, jak w aplikacjach muzycznych, do których
+ * użytkownicy są przyzwyczajeni. Zieleń jest zarezerwowana dla rzeczy, które coś
+ * robią albo coś znaczą (główny przycisk, polubienie, „na żywo", aktywny wybór) —
+ * reszta to czerń i szarości, żeby ekran nie krzyczał i od razu było widać, gdzie
+ * kliknąć.
  *
- * Wartości są wypisane wprost, a nie brane z dynamic color Androida 12+:
- * kolorystyka jest częścią rozpoznawalności produktu, a dynamic color sprawiłby,
- * że Songly wygląda inaczej na każdym telefonie. Jeśli kiedyś uznamy, że
- * dopasowanie do tapety jest ważniejsze od spójności marki, to jedna zmiana w
- * [SonglyTheme].
+ * Jeden, ciemny schemat — bez wariantu jasnego. Zielono-czarny wygląd jest
+ * rozpoznawalnością produktu, a jasna wersja tej samej palety byłaby po prostu
+ * inną aplikacją. Wartości są wypisane wprost, a nie brane z dynamic color
+ * Androida 12+, z tego samego powodu.
  *
- * Odcienie w schemacie ciemnym są jaśniejsze niż w jasnym — to nie ozdoba, tylko
- * wymóg kontrastu: ten sam indygo #4338CA na czarnym tle jest nieczytelny.
+ * Szarości idą od tła w górę: im wyżej leży płaszczyzna (karta, dialog), tym jest
+ * jaśniejsza — na czarnym tle cień prawie nie widać, więc to jasność mówi, co
+ * jest nad czym.
  */
 internal object SonglyPalette {
 
-	// Jasny schemat
-	val Primary = Color(0xFF4338CA)
-	val OnPrimary = Color(0xFFFFFFFF)
-	val PrimaryContainer = Color(0xFFE0E7FF)
-	val OnPrimaryContainer = Color(0xFF1E1B4B)
-	val Secondary = Color(0xFFB45309)
-	val OnSecondary = Color(0xFFFFFFFF)
-	val SecondaryContainer = Color(0xFFFEF3C7)
-	val OnSecondaryContainer = Color(0xFF451A03)
-	val Tertiary = Color(0xFF0F766E)
-	val OnTertiary = Color(0xFFFFFFFF)
-	val TertiaryContainer = Color(0xFFCCFBF1)
-	val OnTertiaryContainer = Color(0xFF042F2E)
-	val Background = Color(0xFFFDFCFF)
-	val OnBackground = Color(0xFF1B1B1F)
-	val Surface = Color(0xFFFDFCFF)
-	val OnSurface = Color(0xFF1B1B1F)
-	val SurfaceVariant = Color(0xFFE4E1EC)
-	val OnSurfaceVariant = Color(0xFF47464F)
-	val Outline = Color(0xFF78767F)
-	val Error = Color(0xFFB3261E)
-	val OnError = Color(0xFFFFFFFF)
-	val ErrorContainer = Color(0xFFF9DEDC)
-	val OnErrorContainer = Color(0xFF410E0B)
+	// Zieleń marki — na czarnym tle i pod czarnym tekstem jest czytelna (kontrast
+	// pilnuje PaletteContrastTest), więc przyciski mają czarne etykiety.
+	val Green = Color(0xFF1ED760)
+	val OnGreen = Color(0xFF000000)
 
-	// Ciemny schemat
-	val DarkPrimary = Color(0xFFA5B4FC)
-	val DarkOnPrimary = Color(0xFF1E1B4B)
-	val DarkPrimaryContainer = Color(0xFF312E81)
-	val DarkOnPrimaryContainer = Color(0xFFE0E7FF)
-	val DarkSecondary = Color(0xFFFCD34D)
-	val DarkOnSecondary = Color(0xFF451A03)
-	val DarkSecondaryContainer = Color(0xFF78350F)
-	val DarkOnSecondaryContainer = Color(0xFFFEF3C7)
-	val DarkTertiary = Color(0xFF5EEAD4)
-	val DarkOnTertiary = Color(0xFF042F2E)
-	val DarkTertiaryContainer = Color(0xFF115E59)
-	val DarkOnTertiaryContainer = Color(0xFFCCFBF1)
-	val DarkBackground = Color(0xFF131316)
-	val DarkOnBackground = Color(0xFFE5E1E6)
-	val DarkSurface = Color(0xFF131316)
-	val DarkOnSurface = Color(0xFFE5E1E6)
-	val DarkSurfaceVariant = Color(0xFF47464F)
-	val DarkOnSurfaceVariant = Color(0xFFC9C5D0)
-	val DarkOutline = Color(0xFF938F99)
-	val DarkError = Color(0xFFF2B8B5)
-	val DarkOnError = Color(0xFF601410)
-	val DarkErrorContainer = Color(0xFF8C1D18)
-	val DarkOnErrorContainer = Color(0xFFF9DEDC)
+	// Ciemna zieleń: tło inicjałów w awatarze i inne spokojne wyróżnienia.
+	val GreenContainer = Color(0xFF14532D)
+	val OnGreenContainer = Color(0xFFC8F7D8)
+
+	// Czerń i szarości, od najniższej płaszczyzny do najwyższej.
+	val Black = Color(0xFF000000) // dolny pasek nawigacji
+	val Background = Color(0xFF121212) // tło ekranów
+	val SurfaceLow = Color(0xFF181818)
+	val SurfaceCard = Color(0xFF1F1F1F) // karty: posty, społeczności, powiadomienia
+	val SurfaceRaised = Color(0xFF242424) // menu
+	val SurfaceHigh = Color(0xFF282828) // dialogi
+	val SurfaceVariant = Color(0xFF2A2A2A) // wyróżnione karty (np. nieprzeczytane)
+
+	// Tekst.
+	val TextPrimary = Color(0xFFFFFFFF)
+	val TextSecondary = Color(0xFFB3B3B3)
+
+	// Obramowania pól i separatory.
+	val Outline = Color(0xFF727272)
+	val OutlineVariant = Color(0xFF333333)
+
+	// Błędy — ciepła czerwień zamiast ostrej, żeby nie gryzła się z zielenią.
+	val Error = Color(0xFFF15E6C)
+	val OnError = Color(0xFF000000)
+	val ErrorContainer = Color(0xFF4A1A1F)
+	val OnErrorContainer = Color(0xFFFFDADC)
 }

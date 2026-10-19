@@ -2,7 +2,9 @@ package com.songly.android.post
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.songly.android.FakeBackend
@@ -70,9 +72,11 @@ class PostDetailScreenTest {
 		show(backend)
 		awaitText("Mój post")
 
-		compose.onNodeWithText("♡ 0").performClick()
+		compose.onNodeWithContentDescription("Polubienia: 0").performClick()
 
-		awaitText("♥ 1")
+		compose.waitUntil(timeoutMillis = 5_000) {
+			compose.onAllNodesWithContentDescription("Polubienia: 1").fetchSemanticsNodes().isNotEmpty()
+		}
 		compose.waitUntil(timeoutMillis = 5_000) { backend.callCount(HttpMethod.Put, "/api/v1/posts/p1/likes") == 1 }
 	}
 

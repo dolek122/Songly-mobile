@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -46,7 +47,8 @@ fun ForgotPasswordScreen(
 		verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
 		horizontalAlignment = Alignment.CenterHorizontally,
 	) {
-		Text("Reset hasła", style = MaterialTheme.typography.headlineSmall)
+		SonglyLogo(modifier = Modifier.padding(bottom = 8.dp))
+		Text("Reset hasła", style = MaterialTheme.typography.titleLarge)
 
 		if (!state.linkRequested) {
 			Text(
@@ -63,7 +65,7 @@ fun ForgotPasswordScreen(
 				keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
 				modifier = Modifier.fillMaxWidth(),
 			)
-			Button(onClick = viewModel::requestLink, enabled = state.canRequest, modifier = Modifier.fillMaxWidth()) {
+			Button(onClick = viewModel::requestLink, enabled = state.canRequest, modifier = Modifier.fillMaxWidth().height(52.dp)) {
 				Text(if (state.isSubmitting) "Wysyłanie…" else "Wyślij link")
 			}
 		} else {
@@ -108,7 +110,7 @@ fun ForgotPasswordScreen(
 				keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
 				modifier = Modifier.fillMaxWidth(),
 			)
-			Button(onClick = viewModel::resetPassword, enabled = state.canReset, modifier = Modifier.fillMaxWidth()) {
+			Button(onClick = viewModel::resetPassword, enabled = state.canReset, modifier = Modifier.fillMaxWidth().height(52.dp)) {
 				Text(if (state.isSubmitting) "Zapisywanie…" else "Ustaw nowe hasło")
 			}
 			TextButton(onClick = viewModel::backToEmail, enabled = !state.isSubmitting) {

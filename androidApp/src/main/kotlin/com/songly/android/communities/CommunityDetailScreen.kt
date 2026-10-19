@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.BackButton
 import com.songly.shared.model.Community
 import com.songly.shared.model.BanDetails
 import com.songly.shared.model.CommunityMember
@@ -155,7 +156,7 @@ fun CommunityDetailScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text(state.community?.name ?: "Społeczność") },
-				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				navigationIcon = { BackButton(onBack) },
 				actions = {
 					// Zarządzanie widoczne tylko dla właściciela.
 					if (state.community?.isOwner == true) {

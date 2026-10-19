@@ -6,9 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,11 +69,14 @@ import com.songly.android.post.CreatePostViewModel
 import com.songly.android.post.PostDetailScreen
 import com.songly.android.post.PostDetailViewModel
 import com.songly.android.post.PostListViewModel
+import com.songly.android.profile.ProfileHubScreen
 import com.songly.android.profile.ProfileScreen
 import com.songly.android.profile.ProfileViewModel
 import com.songly.android.profile.UserProfileScreen
 import com.songly.android.profile.UserProfileViewModel
 import com.songly.android.push.PushSetup
+import com.songly.android.ui.MainTab
+import com.songly.android.ui.SonglyNavigationBar
 import com.songly.android.ui.theme.SonglyTheme
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.util.AuthLink
@@ -392,10 +400,20 @@ private fun nowPlayingViewModel(client: SonglyApiClient): NowPlayingViewModel = 
 	},
 )
 
+/** Jeden ViewModel profilu dla zakładki „Profil" i ekranu edycji — ten sam stan. */
+@Composable
+private fun profileViewModel(client: SonglyApiClient): ProfileViewModel = viewModel(
+	factory = viewModelFactory {
+		initializer { ProfileViewModel(client) }
+	},
+)
+
 /**
- * Nawigacja w obrębie zalogowanej sesji: feed ↔ tworzenie posta. [feedViewModel]
- * jest tu (a nie w gałęzi feedu), żeby po dodaniu posta odświeżyć feed tą samą
- * instancją. Prosty stan zamiast Navigation-Compose — wystarcza na dwa ekrany.
+ * Nawigacja w obrębie zalogowanej sesji. Na dole pięć zakładek ([MainTab]) z
+ * głównymi miejscami aplikacji; pozostałe ekrany (powiadomienia, szczegóły,
+ * edycja) otwierają się nad zakładkami na pełnym ekranie, ze strzałką wstecz.
+ * [feedViewModel] jest tu (a nie w gałęzi feedu), żeby po dodaniu posta odświeżyć
+ * feed tą samą instancją. Prosty stan zamiast Navigation-Compose.
  */
 @Composable
 private fun LoggedInNav(
@@ -411,26 +429,28 @@ private fun LoggedInNav(
 			initializer { FeedViewModel(client) }
 		},
 	)
+	val scope = rememberCoroutineScope()
+	var tab by rememberSaveable { mutableStateOf(MainTab.HOME) }
 	var creatingPost by rememberSaveable { mutableStateOf(false) }
+	// Edycja profilu — otwierana z zakładki „Profil".
 	var showProfile by rememberSaveable { mutableStateOf(false) }
+	// Znajomi nad innym ekranem (zaproszenie z powiadomień); jako zakładka to [tab].
 	var showFriends by rememberSaveable { mutableStateOf(false) }
-	var showNowPlaying by rememberSaveable { mutableStateOf(false) }
 	var showFriendsPresence by rememberSaveable { mutableStateOf(false) }
 	var showNotifications by rememberSaveable { mutableStateOf(false) }
 	var showMailPreferences by rememberSaveable { mutableStateOf(false) }
-	var showCommunities by rememberSaveable { mutableStateOf(false) }
 	var communityDetailId by rememberSaveable { mutableStateOf<String?>(null) }
 	var showMatches by rememberSaveable { mutableStateOf(false) }
 	var showAdmin by rememberSaveable { mutableStateOf(false) }
 
 	// Powrót z OAuth Spotify: wynik trafia do tego samego ViewModelu, który
-	// pokazuje ekran „teraz gram" (viewModel() bez klucza oddaje jedną instancję),
-	// a ekran wraca na wierzch, bo proces zostawił go pod przeglądarką.
+	// pokazuje zakładkę „Muzyka" (viewModel() bez klucza oddaje jedną instancję),
+	// a zakładka wraca na wierzch, bo proces zostawił ją pod przeglądarką.
 	if (spotifyResult != null) {
 		val nowPlayingViewModel = nowPlayingViewModel(client)
 		LaunchedEffect(spotifyResult) {
 			nowPlayingViewModel.onSpotifyConnectResult(spotifyResult)
-			showNowPlaying = true
+			tab = MainTab.MUSIC
 			onSpotifyResultHandled()
 		}
 	}
@@ -442,7 +462,6 @@ private fun LoggedInNav(
 			showAdmin = false
 			showMatches = false
 			communityDetailId = null
-			showCommunities = false
 			showMailPreferences = false
 			showFriends = false
 			showNotifications = true
@@ -516,7 +535,6 @@ private fun LoggedInNav(
 		showAdmin -> ({ showAdmin = false })
 		showMatches -> ({ showMatches = false })
 		communityDetailId != null -> ({ communityDetailId = null })
-		showCommunities -> ({ showCommunities = false })
 		// Otwierane z powiadomień, więc zamyka się przed nimi.
 		showMailPreferences -> ({ showMailPreferences = false })
 		// Też otwierane z powiadomień (zaproszenie do znajomych).
@@ -525,10 +543,12 @@ private fun LoggedInNav(
 		// nieprzeczytanych zostawałby po lekturze.
 		showNotifications -> ({ showNotifications = false; feedViewModel.refresh() })
 		showFriendsPresence -> ({ showFriendsPresence = false })
-		showNowPlaying -> ({ showNowPlaying = false })
 		showProfile -> ({ showProfile = false })
 		creatingPost -> ({ creatingPost = false })
-		// Na feedzie zostawiamy Wstecz systemowi — tam wyjście z aplikacji jest
+		// Z innej zakładki Wstecz wraca na główną, jak w większości aplikacji z
+		// dolnym paskiem — dopiero z głównej wychodzi z aplikacji.
+		tab != MainTab.HOME -> ({ tab = MainTab.HOME })
+		// Na głównej zostawiamy Wstecz systemowi — tam wyjście z aplikacji jest
 		// zachowaniem oczekiwanym.
 		else -> null
 	}
@@ -657,20 +677,6 @@ private fun LoggedInNav(
 			)
 		}
 
-		showCommunities -> {
-			val communitiesViewModel: CommunitiesViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { CommunitiesViewModel(client) }
-				},
-			)
-			CommunitiesScreen(
-				viewModel = communitiesViewModel,
-				onBack = { showCommunities = false },
-				onOpenCommunity = { communityDetailId = it },
-				onOpenUserProfile = openUserProfile,
-			)
-		}
-
 		showMailPreferences -> {
 			val mailPreferencesViewModel: MailPreferencesViewModel = viewModel(
 				factory = viewModelFactory {
@@ -693,6 +699,7 @@ private fun LoggedInNav(
 				viewModel = friendsViewModel,
 				onBack = { showFriends = false },
 				onOpenUserProfile = openUserProfile,
+				onOpenMatches = { showMatches = true },
 			)
 		}
 
@@ -727,23 +734,9 @@ private fun LoggedInNav(
 			)
 		}
 
-		showNowPlaying -> {
-			val nowPlayingViewModel = nowPlayingViewModel(client)
-			NowPlayingScreen(
-				viewModel = nowPlayingViewModel,
-				onBack = { showNowPlaying = false },
-				onOpenFriendsPresence = { showFriendsPresence = true },
-			)
-		}
-
 		showProfile -> {
-			val profileViewModel: ProfileViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { ProfileViewModel(client) }
-				},
-			)
 			ProfileScreen(
-				viewModel = profileViewModel,
+				viewModel = profileViewModel(client),
 				onBack = { showProfile = false },
 				onAccountDeleted = { showProfile = false; onLoggedOut(null) },
 				onPasswordChanged = {
@@ -769,27 +762,83 @@ private fun LoggedInNav(
 			)
 		}
 
-		else -> {
-			FeedScreen(
-				viewModel = feedViewModel,
-				client = client,
-				onLoggedOut = { onLoggedOut(null) },
-				onSessionExpired = { onLoggedOut("Sesja wygasła. Zaloguj się ponownie.") },
-				onCreatePost = { creatingPost = true },
-				onOpenComments = openComments,
-				onOpenUserProfile = openUserProfile,
-				onOpenProfile = { showProfile = true },
-				onOpenFriends = { showFriends = true },
-				onOpenNowPlaying = { showNowPlaying = true },
-				onOpenFriendsPresence = { showFriendsPresence = true },
-				onOpenNotifications = { showNotifications = true },
-				onOpenCommunities = { showCommunities = true },
-				onOpenMatches = { showMatches = true },
-				isAdmin = isAdmin,
-				onOpenAdmin = { showAdmin = true },
-				// Zawieszenie w trakcie sesji — sprawdzamy stan od nowa i pokazujemy ekran zawieszenia.
-				onAccountSuspended = { suspended = null },
-			)
+		else -> MainTabs(selected = tab, onSelect = { tab = it }) {
+			when (tab) {
+				MainTab.HOME -> FeedScreen(
+					viewModel = feedViewModel,
+					onSessionExpired = { onLoggedOut("Sesja wygasła. Zaloguj się ponownie.") },
+					onCreatePost = { creatingPost = true },
+					onOpenComments = openComments,
+					onOpenUserProfile = openUserProfile,
+					onOpenNotifications = { showNotifications = true },
+					// Zawieszenie w trakcie sesji — sprawdzamy stan od nowa i pokazujemy ekran zawieszenia.
+					onAccountSuspended = { suspended = null },
+				)
+
+				MainTab.MUSIC -> NowPlayingScreen(
+					viewModel = nowPlayingViewModel(client),
+					onOpenFriendsPresence = { showFriendsPresence = true },
+				)
+
+				MainTab.COMMUNITIES -> {
+					val communitiesViewModel: CommunitiesViewModel = viewModel(
+						factory = viewModelFactory {
+							initializer { CommunitiesViewModel(client) }
+						},
+					)
+					CommunitiesScreen(
+						viewModel = communitiesViewModel,
+						onOpenCommunity = { communityDetailId = it },
+						onOpenUserProfile = openUserProfile,
+					)
+				}
+
+				MainTab.FRIENDS -> {
+					val friendsViewModel: FriendsViewModel = viewModel(
+						factory = viewModelFactory {
+							initializer { FriendsViewModel(client) }
+						},
+					)
+					FriendsScreen(
+						viewModel = friendsViewModel,
+						onOpenUserProfile = openUserProfile,
+						onOpenMatches = { showMatches = true },
+					)
+				}
+
+				MainTab.PROFILE -> ProfileHubScreen(
+					viewModel = profileViewModel(client),
+					isAdmin = isAdmin,
+					onEditProfile = { showProfile = true },
+					onOpenMailPreferences = { showMailPreferences = true },
+					onOpenAdmin = { showAdmin = true },
+					onLogout = {
+						scope.launch {
+							client.logout()
+							onLoggedOut(null)
+						}
+					},
+				)
+			}
+		}
+	}
+}
+
+/**
+ * Zakładka z dolnym paskiem. Ekrany w środku mają własne Scaffoldy (pasek u góry,
+ * FAB), więc pasek nawigacji systemu, który zasłania już nasz dolny pasek, trzeba
+ * oznaczyć jako zużyty — inaczej ekran zostawiłby nad paskiem drugi, pusty odstęp
+ * tej samej wysokości (Android 15 rysuje aplikację pod paskami systemu).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MainTabs(selected: MainTab, onSelect: (MainTab) -> Unit, content: @Composable () -> Unit) {
+	Scaffold(
+		bottomBar = { SonglyNavigationBar(selected = selected, onSelect = onSelect) },
+		contentWindowInsets = WindowInsets(0, 0, 0, 0),
+	) { padding ->
+		Box(modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+			content()
 		}
 	}
 }

@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.BackButton
 import com.songly.android.ui.accessibleAction
 import com.songly.shared.model.Comment
 import com.songly.shared.util.RelativeTime
@@ -75,9 +76,7 @@ fun CommentsScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text("Komentarze") },
-				navigationIcon = {
-					TextButton(onClick = onBack) { Text("Wróć") }
-				},
+				navigationIcon = { BackButton(onBack) },
 			)
 		},
 		bottomBar = {

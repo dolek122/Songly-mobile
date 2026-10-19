@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.BackButton
 import com.songly.shared.model.Match
 
 /**
@@ -72,7 +73,7 @@ fun MatchesScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text("Dopasowani") },
-				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				navigationIcon = { BackButton(onBack) },
 			)
 		},
 	) { padding ->
