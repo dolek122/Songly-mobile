@@ -22,6 +22,7 @@ import com.songly.shared.model.PasswordResetConfirmRequest
 import com.songly.shared.model.PasswordResetRequest
 import com.songly.shared.model.PostImage
 import com.songly.shared.model.AuthTokens
+import com.songly.shared.model.BlockStatus
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Comment
 import com.songly.shared.model.Community
@@ -49,7 +50,9 @@ import com.songly.shared.model.Post
 import com.songly.shared.model.Profile
 import com.songly.shared.model.PublicProfile
 import com.songly.shared.model.RefreshRequest
+import com.songly.shared.model.RegisterPushDeviceRequest
 import com.songly.shared.model.RegisterRequest
+import com.songly.shared.model.RemovePushDeviceRequest
 import com.songly.shared.model.SendFriendRequestRequest
 import com.songly.shared.model.SetFavoriteGenresRequest
 import com.songly.shared.model.UnreadCount
@@ -103,11 +106,14 @@ class OpenApiContractTest {
 		FriendRequest.serializer() to "FriendRequestResponse",
 		SendFriendRequestRequest.serializer() to "SendFriendRequestRequest",
 		BlockedUser.serializer() to "BlockedUserResponse",
+		BlockStatus.serializer() to "BlockStatusResponse",
 		UserSearchResult.serializer() to "UserSearchResponse",
 		Notification.serializer() to "NotificationResponse",
 		UnreadCount.serializer() to "UnreadCountResponse",
 		MailPreferences.serializer() to "MailPreferencesResponse",
 		UpdateMailPreferencesRequest.serializer() to "UpdateMailPreferencesRequest",
+		RegisterPushDeviceRequest.serializer() to "RegisterPushDeviceRequest",
+		RemovePushDeviceRequest.serializer() to "RemovePushDeviceRequest",
 		Match.serializer() to "MatchResponse",
 		Profile.serializer() to "ProfileResponse",
 		Genre.serializer() to "GenreResponse",
