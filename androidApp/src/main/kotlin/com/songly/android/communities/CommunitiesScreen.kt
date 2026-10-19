@@ -13,19 +13,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -39,20 +40,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.BackButton
+import com.songly.android.ui.EmptyState
+import com.songly.android.ui.FilterPill
+import com.songly.android.ui.SonglyFab
 import com.songly.shared.model.Community
 
 /**
  * Ekran społeczności (Compose, natywny UI — §14): lista wszystkich społeczności
  * z dołączaniem/opuszczaniem i tworzeniem nowej (FAB → dialog). Klik w kartę
  * otwiera szczegóły. Stan z [CommunitiesViewModel]; dane z modułu community.
+ *
+ * Jako zakładka dolnego paska [onBack] jest `null` — bez strzałki wstecz.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunitiesScreen(
 	viewModel: CommunitiesViewModel,
-	onBack: () -> Unit,
 	onOpenCommunity: (String) -> Unit,
 	onOpenUserProfile: (String) -> Unit,
+	onBack: (() -> Unit)? = null,
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
@@ -90,26 +97,27 @@ fun CommunitiesScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text("Społeczności") },
-				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				navigationIcon = { if (onBack != null) BackButton(onBack) },
 			)
 		},
 		floatingActionButton = {
-			FloatingActionButton(onClick = viewModel::openCreateDialog) {
-				Text(text = "+", style = MaterialTheme.typography.headlineMedium)
-			}
+			SonglyFab(icon = Icons.Filled.Add, contentDescription = "Nowa społeczność", onClick = viewModel::openCreateDialog)
 		},
 	) { padding ->
 		Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-			TabRow(selectedTabIndex = state.tab.ordinal) {
-				Tab(
+			Row(
+				modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+				horizontalArrangement = Arrangement.spacedBy(8.dp),
+			) {
+				FilterPill(
+					label = "Wszystkie",
 					selected = state.tab == CommunitiesTab.ALL,
 					onClick = { viewModel.selectTab(CommunitiesTab.ALL) },
-					text = { Text("Wszystkie") },
 				)
-				Tab(
+				FilterPill(
+					label = "Moje",
 					selected = state.tab == CommunitiesTab.MINE,
 					onClick = { viewModel.selectTab(CommunitiesTab.MINE) },
-					text = { Text("Moje") },
 				)
 			}
 			PullToRefreshBox(
@@ -121,27 +129,23 @@ fun CommunitiesScreen(
 				state.isLoading && state.communities.isEmpty() ->
 					CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-				state.errorMessage != null -> CenteredMessage {
-					Text(state.errorMessage)
-					Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 12.dp)) {
-						Text("Spróbuj ponownie")
-					}
+				state.errorMessage != null -> EmptyState(icon = Icons.Outlined.CloudOff, message = state.errorMessage) {
+					Button(onClick = viewModel::refresh) { Text("Spróbuj ponownie") }
 				}
 
-				state.isEmpty -> CenteredMessage {
-					Text(
-						text = if (state.tab == CommunitiesTab.MINE) {
-							"Nie należysz jeszcze do żadnej społeczności."
-						} else {
-							"Brak społeczności. Załóż pierwszą!"
-						},
-						style = MaterialTheme.typography.bodyMedium,
-					)
-				}
+				state.isEmpty -> EmptyState(
+					icon = Icons.Outlined.Groups,
+					message = if (state.tab == CommunitiesTab.MINE) {
+						"Nie należysz jeszcze do żadnej społeczności."
+					} else {
+						"Brak społeczności. Załóż pierwszą!"
+					},
+				)
 
 				else -> LazyColumn(
 					state = listState,
-					contentPadding = PaddingValues(16.dp),
+					// Dół z zapasem na przycisk „Nowa społeczność".
+					contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
 					verticalArrangement = Arrangement.spacedBy(10.dp),
 					modifier = Modifier.fillMaxSize(),
 				) {
@@ -309,17 +313,6 @@ private fun Footer(isLoading: Boolean, errorMessage: String?, onRetry: () -> Uni
 				TextButton(onClick = onRetry) { Text("Ponów") }
 			}
 		}
-	}
-}
-
-@Composable
-private fun CenteredMessage(content: @Composable () -> Unit) {
-	Column(
-		modifier = Modifier.fillMaxSize().padding(24.dp),
-		verticalArrangement = Arrangement.Center,
-		horizontalAlignment = Alignment.CenterHorizontally,
-	) {
-		content()
 	}
 }
 

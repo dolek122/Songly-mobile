@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.BackButton
 import com.songly.android.post.PostListDialogs
 import com.songly.android.post.PostListViewModel
 import com.songly.android.post.postListItems
@@ -79,9 +80,7 @@ fun UserProfileScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text(state.profile?.displayName ?: "Profil") },
-				navigationIcon = {
-					TextButton(onClick = onBack) { Text("Wróć") }
-				},
+				navigationIcon = { BackButton(onBack) },
 			)
 		},
 	) { padding ->

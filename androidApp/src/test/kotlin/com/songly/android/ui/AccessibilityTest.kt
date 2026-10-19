@@ -92,9 +92,9 @@ class AccessibilityTest {
 		assertEquals(0, compose.onAllNodesWithText("O").fetchSemanticsNodes().size)
 	}
 
-	/** „⋮" czytane było jako „pionowy wielokropek", a liczba nieprzeczytanych — wcale. */
+	/** Plakietka z liczbą nieprzeczytanych jest tylko wizualna — dzwonek musi ją powiedzieć słowami. */
 	@Test
-	fun feedMenuAnnouncesUnreadNotifications() {
+	fun feedBellAnnouncesUnreadNotifications() {
 		val client = FakeBackend().apply {
 			onJson("/api/v1/feed", pageJson(postJson("p1", "Post"), number = 0, totalPages = 1))
 			onJson("/api/v1/notifications/unread-count", """{"count":3}""")
@@ -102,15 +102,13 @@ class AccessibilityTest {
 		}.client()
 		compose.setContent {
 			FeedScreen(
-				viewModel = FeedViewModel(client), client = client, onLoggedOut = {}, onSessionExpired = {},
-				onCreatePost = {}, onOpenComments = {}, onOpenUserProfile = {}, onOpenProfile = {}, onOpenFriends = {},
-				onOpenNowPlaying = {}, onOpenFriendsPresence = {}, onOpenNotifications = {}, onOpenCommunities = {},
-				onOpenMatches = {},
+				viewModel = FeedViewModel(client), onSessionExpired = {}, onCreatePost = {}, onOpenComments = {},
+				onOpenUserProfile = {}, onOpenNotifications = {},
 			)
 		}
 
 		compose.waitUntil(5_000) {
-			compose.onAllNodes(hasContentDescription("Menu, nieprzeczytane powiadomienia: 3"))
+			compose.onAllNodes(hasContentDescription("Powiadomienia, nieprzeczytane: 3"))
 				.fetchSemanticsNodes().isNotEmpty()
 		}
 	}

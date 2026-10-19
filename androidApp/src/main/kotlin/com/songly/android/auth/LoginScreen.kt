@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
@@ -51,11 +52,12 @@ fun LoginScreen(
 		verticalArrangement = Arrangement.Center,
 		horizontalAlignment = Alignment.CenterHorizontally,
 	) {
-		Text(text = "Songly", style = MaterialTheme.typography.headlineLarge)
+		SonglyLogo()
 		Text(
 			text = "Zaloguj się",
-			style = MaterialTheme.typography.bodyMedium,
-			modifier = Modifier.padding(top = 4.dp, bottom = 24.dp),
+			style = MaterialTheme.typography.titleMedium,
+			color = MaterialTheme.colorScheme.onSurfaceVariant,
+			modifier = Modifier.padding(top = 8.dp, bottom = 32.dp),
 		)
 
 		if (notice != null) {
@@ -107,7 +109,7 @@ fun LoginScreen(
 		Button(
 			onClick = viewModel::submit,
 			enabled = state.canSubmit,
-			modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+			modifier = Modifier.fillMaxWidth().padding(top = 24.dp).height(52.dp),
 		) {
 			if (state.isSubmitting) {
 				CircularProgressIndicator(

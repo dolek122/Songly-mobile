@@ -11,10 +11,11 @@ import kotlin.test.assertTrue
  * Kontrast palety liczony, nie oceniany na oko. Motyw to jedyna część UI, której
  * poprawność da się sprawdzić bez urządzenia — a „ten odcień chyba wystarczy" to
  * dokładnie ten rodzaj decyzji, po której tekst okazuje się nieczytalny na
- * słońcu albo w ciemnym motywie.
+ * słońcu.
  *
- * Próg 4.5:1 to WCAG AA dla zwykłego tekstu. Sprawdzamy pary, które realnie
- * występują na ekranach: treść na tle, tekst pomocniczy, etykiety przycisków,
+ * Próg 4.5:1 to WCAG AA dla zwykłego tekstu, 3:1 — dla elementów, które nie są
+ * tekstem (obramowanie pola). Sprawdzamy pary, które realnie występują na
+ * ekranach: treść na tle i na kartach, tekst pomocniczy, etykiety przycisków,
  * komunikaty błędów i statusu.
  */
 class PaletteContrastTest {
@@ -35,52 +36,57 @@ class PaletteContrastTest {
 		return (max(a, b) + 0.05) / (min(a, b) + 0.05)
 	}
 
-	private fun assertReadable(name: String, foreground: Color, background: Color) {
+	private fun assertContrast(name: String, foreground: Color, background: Color, minimum: Double = 4.5) {
 		val ratio = contrast(foreground, background)
-		assertTrue(ratio >= 4.5, "$name: kontrast ${(ratio * 100).toInt() / 100.0}:1, wymagane min. 4.5:1")
+		assertTrue(ratio >= minimum, "$name: kontrast ${(ratio * 100).toInt() / 100.0}:1, wymagane min. $minimum:1")
 	}
 
 	@Test
-	fun lightSchemeIsReadable() {
+	fun textIsReadableOnEverySurface() {
 		with(SonglyPalette) {
-			assertReadable("treść na tle", OnBackground, Background)
-			assertReadable("treść na powierzchni", OnSurface, Surface)
-			assertReadable("tekst pomocniczy", OnSurfaceVariant, Surface)
-			assertReadable("etykieta na przycisku", OnPrimary, Primary)
-			assertReadable("komunikat statusu", Primary, Surface)
-			assertReadable("komunikat błędu", Error, Surface)
-			assertReadable("treść w kontenerze akcentu", OnSecondaryContainer, SecondaryContainer)
+			for ((surfaceName, surface) in listOf("tło" to Background, "karta" to SurfaceCard, "dialog" to SurfaceHigh)) {
+				assertContrast("treść ($surfaceName)", TextPrimary, surface)
+				assertContrast("tekst pomocniczy ($surfaceName)", TextSecondary, surface)
+				assertContrast("komunikat statusu ($surfaceName)", Green, surface)
+				assertContrast("komunikat błędu ($surfaceName)", Error, surface)
+			}
+			assertContrast("tekst pomocniczy na wyróżnionej karcie", TextSecondary, SurfaceVariant)
 		}
 	}
 
 	@Test
-	fun darkSchemeIsReadable() {
+	fun labelsAreReadableOnColoredContainers() {
 		with(SonglyPalette) {
-			assertReadable("treść na tle", DarkOnBackground, DarkBackground)
-			assertReadable("treść na powierzchni", DarkOnSurface, DarkSurface)
-			assertReadable("tekst pomocniczy", DarkOnSurfaceVariant, DarkSurface)
-			assertReadable("etykieta na przycisku", DarkOnPrimary, DarkPrimary)
-			assertReadable("komunikat statusu", DarkPrimary, DarkSurface)
-			assertReadable("komunikat błędu", DarkError, DarkSurface)
-			assertReadable("treść w kontenerze akcentu", DarkOnSecondaryContainer, DarkSecondaryContainer)
+			assertContrast("etykieta na zielonym przycisku", OnGreen, Green)
+			assertContrast("inicjały w awatarze", OnGreenContainer, GreenContainer)
+			assertContrast("licznik na plakietce błędu", OnError, Error)
+			assertContrast("treść w kontenerze błędu", OnErrorContainer, ErrorContainer)
+		}
+	}
+
+	/** Obramowanie pola tekstowego musi być widać, zanim ktoś w nie stuknie. */
+	@Test
+	fun fieldOutlineIsVisible() {
+		with(SonglyPalette) {
+			assertContrast("obramowanie pola", Outline, Background, minimum = 3.0)
 		}
 	}
 
 	/**
-	 * Ciemny schemat nie może być jasnym z zamienionymi rolami — odcienie wiodące
-	 * muszą być jaśniejsze niż w jasnym motywie, inaczej znikają na czarnym tle.
+	 * Na czarnym tle cienia prawie nie widać, więc to jasność mówi, co leży nad
+	 * czym: karta jaśniejsza od tła, menu od karty, dialog od menu. Odwrócenie
+	 * któregoś kroku sprawiłoby, że karta zleje się z tłem albo dialog z kartą.
 	 */
 	@Test
-	fun darkSchemeLightensBrandColors() {
+	fun surfacesGetLighterAsTheyRise() {
 		with(SonglyPalette) {
-			assertTrue(
-				relativeLuminance(DarkPrimary) > relativeLuminance(Primary),
-				"kolor wiodący w ciemnym motywie musi być jaśniejszy niż w jasnym",
-			)
-			assertTrue(
-				relativeLuminance(DarkBackground) < relativeLuminance(Background),
-				"tło ciemnego motywu musi być ciemniejsze",
-			)
+			val surfaces = listOf(Black, Background, SurfaceLow, SurfaceCard, SurfaceRaised, SurfaceHigh)
+			surfaces.zipWithNext().forEach { (lower, higher) ->
+				assertTrue(
+					relativeLuminance(higher) > relativeLuminance(lower),
+					"płaszczyzna $higher musi być jaśniejsza niż leżąca pod nią $lower",
+				)
+			}
 		}
 	}
 }

@@ -23,6 +23,21 @@ platform-specific (powiadomienia, deep linki, integracje systemowe), a wspólny
 `shared` eliminuje duplikację tam, gdzie boli najbardziej — w modelach i wywołaniach
 API. Compose Multiplatform dla UI to naturalny kolejny krok, gdy MVP się sprawdzi.
 
+## Wygląd (Android)
+
+Ciemny, zielono-czarny motyw — zawsze ciemny, niezależnie od ustawienia systemu.
+Paleta jest w `ui/theme/Color.kt` (`SonglyPalette`), a jej kontrast liczy
+`PaletteContrastTest`, więc zmiana odcienia, po której tekst przestaje być czytelny,
+wywali testy. Zieleń jest tylko dla akcji i stanów (główny przycisk, polubienie,
+„na żywo"); reszta to czerń i szarości.
+
+Nawigacja to dolny pasek z pięcioma zakładkami (`ui/MainNavigation.kt`): Główna,
+Muzyka, Społeczności, Znajomi, Profil. Powiadomienia są pod dzwonkiem na głównej,
+dopasowani — w zakładce Znajomi, ustawienia i wylogowanie — w zakładce Profil.
+Pozostałe ekrany otwierają się nad zakładkami ze strzałką wstecz. Wspólne klocki
+(strzałka wstecz, zielony przycisk akcji, wiersz nawigacyjny, pusty stan,
+pigułka filtra) są w `ui/Components.kt`.
+
 ## Kontrakt z backendem
 
 Modele w `shared/.../model` odwzorowują DTO z backendu 1:1. Źródłem prawdy jest

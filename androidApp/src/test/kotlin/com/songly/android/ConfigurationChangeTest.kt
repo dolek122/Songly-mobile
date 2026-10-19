@@ -1,6 +1,7 @@
 package com.songly.android
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -64,6 +65,12 @@ class ConfigurationChangeTest {
 		compose.waitUntil(5_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
 	}
 
+	private fun waitForDescription(description: String) {
+		compose.waitUntil(5_000) {
+			compose.onAllNodesWithContentDescription(description).fetchSemanticsNodes().isNotEmpty()
+		}
+	}
+
 	private fun rotate() {
 		compose.activityRule.scenario.recreate()
 	}
@@ -73,20 +80,19 @@ class ConfigurationChangeTest {
 		waitForText("Pierwszy post")
 
 		rotate()
-		waitForText("♡ 0")
-		compose.onNodeWithText("♡ 0").performClick()
+		waitForDescription("Polubienia: 0")
+		compose.onNodeWithContentDescription("Polubienia: 0").performClick()
 		compose.waitForIdle()
 
 		// Zamknięty klient nie dociera do serwera, a lajk cofa się po błędzie.
 		assertEquals(1, backend.callCount(HttpMethod.Put, "/api/v1/posts/p1/likes"))
-		compose.onNodeWithText("♥ 1").assertExists()
+		compose.onNodeWithContentDescription("Polubienia: 1").assertExists()
 	}
 
 	@Test
 	fun openScreenSurvivesRotation() {
 		waitForText("Pierwszy post")
-		compose.onNodeWithContentDescription("Menu").performClick()
-		compose.onNodeWithText("Powiadomienia").performClick()
+		compose.onNodeWithContentDescription("Powiadomienia").performClick()
 		waitForText("Brak powiadomień.")
 
 		rotate()

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
@@ -58,7 +59,7 @@ fun RegisterScreen(
 		verticalArrangement = Arrangement.Center,
 		horizontalAlignment = Alignment.CenterHorizontally,
 	) {
-		Text(text = "Songly", style = MaterialTheme.typography.headlineLarge)
+		SonglyLogo()
 
 		if (state.awaitingVerification) {
 			VerificationStep(state, viewModel)
@@ -97,8 +98,9 @@ fun RegisterScreen(
 private fun ColumnScope.RegistrationForm(state: RegisterUiState, viewModel: RegisterViewModel) {
 	Text(
 		text = "Załóż konto",
-		style = MaterialTheme.typography.bodyMedium,
-		modifier = Modifier.padding(top = 4.dp, bottom = 24.dp),
+		style = MaterialTheme.typography.titleMedium,
+		color = MaterialTheme.colorScheme.onSurfaceVariant,
+		modifier = Modifier.padding(top = 8.dp, bottom = 32.dp),
 	)
 
 	OutlinedTextField(
@@ -168,8 +170,8 @@ private fun ColumnScope.RegistrationForm(state: RegisterUiState, viewModel: Regi
 private fun ColumnScope.VerificationStep(state: RegisterUiState, viewModel: RegisterViewModel) {
 	Text(
 		text = "Sprawdź skrzynkę",
-		style = MaterialTheme.typography.titleMedium,
-		modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+		style = MaterialTheme.typography.titleLarge,
+		modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
 	)
 	// Wejście z linku w mailu: adresu nie znamy (rejestrację mogło zacząć inne
 	// urządzenie), więc nie ma czego wpisać w zdanie ani na co wysłać nowego linku.
@@ -220,7 +222,7 @@ private fun SubmitButton(label: String, busyLabel: String, enabled: Boolean, bus
 	Button(
 		onClick = onClick,
 		enabled = enabled,
-		modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+		modifier = Modifier.fillMaxWidth().padding(top = 24.dp).height(52.dp),
 	) {
 		if (busy) {
 			CircularProgressIndicator(

@@ -45,19 +45,11 @@ class FeedScreenTest {
 		compose.setContent {
 			FeedScreen(
 				viewModel = FeedViewModel(client),
-				client = client,
-				onLoggedOut = {},
 				onSessionExpired = {},
 				onCreatePost = {},
 				onOpenComments = {},
 				onOpenUserProfile = {},
-				onOpenProfile = {},
-				onOpenFriends = {},
-				onOpenNowPlaying = {},
-				onOpenFriendsPresence = {},
 				onOpenNotifications = {},
-				onOpenCommunities = {},
-				onOpenMatches = {},
 			)
 		}
 	}

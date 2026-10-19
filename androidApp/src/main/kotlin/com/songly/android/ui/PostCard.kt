@@ -7,10 +7,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -18,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -109,33 +117,33 @@ fun PostCard(
 						.clip(RoundedCornerShape(8.dp)),
 				)
 			}
-			// Ikony-znaki czytnik ekranu czytał dosłownie („biały kier, trzy"), bez roli
-			// przycisku i bez stanu — stąd opis i stan podane wprost. Cel dotyku 48 dp
-			// sam robi odstęp od treści, więc rząd nie potrzebuje już górnego paddingu.
+			// Opis i stan podane wprost, bo sama ikona z liczbą nic czytnikowi nie mówi
+			// (wcześniej znaki „♡ 3" czytał jako „biały kier, trzy"). Cel dotyku 48 dp
+			// sam robi odstęp od treści, więc rząd nie potrzebuje górnego paddingu.
 			Row(
-				horizontalArrangement = Arrangement.spacedBy(12.dp),
+				horizontalArrangement = Arrangement.spacedBy(8.dp),
 				verticalAlignment = Alignment.CenterVertically,
 			) {
-				Text(
-					text = "${if (post.likedByMe) "♥" else "♡"} ${post.likeCount}",
-					style = MaterialTheme.typography.labelLarge,
-					color = if (post.likedByMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+				PostAction(
+					icon = if (post.likedByMe) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+					count = post.likeCount,
+					active = post.likedByMe,
 					modifier = Modifier.accessibleAction(
 						description = "Polubienia: ${post.likeCount}",
 						state = if (post.likedByMe) "polubiony" else "niepolubiony",
 						onClick = onToggleLike,
 					),
 				)
-				Text(
-					text = "💬 ${post.commentCount}",
-					style = MaterialTheme.typography.labelLarge,
-					color = MaterialTheme.colorScheme.onSurfaceVariant,
+				PostAction(
+					icon = Icons.Outlined.ChatBubbleOutline,
+					count = post.commentCount,
+					active = false,
 					modifier = Modifier.accessibleAction(description = "Komentarze: ${post.commentCount}", onClick = onOpenComments),
 				)
-				Text(
-					text = "↗ ${post.shareCount}",
-					style = MaterialTheme.typography.labelLarge,
-					color = if (post.sharedByMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+				PostAction(
+					icon = Icons.Filled.Repeat,
+					count = post.shareCount,
+					active = post.sharedByMe,
 					modifier = Modifier.accessibleAction(
 						description = "Udostępnienia: ${post.shareCount}",
 						state = if (post.sharedByMe) "udostępniony" else "nieudostępniony",
@@ -144,6 +152,24 @@ fun PostCard(
 				)
 			}
 		}
+	}
+}
+
+/**
+ * Ikona z licznikiem pod postem. Aktywna (polubiony, udostępniony) świeci zielenią
+ * — tak jak serce przy polubionym utworze — a nieaktywna jest szara i nie
+ * odciąga wzroku od treści.
+ */
+@Composable
+private fun PostAction(icon: ImageVector, count: Long, active: Boolean, modifier: Modifier) {
+	val color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+	Row(
+		modifier = modifier.padding(horizontal = 4.dp),
+		verticalAlignment = Alignment.CenterVertically,
+		horizontalArrangement = Arrangement.spacedBy(6.dp),
+	) {
+		Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+		Text(text = count.toString(), style = MaterialTheme.typography.labelLarge, color = color)
 	}
 }
 

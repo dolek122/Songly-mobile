@@ -1,5 +1,6 @@
 package com.songly.android.presence
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,9 +10,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -21,9 +28,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.BackButton
+import com.songly.android.ui.EmptyState
 import com.songly.shared.model.FriendNowPlaying
 import com.songly.shared.presence.PresenceProblem
 
@@ -51,7 +62,7 @@ fun FriendsPresenceScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text("Znajomi teraz") },
-				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				navigationIcon = { BackButton(onBack) },
 				actions = {
 					ConnectionLabel(live = state.live, connecting = state.connecting, problem = state.problem)
 				},
@@ -60,14 +71,13 @@ fun FriendsPresenceScreen(
 	) { padding ->
 		Box(modifier = Modifier.fillMaxSize().padding(padding)) {
 			if (state.friends.isEmpty()) {
-				Text(
-					text = when {
+				EmptyState(
+					icon = Icons.Outlined.Headphones,
+					message = when {
 						state.problem == PresenceProblem.TOO_MANY_STREAMS -> STREAM_LIMIT_MESSAGE
 						state.connecting -> "Łączenie ze strumieniem…"
 						else -> "Nikt ze znajomych nic teraz nie gra."
 					},
-					modifier = Modifier.align(Alignment.Center).padding(24.dp),
-					style = MaterialTheme.typography.bodyMedium,
 				)
 			} else {
 				LazyColumn(
@@ -94,17 +104,20 @@ fun FriendsPresenceScreen(
 @Composable
 private fun ConnectionLabel(live: Boolean, connecting: Boolean, problem: PresenceProblem?) {
 	val (label, color) = when {
-		live -> "● na żywo" to MaterialTheme.colorScheme.primary
-		problem == PresenceProblem.TOO_MANY_STREAMS -> "○ zajęte" to MaterialTheme.colorScheme.error
-		connecting -> "○ łączenie…" to MaterialTheme.colorScheme.onSurfaceVariant
-		else -> "○ offline" to MaterialTheme.colorScheme.error
+		live -> "na żywo" to MaterialTheme.colorScheme.primary
+		problem == PresenceProblem.TOO_MANY_STREAMS -> "zajęte" to MaterialTheme.colorScheme.error
+		connecting -> "łączenie…" to MaterialTheme.colorScheme.onSurfaceVariant
+		else -> "offline" to MaterialTheme.colorScheme.error
 	}
-	Text(
-		text = label,
-		style = MaterialTheme.typography.labelMedium,
-		color = color,
-		modifier = Modifier.padding(end = 12.dp),
-	)
+	// Kropka powtarza kolorem to, co mówi napis — sama barwa nie niesie informacji.
+	Row(
+		modifier = Modifier.padding(end = 16.dp),
+		verticalAlignment = Alignment.CenterVertically,
+		horizontalArrangement = Arrangement.spacedBy(6.dp),
+	) {
+		Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+		Text(text = label, style = MaterialTheme.typography.labelMedium, color = color)
+	}
 }
 
 @Composable
@@ -116,8 +129,8 @@ private fun FriendPresenceCard(friend: FriendNowPlaying, onClick: () -> Unit) {
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.spacedBy(12.dp),
 		) {
-			Avatar(displayName = friend.displayName ?: "?", avatarUrl = friend.avatarUrl)
-			Column(modifier = Modifier.fillMaxWidth()) {
+			Avatar(displayName = friend.displayName ?: "?", avatarUrl = friend.avatarUrl, size = 48.dp)
+			Column(modifier = Modifier.weight(1f)) {
 				Text(
 					text = friend.displayName ?: "Użytkownik",
 					style = MaterialTheme.typography.titleSmall,
@@ -126,11 +139,21 @@ private fun FriendPresenceCard(friend: FriendNowPlaying, onClick: () -> Unit) {
 				Text(
 					text = listOfNotNull(status.artist, status.title).joinToString(" — "),
 					style = MaterialTheme.typography.bodyMedium,
+					maxLines = 2,
+					overflow = TextOverflow.Ellipsis,
 				)
 				Text(
 					text = if (status.playing) status.providerLabel else "${status.providerLabel} · zatrzymane",
 					style = MaterialTheme.typography.labelSmall,
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
+				)
+			}
+			// Zielony korektor przy tym, co gra właśnie teraz (ozdoba — stan mówi linijka wyżej).
+			if (status.playing) {
+				Icon(
+					Icons.Filled.GraphicEq,
+					contentDescription = null,
+					tint = MaterialTheme.colorScheme.primary,
 				)
 			}
 		}

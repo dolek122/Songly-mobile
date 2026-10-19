@@ -15,6 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +42,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.BackButton
+import com.songly.android.ui.EmptyState
 import com.songly.android.ui.accessibleAction
 import com.songly.shared.model.Notification
 import com.songly.shared.util.RelativeTime
@@ -83,7 +88,7 @@ fun NotificationsScreen(
 		topBar = {
 			TopAppBar(
 				title = { Text(if (state.hasUnread) "Powiadomienia (${state.unreadCount})" else "Powiadomienia") },
-				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				navigationIcon = { BackButton(onBack) },
 				actions = {
 					if (state.hasUnread) {
 						TextButton(onClick = viewModel::markAllRead) { Text("Oznacz wszystkie") }
@@ -102,16 +107,11 @@ fun NotificationsScreen(
 				state.isLoading && state.notifications.isEmpty() ->
 					CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-				state.errorMessage != null -> CenteredMessage {
-					Text(state.errorMessage)
-					Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 12.dp)) {
-						Text("Spróbuj ponownie")
-					}
+				state.errorMessage != null -> EmptyState(icon = Icons.Outlined.CloudOff, message = state.errorMessage) {
+					Button(onClick = viewModel::refresh) { Text("Spróbuj ponownie") }
 				}
 
-				state.isEmpty -> CenteredMessage {
-					Text("Brak powiadomień.", style = MaterialTheme.typography.bodyMedium)
-				}
+				state.isEmpty -> EmptyState(icon = Icons.Outlined.NotificationsNone, message = "Brak powiadomień.")
 
 				else -> LazyColumn(
 					state = listState,
@@ -276,16 +276,5 @@ private fun Footer(isLoading: Boolean, errorMessage: String?, onRetry: () -> Uni
 				TextButton(onClick = onRetry) { Text("Ponów") }
 			}
 		}
-	}
-}
-
-@Composable
-private fun CenteredMessage(content: @Composable () -> Unit) {
-	Column(
-		modifier = Modifier.fillMaxSize().padding(24.dp),
-		verticalArrangement = Arrangement.Center,
-		horizontalAlignment = Alignment.CenterHorizontally,
-	) {
-		content()
 	}
 }

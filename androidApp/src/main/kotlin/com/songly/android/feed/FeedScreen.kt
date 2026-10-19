@@ -1,11 +1,10 @@
 package com.songly.android.feed
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,77 +12,64 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Card
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.songly.android.ui.Avatar
 import com.songly.android.ui.DeletePostDialog
+import com.songly.android.ui.EmptyState
 import com.songly.android.ui.PostCard
-import com.songly.shared.model.Post
-import com.songly.shared.network.SonglyApiClient
-import com.songly.shared.util.RelativeTime
-import kotlinx.coroutines.launch
+import com.songly.android.ui.SonglyFab
 
 /**
- * Ekran feedu z paginacją (Compose, natywny UI — §14). Stan pochodzi z
- * [FeedViewModel]; dane z modułu `shared` (auto-refresh tokenów w tle). Gdy sesja
- * wygaśnie bezpowrotnie, wywołuje [onSessionExpired], żeby wrócić do logowania.
+ * Ekran feedu z paginacją (Compose, natywny UI — §14) — pierwsza zakładka dolnego
+ * paska. Stan pochodzi z [FeedViewModel]; dane z modułu `shared` (auto-refresh
+ * tokenów w tle). Gdy sesja wygaśnie bezpowrotnie, wywołuje [onSessionExpired],
+ * żeby wrócić do logowania.
+ *
+ * W pasku tylko dzwonek powiadomień — reszta aplikacji jest w dolnym pasku, a
+ * nie w menu „⋮", w którym trzeba było jej szukać.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
 	viewModel: FeedViewModel,
-	client: SonglyApiClient,
-	onLoggedOut: () -> Unit,
 	onSessionExpired: () -> Unit,
 	onCreatePost: () -> Unit,
 	onOpenComments: (String) -> Unit,
 	onOpenUserProfile: (String) -> Unit,
-	onOpenProfile: () -> Unit,
-	onOpenFriends: () -> Unit,
-	onOpenNowPlaying: () -> Unit,
-	onOpenFriendsPresence: () -> Unit,
 	onOpenNotifications: () -> Unit,
-	onOpenCommunities: () -> Unit,
-	onOpenMatches: () -> Unit,
-	isAdmin: Boolean = false,
-	onOpenAdmin: () -> Unit = {},
 	onAccountSuspended: () -> Unit = {},
 ) {
 	val state = viewModel.uiState
-	val scope = rememberCoroutineScope()
 	val listState = rememberLazyListState()
-	var menuOpen by remember { mutableStateOf(false) }
 
 	// Odśwież przy każdym wejściu na ekran (także po ponownym logowaniu — ViewModel
 	// bywa cache'owany na Activity, więc init{} by nie wystarczył).
@@ -123,92 +109,14 @@ fun FeedScreen(
 	Scaffold(
 		topBar = {
 			TopAppBar(
-				title = { Text("Songly") },
+				title = { BrandTitle() },
 				actions = {
-					// Znak „⋮" czytnik czytał jako „pionowy wielokropek", a plakietka z liczbą
-					// nieprzeczytanych była wyłącznie wizualna — opis mówi jedno i drugie.
-					val menuDescription = if (state.unreadNotifications > 0) {
-						"Menu, nieprzeczytane powiadomienia: ${state.unreadNotifications}"
-					} else {
-						"Menu"
-					}
-					IconButton(
-						onClick = { menuOpen = true },
-						modifier = Modifier.semantics { contentDescription = menuDescription },
-					) {
-						// Kropka na ikonie menu sygnalizuje nieprzeczytane powiadomienia.
-						BadgedBox(
-							modifier = Modifier.clearAndSetSemantics {},
-							badge = {
-								if (state.unreadNotifications > 0) {
-									Badge { Text(badgeLabel(state.unreadNotifications)) }
-								}
-							},
-						) {
-							Text(text = "⋮", style = MaterialTheme.typography.titleLarge)
-						}
-					}
-					DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-						DropdownMenuItem(
-							text = {
-								Text(
-									if (state.unreadNotifications > 0) {
-										"Powiadomienia (${state.unreadNotifications})"
-									} else {
-										"Powiadomienia"
-									},
-								)
-							},
-							onClick = { menuOpen = false; onOpenNotifications() },
-						)
-						DropdownMenuItem(
-							text = { Text("Teraz gram") },
-							onClick = { menuOpen = false; onOpenNowPlaying() },
-						)
-						DropdownMenuItem(
-							text = { Text("Znajomi teraz") },
-							onClick = { menuOpen = false; onOpenFriendsPresence() },
-						)
-						DropdownMenuItem(
-							text = { Text("Znajomi") },
-							onClick = { menuOpen = false; onOpenFriends() },
-						)
-						DropdownMenuItem(
-							text = { Text("Społeczności") },
-							onClick = { menuOpen = false; onOpenCommunities() },
-						)
-						DropdownMenuItem(
-							text = { Text("Dopasowani") },
-							onClick = { menuOpen = false; onOpenMatches() },
-						)
-						DropdownMenuItem(
-							text = { Text("Profil") },
-							onClick = { menuOpen = false; onOpenProfile() },
-						)
-						if (isAdmin) {
-							DropdownMenuItem(
-								text = { Text("Panel administratora") },
-								onClick = { menuOpen = false; onOpenAdmin() },
-							)
-						}
-						DropdownMenuItem(
-							text = { Text("Wyloguj") },
-							onClick = {
-								menuOpen = false
-								scope.launch {
-									client.logout()
-									onLoggedOut()
-								}
-							},
-						)
-					}
+					NotificationsButton(unread = state.unreadNotifications, onClick = onOpenNotifications)
 				},
 			)
 		},
 		floatingActionButton = {
-			FloatingActionButton(onClick = onCreatePost) {
-				Text(text = "+", style = MaterialTheme.typography.headlineMedium)
-			}
+			SonglyFab(icon = Icons.Filled.Add, contentDescription = "Nowy post", onClick = onCreatePost)
 		},
 	) { padding ->
 		PullToRefreshBox(
@@ -222,17 +130,22 @@ fun FeedScreen(
 				}
 
 				state.errorMessage != null -> {
-					ErrorState(message = state.errorMessage, onRetry = viewModel::refresh)
+					EmptyState(icon = Icons.Outlined.CloudOff, message = state.errorMessage) {
+						Button(onClick = viewModel::refresh) { Text("Spróbuj ponownie") }
+					}
 				}
 
 				state.isEmpty -> {
-					EmptyState(onRefresh = viewModel::refresh)
+					EmptyState(icon = Icons.Outlined.LibraryMusic, message = "Brak postów w feedzie.") {
+						Button(onClick = viewModel::refresh) { Text("Odśwież") }
+					}
 				}
 
 				else -> {
 					LazyColumn(
 						state = listState,
-						contentPadding = PaddingValues(16.dp),
+						// Dół z zapasem na przycisk „Nowy post", żeby nie zasłaniał ostatniego posta.
+						contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
 						verticalArrangement = Arrangement.spacedBy(12.dp),
 						modifier = Modifier.fillMaxSize(),
 					) {
@@ -263,6 +176,50 @@ fun FeedScreen(
 	}
 }
 
+/** Nazwa aplikacji z zielonym znakiem „korektora" — jedyna ozdoba w pasku. */
+@Composable
+private fun BrandTitle() {
+	Row(
+		verticalAlignment = Alignment.CenterVertically,
+		horizontalArrangement = Arrangement.spacedBy(8.dp),
+		modifier = Modifier.semantics { heading() },
+	) {
+		Icon(
+			Icons.Filled.GraphicEq,
+			contentDescription = null,
+			tint = MaterialTheme.colorScheme.primary,
+			modifier = Modifier.size(28.dp),
+		)
+		Text(text = "Songly", style = MaterialTheme.typography.headlineSmall)
+	}
+}
+
+/**
+ * Dzwonek z liczbą nieprzeczytanych. Plakietka jest czysto wizualna, więc opis
+ * dla czytnika mówi wprost i „powiadomienia", i ile jest nowych.
+ */
+@Composable
+private fun NotificationsButton(unread: Long, onClick: () -> Unit) {
+	val description = if (unread > 0) "Powiadomienia, nieprzeczytane: $unread" else "Powiadomienia"
+	IconButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = description }) {
+		BadgedBox(
+			modifier = Modifier.clearAndSetSemantics {},
+			badge = {
+				if (unread > 0) {
+					Badge(
+						containerColor = MaterialTheme.colorScheme.primary,
+						contentColor = MaterialTheme.colorScheme.onPrimary,
+					) {
+						Text(badgeLabel(unread))
+					}
+				}
+			},
+		) {
+			Icon(Icons.Outlined.Notifications, contentDescription = null)
+		}
+	}
+}
+
 /** Etykieta badge'a — powyżej 99 nieprzeczytanych pokazujemy „99+", żeby nie rozpychać ikony. */
 private fun badgeLabel(count: Long): String = if (count > 99) "99+" else count.toString()
 
@@ -276,36 +233,5 @@ private fun FeedFooter(isLoading: Boolean, errorMessage: String?, onRetry: () ->
 				TextButton(onClick = onRetry) { Text("Ponów") }
 			}
 		}
-	}
-}
-
-@Composable
-private fun ErrorState(message: String, onRetry: () -> Unit) {
-	CenteredMessage {
-		Text(text = message, style = MaterialTheme.typography.bodyMedium)
-		Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) {
-			Text("Spróbuj ponownie")
-		}
-	}
-}
-
-@Composable
-private fun EmptyState(onRefresh: () -> Unit) {
-	CenteredMessage {
-		Text(text = "Brak postów w feedzie.", style = MaterialTheme.typography.bodyMedium)
-		Button(onClick = onRefresh, modifier = Modifier.padding(top = 12.dp)) {
-			Text("Odśwież")
-		}
-	}
-}
-
-@Composable
-private fun CenteredMessage(content: @Composable () -> Unit) {
-	Column(
-		modifier = Modifier.fillMaxSize().padding(24.dp),
-		verticalArrangement = Arrangement.Center,
-		horizontalAlignment = Alignment.CenterHorizontally,
-	) {
-		content()
 	}
 }

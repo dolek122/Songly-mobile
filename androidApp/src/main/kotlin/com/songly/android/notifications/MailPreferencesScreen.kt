@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.BackButton
 
 /**
  * Ekran preferencji poczty (ADR 0020), otwierany z powiadomień. Stan z
@@ -45,7 +46,7 @@ fun MailPreferencesScreen(viewModel: MailPreferencesViewModel, onBack: () -> Uni
 		topBar = {
 			TopAppBar(
 				title = { Text("Powiadomienia e-mail") },
-				navigationIcon = { TextButton(onClick = onBack) { Text("Wróć") } },
+				navigationIcon = { BackButton(onBack) },
 			)
 		},
 	) { padding ->

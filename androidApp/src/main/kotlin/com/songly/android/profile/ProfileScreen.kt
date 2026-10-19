@@ -41,6 +41,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.songly.android.media.ImagePreparer
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.BackButton
+import com.songly.android.ui.FilterPill
+import com.songly.android.ui.SectionTitle
 
 /**
  * Ekran profilu (Compose, natywny UI — §14): edycja danych profilowych i wybór
@@ -97,10 +100,8 @@ fun ProfileScreen(
 	Scaffold(
 		topBar = {
 			TopAppBar(
-				title = { Text("Profil") },
-				navigationIcon = {
-					TextButton(onClick = onBack) { Text("Wróć") }
-				},
+				title = { Text("Edytuj profil") },
+				navigationIcon = { BackButton(onBack) },
 			)
 		},
 	) { padding ->
@@ -131,7 +132,6 @@ fun ProfileScreen(
 						)
 					}
 
-					Text("Twoje dane", style = MaterialTheme.typography.titleMedium)
 					Avatar(
 						displayName = state.displayName,
 						avatarUrl = state.avatarUrl,
@@ -180,18 +180,16 @@ fun ProfileScreen(
 						Text(if (state.isSavingProfile) "Zapisywanie…" else "Zapisz profil")
 					}
 
-					HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-					Text("Ulubione gatunki", style = MaterialTheme.typography.titleMedium)
+					SectionTitle("Ulubione gatunki")
 					if (state.allGenres.isEmpty()) {
 						Text("Brak dostępnych gatunków.", style = MaterialTheme.typography.bodyMedium)
 					} else {
 						FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
 							state.allGenres.forEach { genre ->
-								FilterChip(
+								FilterPill(
+									label = genre.name,
 									selected = genre.id in state.selectedGenreIds,
 									onClick = { viewModel.toggleGenre(genre.id) },
-									label = { Text(genre.name) },
 									enabled = !state.isSavingGenres,
 								)
 							}
@@ -205,9 +203,7 @@ fun ProfileScreen(
 						Text(if (state.isSavingGenres) "Zapisywanie…" else "Zapisz gatunki")
 					}
 
-					HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-					Text("Bezpieczeństwo", style = MaterialTheme.typography.titleMedium)
+					SectionTitle("Bezpieczeństwo")
 					Text(
 						"Zmiana hasła wyloguje Cię ze wszystkich urządzeń, także z tego.",
 						style = MaterialTheme.typography.bodyMedium,
@@ -217,12 +213,13 @@ fun ProfileScreen(
 						Text("Zmień hasło")
 					}
 
-					HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+					HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
 
 					Text(
 						"Strefa niebezpieczna",
-						style = MaterialTheme.typography.titleMedium,
+						style = MaterialTheme.typography.titleLarge,
 						color = MaterialTheme.colorScheme.error,
+						modifier = Modifier.padding(top = 8.dp),
 					)
 					Text(
 						"Usunięcie konta jest nieodwracalne — trwale kasuje Twoje dane " +
