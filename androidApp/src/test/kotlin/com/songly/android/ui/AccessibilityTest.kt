@@ -79,8 +79,13 @@ class AccessibilityTest {
 			.assertHeightIsAtLeast(48.dp)
 		compose.onNodeWithContentDescription("Udostępnienia: 1").assert(hasState("nieudostępniony"))
 		compose.onNodeWithContentDescription("Komentarze: 2").assert(hasRole(Role.Button))
-		compose.onNodeWithContentDescription("Usuń post").assert(hasRole(Role.Button)).assertHeightIsAtLeast(48.dp)
-		compose.onNodeWithContentDescription("Zgłoś post").assert(hasRole(Role.Button))
+		// „Usuń" i „Zgłoś" są w menu pod „⋮" — sam przycisk menu musi być pełnym celem dotyku.
+		compose.onNodeWithContentDescription("Więcej akcji posta")
+			.assert(hasRole(Role.Button))
+			.assertHeightIsAtLeast(48.dp)
+			.performClick()
+		compose.onNodeWithText("Usuń").assertExists()
+		compose.onNodeWithText("Zgłoś").assertExists()
 	}
 
 	/** Awatar obok nazwy powtarzał ją („Awatar: Ola, Ola"); inicjały czytane były „O L". */

@@ -12,22 +12,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.NavigationRow
+import com.songly.android.ui.TabTopBar
 
 /**
  * Zakładka „Profil": kim jestem i wszystko, co dotyczy mojego konta, w jednym
@@ -38,7 +38,6 @@ import com.songly.android.ui.NavigationRow
  * Wiersze są widoczne zawsze, także gdy profil się nie wczytał — wylogowanie nie
  * może zależeć od tego, czy serwer akurat odpowiada.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileHubScreen(
 	viewModel: ProfileViewModel,
@@ -55,7 +54,8 @@ fun ProfileHubScreen(
 	}
 
 	Scaffold(
-		topBar = { TopAppBar(title = { Text("Profil") }) },
+		containerColor = Color.Transparent,
+		topBar = { TabTopBar(title = "Profil") },
 	) { padding ->
 		Column(
 			modifier = Modifier

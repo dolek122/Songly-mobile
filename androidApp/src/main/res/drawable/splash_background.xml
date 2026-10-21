@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tło okna startowego na Androidzie 8–11, które nie ma systemowego ekranu
+  powitalnego: czerń aplikacji z kroplą pośrodku. Bez tego przez pierwsze
+  ułamki sekundy (a na wolnym telefonie i dłużej) widać było pusty czarny ekran.
+  Na 12+ ten sam efekt daje systemowy ekran powitalny z ikony (values-v31).
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/window_background" />
+    <item
+        android:width="192dp"
+        android:height="192dp"
+        android:drawable="@drawable/ic_launcher_foreground"
+        android:gravity="center" />
+</layer-list>

@@ -12,10 +12,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,6 +43,9 @@ import com.songly.android.media.ImagePreparer
 /**
  * Ekran tworzenia posta (Compose, natywny UI — §14). Stan z [CreatePostViewModel];
  * po udanym dodaniu woła [onCreated] (powrót na feed + odświeżenie).
+ *
+ * „Opublikuj" stoi w pasku u góry, jak w każdej aplikacji do pisania — na dole
+ * ekranu chował się pod klawiaturą, czyli dokładnie wtedy, gdy był potrzebny.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,15 +65,34 @@ fun CreatePostScreen(
 			TopAppBar(
 				title = { Text("Nowy post") },
 				navigationIcon = {
-					TextButton(onClick = onCancel, enabled = !state.isSubmitting) {
-						Text("Anuluj")
+					IconButton(onClick = onCancel, enabled = !state.isSubmitting) {
+						Icon(Icons.Outlined.Close, contentDescription = "Anuluj")
+					}
+				},
+				actions = {
+					Button(
+						onClick = { viewModel.submit(onCreated) },
+						enabled = state.canSubmit,
+						modifier = Modifier.padding(end = 8.dp),
+					) {
+						if (state.isSubmitting) {
+							CircularProgressIndicator(
+								modifier = Modifier.size(18.dp).padding(end = 4.dp),
+								strokeWidth = 2.dp,
+							)
+						}
+						Text(if (state.isSubmitting) "Publikowanie…" else "Opublikuj")
 					}
 				},
 			)
 		},
 	) { padding ->
 		Column(
-			modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+			modifier = Modifier
+				.fillMaxSize()
+				.padding(padding)
+				.verticalScroll(rememberScrollState())
+				.padding(16.dp),
 			verticalArrangement = Arrangement.spacedBy(12.dp),
 		) {
 			OutlinedTextField(
@@ -109,11 +139,12 @@ fun CreatePostScreen(
 					}
 				}
 
-				else -> TextButton(
+				else -> OutlinedButton(
 					onClick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
 					enabled = !state.isSubmitting,
 				) {
-					Text("Dodaj zdjęcie")
+					Icon(Icons.Outlined.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
+					Text("Dodaj zdjęcie", modifier = Modifier.padding(start = 8.dp))
 				}
 			}
 
@@ -124,20 +155,6 @@ fun CreatePostScreen(
 					style = MaterialTheme.typography.bodySmall,
 					modifier = Modifier.fillMaxWidth(),
 				)
-			}
-
-			Button(
-				onClick = { viewModel.submit(onCreated) },
-				enabled = state.canSubmit,
-				modifier = Modifier.align(Alignment.End),
-			) {
-				if (state.isSubmitting) {
-					CircularProgressIndicator(
-						modifier = Modifier.size(18.dp).padding(end = 4.dp),
-						strokeWidth = 2.dp,
-					)
-				}
-				Text(if (state.isSubmitting) "Publikowanie…" else "Opublikuj")
 			}
 		}
 	}

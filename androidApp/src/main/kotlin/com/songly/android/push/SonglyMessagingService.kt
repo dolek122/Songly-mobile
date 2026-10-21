@@ -57,6 +57,9 @@ class SonglyMessagingService : FirebaseMessagingService() {
 		)
 		val notification = NotificationCompat.Builder(this, PushRegistration.CHANNEL_ID)
 			.setSmallIcon(R.drawable.ic_stat_songly)
+			// Zieleń marki na ikonie i nazwie aplikacji w rozwiniętym powiadomieniu —
+			// bez tego system rysuje je szarością, nie do odróżnienia od innych aplikacji.
+			.setColor(ContextCompat.getColor(this, R.color.brand_green))
 			.setContentTitle(title)
 			.setContentText(body)
 			.setAutoCancel(true)

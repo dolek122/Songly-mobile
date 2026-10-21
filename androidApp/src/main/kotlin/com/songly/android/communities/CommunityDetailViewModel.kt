@@ -12,6 +12,7 @@ import com.songly.android.post.MAX_POST_LENGTH
 import com.songly.shared.model.Post
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.paging.plusDistinct
 import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
@@ -126,7 +127,7 @@ class CommunityDetailViewModel(
 				nextMembersPage = page.number + 1
 				uiState = uiState.copy(
 					isLoadingMoreMembers = false,
-					members = uiState.members + page.content,
+					members = uiState.members.plusDistinct(page.content) { it.userId },
 					membersEndReached = page.last,
 				)
 			} catch (e: Exception) {

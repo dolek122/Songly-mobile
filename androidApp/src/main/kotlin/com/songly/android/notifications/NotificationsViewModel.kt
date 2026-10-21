@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.Notification
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.paging.plusDistinct
 import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
@@ -132,7 +133,7 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 		viewModelScope.launch {
 			try {
 				val page = client.notifications(page = nextPage, size = PAGE_SIZE)
-				val merged = if (reset) page.content else uiState.notifications + page.content
+				val merged = if (reset) page.content else uiState.notifications.plusDistinct(page.content) { it.id }
 				nextPage = page.number + 1
 				// Licznik z serwera (autorytatywny) tylko przy odświeżeniu całości.
 				val unread = if (reset) runCatching { client.unreadNotificationCount() }.getOrDefault(uiState.unreadCount)

@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 
 /** Stan ekranu „teraz słucham": aktualny status + formularz ręcznego statusu. */
 data class NowPlayingUiState(
-	val isLoading: Boolean = true,
+	val isLoading: Boolean = true, // pierwsze wczytanie (spinner na cały ekran)
+	val isRefreshing: Boolean = false, // odświeżanie gestem (status zostaje na ekranie)
 	val errorMessage: String? = null,
 	val status: NowPlayingStatus? = null,
 	val title: String = "",
@@ -23,9 +24,21 @@ data class NowPlayingUiState(
 	val isBusy: Boolean = false,
 	val statusMessage: String? = null,
 	val shareWithFriends: Boolean = true,
+	// Formularz ręcznego statusu otwarty (arkusz od dołu) — w stanie, bo zamyka go
+	// dopiero udany zapis, który kończy się asynchronicznie.
+	val editingManual: Boolean = false,
 ) {
 	val canSetManual: Boolean
 		get() = title.isNotBlank() && !isBusy
+
+	/**
+	 * Czy Spotify jest podłączone — wiemy to tylko wtedy, gdy właśnie z niego
+	 * płynie status (backend nie ma osobnego zapytania o stan połączenia). Bez
+	 * statusu pokazujemy więc „Połącz", które przy istniejącym połączeniu po
+	 * prostu odnawia zgodę.
+	 */
+	val spotifyConnected: Boolean
+		get() = status?.provider == "spotify"
 }
 
 /**
@@ -39,24 +52,72 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 	var uiState by mutableStateOf(NowPlayingUiState())
 		private set
 
+	// Czy status był już choć raz wczytany. Zakładka woła [load] przy każdym wejściu;
+	// spinner na cały ekran tylko za pierwszym razem, potem status odświeża się pod
+	// spodem, zamiast mrugać przy każdym przełączeniu zakładek.
+	private var loaded = false
+
 	fun load() {
-		uiState = uiState.copy(isLoading = true, errorMessage = null)
+		uiState = uiState.copy(isLoading = !loaded, errorMessage = null)
+		fetch()
+	}
+
+	/** Odświeżenie gestem — to samo co [load], bez chowania ekranu za spinnerem. */
+	fun refresh() {
+		if (uiState.isRefreshing) return
+		uiState = uiState.copy(isRefreshing = true, errorMessage = null)
+		fetch()
+	}
+
+	private fun fetch() {
 		viewModelScope.launch {
 			try {
 				uiState = uiState.copy(
 					isLoading = false,
+					isRefreshing = false,
 					status = client.nowPlaying(),
 					shareWithFriends = client.nowPlayingSettings().shareWithFriends,
 				)
-			} catch (e: SonglyApiException) {
-				uiState = uiState.copy(
-					isLoading = false,
-					errorMessage = e.error?.message ?: "Nie udało się wczytać statusu (HTTP ${e.status})",
-				)
+				loaded = true
 			} catch (e: Exception) {
-				uiState = uiState.copy(isLoading = false, errorMessage = "Brak połączenia z serwerem.")
+				val message = errorText(e, "wczytać statusu")
+				// Wczytany już status zostaje — chwilowy brak sieci nie zasłania ekranu.
+				uiState = if (loaded) {
+					uiState.copy(isLoading = false, isRefreshing = false, statusMessage = message)
+				} else {
+					uiState.copy(isLoading = false, isRefreshing = false, errorMessage = message)
+				}
 			}
 		}
+	}
+
+	/** Komunikat pokazany (snackbar) — bez tego wracałby przy każdej rekompozycji. */
+	fun statusMessageShown() {
+		uiState = uiState.copy(statusMessage = null)
+	}
+
+	/**
+	 * Otwiera formularz ręcznego statusu. Pusty formularz wypełniamy bieżącym
+	 * statusem ręcznym — poprawka literówki w tytule nie powinna wymagać
+	 * przepisywania wszystkiego od nowa.
+	 */
+	fun openManualEditor() {
+		val current = uiState.status?.takeIf { it.provider != "spotify" }
+		uiState = if (current != null && uiState.title.isBlank()) {
+			uiState.copy(
+				editingManual = true,
+				title = current.title,
+				artist = current.artist.orEmpty(),
+				album = current.album.orEmpty(),
+				source = current.provider.takeIf { it != "manual" }.orEmpty(),
+			)
+		} else {
+			uiState.copy(editingManual = true)
+		}
+	}
+
+	fun dismissManualEditor() {
+		uiState = uiState.copy(editingManual = false)
 	}
 
 	fun onTitleChange(v: String) { uiState = uiState.copy(title = v, statusMessage = null) }
@@ -109,7 +170,7 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	fun setManual() {
 		if (!uiState.canSetManual) return
-		runAction("Ustawiono status", "ustawić statusu") {
+		runAction("Ustawiono status", "ustawić statusu", closeEditor = true) {
 			client.setManualNowPlaying(
 				title = uiState.title.trim(),
 				artist = uiState.artist.trim().ifBlank { null },
@@ -120,7 +181,11 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 	}
 
 	fun clearManual() =
-		runAction("Wyczyszczono status", "wyczyścić statusu") { client.clearManualNowPlaying() }
+		runAction("Wyczyszczono status", "wyczyścić statusu", closeEditor = true) {
+			client.clearManualNowPlaying()
+			// Wyczyszczony status nie powinien wracać jako podpowiedź przy następnym otwarciu.
+			uiState = uiState.copy(title = "", artist = "", album = "", source = "")
+		}
 
 	/**
 	 * Przełącza widoczność statusu dla znajomych (ADR 0007 backendu, Etap 4).
@@ -148,14 +213,24 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	private fun runAction(successMessage: String, actionLabel: String, action: suspend () -> Unit) {
+	private fun runAction(
+		successMessage: String,
+		actionLabel: String,
+		closeEditor: Boolean = false,
+		action: suspend () -> Unit,
+	) {
 		if (uiState.isBusy) return
 		uiState = uiState.copy(isBusy = true, statusMessage = null)
 		viewModelScope.launch {
 			try {
 				action()
 				val fresh = client.nowPlaying()
-				uiState = uiState.copy(isBusy = false, status = fresh, statusMessage = successMessage)
+				uiState = uiState.copy(
+					isBusy = false,
+					status = fresh,
+					statusMessage = successMessage,
+					editingManual = uiState.editingManual && !closeEditor,
+				)
 			} catch (e: Exception) {
 				uiState = uiState.copy(isBusy = false, statusMessage = errorText(e, actionLabel))
 			}

@@ -2,6 +2,7 @@ package com.songly.android.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,15 +14,25 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,8 +50,10 @@ import com.songly.shared.util.RelativeTime
  * pojedynczego posta. Post to ten sam byt niezależnie od miejsca publikacji
  * (backend §8), więc i wygląda tak samo.
  *
- * [canDelete] pokazuje „Usuń" — na własnych postach, a w społeczności także
- * moderatorom (backend pozwala im usunąć dowolny post u siebie).
+ * [canDelete] dokłada „Usuń" — na własnych postach, a w społeczności także
+ * moderatorom (backend pozwala im usunąć dowolny post u siebie). „Usuń" i „Zgłoś"
+ * siedzą pod „⋮": robi się je rzadko, a na karcie widać wtedy tylko autora, treść
+ * i trzy liczniki.
  */
 @Composable
 fun PostCard(
@@ -83,27 +96,14 @@ fun PostCard(
 						)
 					}
 				}
-				if (onReport != null) {
-					Text(
-						text = "Zgłoś",
-						style = MaterialTheme.typography.labelMedium,
-						color = MaterialTheme.colorScheme.onSurfaceVariant,
-						modifier = Modifier.accessibleAction(description = "Zgłoś post", onClick = onReport),
-					)
-				}
-				if (canDelete) {
-					Text(
-						text = "Usuń",
-						style = MaterialTheme.typography.labelMedium,
-						color = MaterialTheme.colorScheme.error,
-						modifier = Modifier.accessibleAction(description = "Usuń post", onClick = onDelete),
-					)
+				if (onReport != null || canDelete) {
+					PostMenu(onReport = onReport, onDelete = onDelete.takeIf { canDelete })
 				}
 			}
 			Text(
 				text = post.content,
-				style = MaterialTheme.typography.bodyMedium,
-				modifier = Modifier.padding(top = 6.dp),
+				style = MaterialTheme.typography.bodyLarge,
+				modifier = Modifier.padding(top = 10.dp),
 			)
 			if (!post.imageUrl.isNullOrBlank()) {
 				AsyncImage(
@@ -149,6 +149,47 @@ fun PostCard(
 						state = if (post.sharedByMe) "udostępniony" else "nieudostępniony",
 						onClick = onToggleShare,
 					),
+				)
+			}
+		}
+	}
+}
+
+/** „⋮" z rzadkimi akcjami na poście; w menu tylko te, które ten użytkownik może wykonać. */
+@Composable
+private fun PostMenu(onReport: (() -> Unit)?, onDelete: (() -> Unit)?) {
+	var expanded by remember { mutableStateOf(false) }
+	Box {
+		// 48 dp wprost: IconButton rysuje przycisk 40 dp i tylko rezerwuje miejsce do 48,
+		// więc węzeł widziany przez TalkBack i Accessibility Scanner był za mały
+		// (ta sama pułapka co opisana przy accessibleAction).
+		IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp)) {
+			Icon(
+				Icons.Outlined.MoreVert,
+				contentDescription = "Więcej akcji posta",
+				tint = MaterialTheme.colorScheme.onSurfaceVariant,
+			)
+		}
+		DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+			if (onReport != null) {
+				DropdownMenuItem(
+					text = { Text("Zgłoś") },
+					leadingIcon = { Icon(Icons.Outlined.Flag, contentDescription = null) },
+					onClick = {
+						expanded = false
+						onReport()
+					},
+				)
+			}
+			if (onDelete != null) {
+				val danger = MaterialTheme.colorScheme.error
+				DropdownMenuItem(
+					text = { Text("Usuń", color = danger) },
+					leadingIcon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null, tint = danger) },
+					onClick = {
+						expanded = false
+						onDelete()
+					},
 				)
 			}
 		}

@@ -56,6 +56,7 @@ import com.songly.android.moderation.moderationItems
 import com.songly.android.post.PostListDialogs
 import com.songly.android.post.PostListViewModel
 import com.songly.android.post.postListItems
+import com.songly.android.ui.formatDate
 import com.songly.android.ui.formatDateTime
 
 /**
@@ -556,10 +557,17 @@ private fun MemberIdentity(member: CommunityMember, onOpenProfile: () -> Unit) {
 			horizontalArrangement = Arrangement.spacedBy(10.dp),
 		) {
 			Avatar(displayName = member.displayName, avatarUrl = member.avatarUrl, size = 36.dp)
-			Text(
-				text = member.displayName,
-				style = MaterialTheme.typography.bodyLarge,
-			)
+			Column {
+				Text(
+					text = member.displayName,
+					style = MaterialTheme.typography.bodyLarge,
+				)
+				Text(
+					text = "w społeczności od ${formatDate(member.joinedAt)}",
+					style = MaterialTheme.typography.bodySmall,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+				)
+			}
 		}
 		val roleLabel = when {
 			member.isOwner -> "Właściciel"

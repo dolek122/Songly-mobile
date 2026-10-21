@@ -1,5 +1,6 @@
 package com.songly.android.communities
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,7 +30,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -37,13 +37,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.BackButton
 import com.songly.android.ui.EmptyState
 import com.songly.android.ui.FilterPill
 import com.songly.android.ui.SonglyFab
+import com.songly.android.ui.TabTopBar
+import com.songly.android.ui.TeardropShape
 import com.songly.shared.model.Community
 
 /**
@@ -94,9 +98,10 @@ fun CommunitiesScreen(
 	}
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text("Społeczności") },
+			TabTopBar(
+				title = "Społeczności",
 				navigationIcon = { if (onBack != null) BackButton(onBack) },
 			)
 		},
@@ -195,16 +200,21 @@ private fun CommunityCard(
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.spacedBy(12.dp),
 		) {
+			CommunityTile(name = community.name)
 			Column(modifier = Modifier.weight(1f)) {
 				Text(
 					text = community.name,
-					style = MaterialTheme.typography.titleSmall,
-					fontWeight = FontWeight.SemiBold,
+					style = MaterialTheme.typography.titleMedium,
+					maxLines = 1,
+					overflow = TextOverflow.Ellipsis,
 				)
 				if (!community.description.isNullOrBlank()) {
 					Text(
 						text = community.description!!,
 						style = MaterialTheme.typography.bodyMedium,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+						maxLines = 2,
+						overflow = TextOverflow.Ellipsis,
 						modifier = Modifier.padding(top = 2.dp),
 					)
 				}
@@ -246,6 +256,28 @@ private fun CommunityCard(
 				else -> Button(onClick = onToggleMembership) { Text("Dołącz") }
 			}
 		}
+	}
+}
+
+/**
+ * Kafelek społeczności: kropla z pierwszą literą nazwy. Społeczności nie mają
+ * okładek, a sama lista nazw czytała się jak spis treści — kafelek daje każdej
+ * karcie punkt zaczepienia dla oka.
+ */
+@Composable
+private fun CommunityTile(name: String) {
+	Box(
+		modifier = Modifier
+			.size(52.dp)
+			.clip(TeardropShape)
+			.background(MaterialTheme.colorScheme.primaryContainer),
+		contentAlignment = Alignment.Center,
+	) {
+		Text(
+			text = name.trim().firstOrNull()?.uppercase() ?: "?",
+			style = MaterialTheme.typography.titleLarge,
+			color = MaterialTheme.colorScheme.onPrimaryContainer,
+		)
 	}
 }
 

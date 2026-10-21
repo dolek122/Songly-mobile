@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ikona adaptacyjna: zielone tło marki, czarny korektor; minSdk 26, więc nie są
-     potrzebne bitmapy dla starszych wersji Androida. -->
+<!-- Ikona adaptacyjna: zielona kropla z korektorem na czerni aplikacji. Kropla jest
+     pierwszym planem, więc jej kształt widać niezależnie od tego, czy launcher tnie
+     ikonę w koło, czy w zaokrąglony kwadrat. minSdk 26 — bez bitmap dla starszych. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />

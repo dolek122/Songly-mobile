@@ -40,34 +40,47 @@ data class FriendsUiState(
 /**
  * Logika ekranu znajomych (moduł social-graph backendu przez `shared`). Po każdej
  * mutacji (wysłanie/akceptacja/odrzucenie/anulowanie/usunięcie) przeładowuje
- * wszystkie trzy listy — prostsze i pewniejsze niż ręczne przenoszenie pozycji
+ * wszystkie cztery listy — prostsze i pewniejsze niż ręczne przenoszenie pozycji
  * między listami (np. akceptacja usuwa z „otrzymanych" i dodaje do „znajomych").
- *
- * Uwaga: backend nie ma wyszukiwarki użytkowników, więc zaproszenie wysyła się po
- * ID użytkownika (UUID). Wyszukiwanie to osobna funkcja do dołożenia w backendzie.
+ * Nowych znajomych szuka się po nazwie ([search], moduł profile backendu).
  */
 class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(FriendsUiState())
 		private set
 
+	// Czy listy były już choć raz wczytane. Ekran woła [load] przy każdym wejściu na
+	// zakładkę; spinner na cały ekran ma sens tylko przy pierwszym, później listy
+	// odświeżają się pod spodem, zamiast mrugać przy każdym przełączeniu zakładek.
+	private var loaded = false
+
 	fun load() {
-		uiState = uiState.copy(isLoading = true, errorMessage = null)
+		uiState = uiState.copy(isLoading = !loaded, errorMessage = null)
 		viewModelScope.launch {
 			try {
 				// Najpierw dane, potem zgaszenie spinnera — odwrotna kolejność mrugałaby
 				// pustym ekranem przez czas trwania czterech żądań.
 				reloadLists()
+				loaded = true
 				uiState = uiState.copy(isLoading = false)
-			} catch (e: SonglyApiException) {
-				uiState = uiState.copy(
-					isLoading = false,
-					errorMessage = e.error?.message ?: "Nie udało się wczytać znajomych (HTTP ${e.status})",
-				)
 			} catch (e: Exception) {
-				uiState = uiState.copy(isLoading = false, errorMessage = "Brak połączenia z serwerem.")
+				val message = when (e) {
+					is SonglyApiException -> e.error?.message ?: "Nie udało się wczytać znajomych (HTTP ${e.status})"
+					else -> "Brak połączenia z serwerem."
+				}
+				// Wczytane już listy zostają — chwilowy brak sieci nie może ich zasłaniać.
+				uiState = if (loaded) {
+					uiState.copy(isLoading = false, statusMessage = message)
+				} else {
+					uiState.copy(isLoading = false, errorMessage = message)
+				}
 			}
 		}
+	}
+
+	/** Komunikat pokazany (snackbar) — bez tego wracałby przy każdej rekompozycji. */
+	fun statusMessageShown() {
+		uiState = uiState.copy(statusMessage = null)
 	}
 
 	/**
@@ -181,39 +194,39 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	fun loadMoreFriends() = loadMoreSection({ uiState.friends }, { uiState = uiState.copy(friends = it) }) { page ->
+	fun loadMoreFriends() = loadMoreSection({ uiState.friends }, { uiState = uiState.copy(friends = it) }, keyOf = { it.userId }) { page ->
 		client.friends(page, PAGE_SIZE)
 	}
 
 	fun retryMoreFriends() =
-		loadMoreSection({ uiState.friends }, { uiState = uiState.copy(friends = it) }, retry = true) { page ->
+		loadMoreSection({ uiState.friends }, { uiState = uiState.copy(friends = it) }, retry = true, keyOf = { it.userId }) { page ->
 			client.friends(page, PAGE_SIZE)
 		}
 
-	fun loadMoreIncoming() = loadMoreSection({ uiState.incoming }, { uiState = uiState.copy(incoming = it) }) { page ->
+	fun loadMoreIncoming() = loadMoreSection({ uiState.incoming }, { uiState = uiState.copy(incoming = it) }, keyOf = { it.id }) { page ->
 		client.friendRequests("INCOMING", page, PAGE_SIZE)
 	}
 
 	fun retryMoreIncoming() =
-		loadMoreSection({ uiState.incoming }, { uiState = uiState.copy(incoming = it) }, retry = true) { page ->
+		loadMoreSection({ uiState.incoming }, { uiState = uiState.copy(incoming = it) }, retry = true, keyOf = { it.id }) { page ->
 			client.friendRequests("INCOMING", page, PAGE_SIZE)
 		}
 
-	fun loadMoreOutgoing() = loadMoreSection({ uiState.outgoing }, { uiState = uiState.copy(outgoing = it) }) { page ->
+	fun loadMoreOutgoing() = loadMoreSection({ uiState.outgoing }, { uiState = uiState.copy(outgoing = it) }, keyOf = { it.id }) { page ->
 		client.friendRequests("OUTGOING", page, PAGE_SIZE)
 	}
 
 	fun retryMoreOutgoing() =
-		loadMoreSection({ uiState.outgoing }, { uiState = uiState.copy(outgoing = it) }, retry = true) { page ->
+		loadMoreSection({ uiState.outgoing }, { uiState = uiState.copy(outgoing = it) }, retry = true, keyOf = { it.id }) { page ->
 			client.friendRequests("OUTGOING", page, PAGE_SIZE)
 		}
 
-	fun loadMoreBlocked() = loadMoreSection({ uiState.blocked }, { uiState = uiState.copy(blocked = it) }) { page ->
+	fun loadMoreBlocked() = loadMoreSection({ uiState.blocked }, { uiState = uiState.copy(blocked = it) }, keyOf = { it.userId }) { page ->
 		client.blockedUsers(page, PAGE_SIZE)
 	}
 
 	fun retryMoreBlocked() =
-		loadMoreSection({ uiState.blocked }, { uiState = uiState.copy(blocked = it) }, retry = true) { page ->
+		loadMoreSection({ uiState.blocked }, { uiState = uiState.copy(blocked = it) }, retry = true, keyOf = { it.userId }) { page ->
 			client.blockedUsers(page, PAGE_SIZE)
 		}
 
@@ -230,6 +243,7 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		get: () -> PagedSection<T>,
 		set: (PagedSection<T>) -> Unit,
 		retry: Boolean = false,
+		keyOf: (T) -> Any?,
 		fetch: suspend (page: Int) -> Page<T>,
 	) {
 		val current = get()
@@ -239,7 +253,7 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		set(if (retry) current.retrying() else current.loadingMore())
 		viewModelScope.launch {
 			try {
-				set(get().append(fetch(get().nextPage)))
+				set(get().append(fetch(get().nextPage), keyOf))
 			} catch (e: SonglyApiException) {
 				set(get().failed(e.error?.message ?: "Nie udało się doczytać (HTTP ${e.status})"))
 			} catch (e: Exception) {

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.BackButton
 import com.songly.shared.model.Match
+import com.songly.shared.model.MatchConfidence
 
 /**
  * Ekran dopasowań (Compose, natywny UI — §14): ranking osób o podobnym guście
@@ -172,11 +173,21 @@ private fun MatchCard(
 						fontWeight = FontWeight.SemiBold,
 					)
 				}
-				Text(
-					text = "${match.scorePercent}% dopasowania",
-					style = MaterialTheme.typography.labelLarge,
-					color = MaterialTheme.colorScheme.primary,
-				)
+				// Wynik z pewnością pod spodem: niski procent przy małej pewności znaczy
+				// „za mało wiemy", a nie „nie pasujecie" (backend ADR 0033) — bez tego
+				// oba przypadki wyglądały identycznie.
+				Column(horizontalAlignment = Alignment.End) {
+					Text(
+						text = "${match.scorePercent}%",
+						style = MaterialTheme.typography.titleLarge,
+						color = MaterialTheme.colorScheme.primary,
+					)
+					Text(
+						text = confidenceLabel(match.confidenceLevel),
+						style = MaterialTheme.typography.labelSmall,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+					)
+				}
 			}
 			if (genreNames.isNotEmpty()) {
 				FlowRow(
@@ -230,4 +241,11 @@ private fun CenteredMessage(content: @Composable () -> Unit) {
 	) {
 		content()
 	}
+}
+
+/** Pewność dopasowania słowami — trzy stopnie liczy `shared` ([Match.confidenceLevel]). */
+private fun confidenceLabel(level: MatchConfidence): String = when (level) {
+	MatchConfidence.LOW -> "mało danych"
+	MatchConfidence.MEDIUM -> "średnia pewność"
+	MatchConfidence.HIGH -> "duża pewność"
 }

@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ikona na pasku stanu dla pushy: jednokolorowa nuta (system i tak barwi ją na biało). -->
+<!--
+  Ikona pushy na pasku stanu: kropla z korektorem, jak ikona aplikacji. System
+  bierze z niej sam kształt (kanał alfa) i barwi po swojemu. Przy 24 dp pięć
+  słupków zlewa się w plamę, więc zostają trzy, szersze — kształt ma być
+  rozpoznawalny, a nie wierny co do słupka.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,5 +12,9 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M12,3v10.55C11.41,13.21 10.73,13 10,13c-2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4V7h4V3h-6z" />
+        android:fillType="evenOdd"
+        android:pathData="M10.7,4.3H19.7V13.3A9,9 0,1 1,10.7 4.3Z
+            M6.5,11A1.1,1.1 0,0 1,8.7 11V14.6A1.1,1.1 0,0 1,6.5 14.6Z
+            M10.1,8.8A1.1,1.1 0,0 1,12.3 8.8V16.8A1.1,1.1 0,0 1,10.1 16.8Z
+            M13.7,11A1.1,1.1 0,0 1,15.9 11V14.6A1.1,1.1 0,0 1,13.7 14.6Z" />
 </vector>

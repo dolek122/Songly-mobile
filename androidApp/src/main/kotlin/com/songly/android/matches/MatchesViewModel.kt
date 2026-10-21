@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.Match
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.paging.plusDistinct
 import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
@@ -113,7 +114,7 @@ class MatchesViewModel(private val client: SonglyApiClient) : ViewModel() {
 						.onSuccess { uiState = uiState.copy(genreNames = it) }
 				}
 				val page = client.matches(page = nextPage, size = PAGE_SIZE)
-				val merged = if (reset) page.content else uiState.matches + page.content
+				val merged = if (reset) page.content else uiState.matches.plusDistinct(page.content) { it.userId }
 				nextPage = page.number + 1
 				uiState = uiState.copy(
 					isLoading = false,

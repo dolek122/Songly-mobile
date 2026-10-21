@@ -4,18 +4,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -23,6 +29,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,15 +54,53 @@ fun BackButton(onClick: () -> Unit) {
 }
 
 /**
- * Główna akcja ekranu (nowy post, nowa społeczność): zielone kółko z czarną
+ * Pasek zakładki: duży, pogrubiony tytuł na przezroczystym tle, żeby było widać
+ * zieloną poświatę ([songlyBackdrop]) za nim. Na ekranach otwieranych nad
+ * zakładkami zostaje zwykły TopAppBar — tam ważniejsza jest strzałka wstecz niż
+ * nagłówek.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TabTopBar(
+	title: @Composable () -> Unit,
+	navigationIcon: @Composable () -> Unit = {},
+	actions: @Composable RowScope.() -> Unit = {},
+) {
+	TopAppBar(
+		title = title,
+		navigationIcon = navigationIcon,
+		actions = actions,
+		colors = TopAppBarDefaults.topAppBarColors(
+			containerColor = Color.Transparent,
+			scrolledContainerColor = Color.Transparent,
+		),
+	)
+}
+
+/** [TabTopBar] z samym tekstem — przypadek wszystkich zakładek poza główną. */
+@Composable
+fun TabTopBar(
+	title: String,
+	navigationIcon: @Composable () -> Unit = {},
+	actions: @Composable RowScope.() -> Unit = {},
+) {
+	TabTopBar(
+		title = { Text(text = title, style = MaterialTheme.typography.headlineSmall) },
+		navigationIcon = navigationIcon,
+		actions = actions,
+	)
+}
+
+/**
+ * Główna akcja ekranu (nowy post, nowa społeczność): zielona kropla z czarną
  * ikoną — jedyny tak jaskrawy element na ekranie, więc od razu wiadomo, gdzie
- * zacząć.
+ * zacząć, a kształt powtarza logo.
  */
 @Composable
 fun SonglyFab(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
 	FloatingActionButton(
 		onClick = onClick,
-		shape = CircleShape,
+		shape = TeardropShape,
 		containerColor = MaterialTheme.colorScheme.primary,
 		contentColor = MaterialTheme.colorScheme.onPrimary,
 	) {
@@ -152,6 +198,32 @@ fun EmptyState(
 		if (action != null) {
 			Box(modifier = Modifier.padding(top = 20.dp)) { action() }
 		}
+	}
+}
+
+/**
+ * Kolumna wyśrodkowana w pionie, która przewija się, gdy treść się nie mieści —
+ * dla formularzy logowania i rejestracji. Samo wyśrodkowanie bez przewijania
+ * chowało przycisk „Zaloguj się" pod klawiaturą na niższych telefonach, a samo
+ * przewijanie zrzucało krótki formularz pod górną krawędź.
+ */
+@Composable
+fun CenteredScrollColumn(
+	modifier: Modifier = Modifier,
+	verticalArrangement: Arrangement.Vertical = Arrangement.Center,
+	content: @Composable ColumnScope.() -> Unit,
+) {
+	BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+		Column(
+			modifier = Modifier
+				.fillMaxWidth()
+				.verticalScroll(rememberScrollState())
+				.heightIn(min = maxHeight)
+				.padding(24.dp),
+			verticalArrangement = verticalArrangement,
+			horizontalAlignment = Alignment.CenterHorizontally,
+			content = content,
+		)
 	}
 }
 

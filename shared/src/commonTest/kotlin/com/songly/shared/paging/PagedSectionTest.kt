@@ -83,4 +83,26 @@ class PagedSectionTest {
 
 		assertEquals(listOf("b"), section.removeIf { it == "a" }.items)
 	}
+
+	/**
+	 * Nowy post między żądaniami przesuwa strony o jedną pozycję, więc strona 1
+	 * powtarza ostatni element strony 0. Drugi raz na liście = zdublowany klucz w
+	 * `LazyColumn`, czyli crash.
+	 */
+	@Test
+	fun appendSkipsItemsAlreadyOnTheList() {
+		val section = PagedSection<String>().replaceWith(page(0, 2, "a", "b"))
+
+		assertEquals(listOf("a", "b", "c"), section.append(page(1, 2, "b", "c")).items)
+	}
+
+	/** Dubel rozpoznajemy po kluczu, nie po całej pozycji — liczniki zdążą się zmienić. */
+	@Test
+	fun appendComparesByKey() {
+		val section = PagedSection<String>().replaceWith(page(0, 2, "a:1", "b:1"))
+
+		val result = section.append(page(1, 2, "b:2", "c:1")) { it.substringBefore(':') }
+
+		assertEquals(listOf("a:1", "b:1", "c:1"), result.items)
+	}
 }

@@ -1,16 +1,22 @@
 package com.songly.android
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
@@ -25,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,6 +84,7 @@ import com.songly.android.profile.UserProfileViewModel
 import com.songly.android.push.PushSetup
 import com.songly.android.ui.MainTab
 import com.songly.android.ui.SonglyNavigationBar
+import com.songly.android.ui.songlyBackdrop
 import com.songly.android.ui.theme.SonglyTheme
 import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.util.AuthLink
@@ -92,6 +100,11 @@ import kotlinx.coroutines.launch
  *
  * Stan nawigacji jest w `rememberSaveable`: zwykłe `remember` znika razem z
  * Activity, więc obrót ekranu wyrzucał z dowolnego miejsca z powrotem na feed.
+ *
+ * Aplikacja rysuje się od krawędzi do krawędzi na każdej wersji Androida, nie
+ * tylko na 15+, gdzie system to wymusza — inaczej ten sam ekran wyglądałby inaczej
+ * na różnych telefonach, a klawiatura na Androidzie 15 zasłaniała pola tekstowe
+ * (tam `adjustResize` już niczego nie zmniejsza, odstęp liczy sam Compose).
  */
 class MainActivity : ComponentActivity() {
 
@@ -107,6 +120,17 @@ class MainActivity : ComponentActivity() {
 	private var pendingOpenNotifications by mutableStateOf(false)
 
 	override fun onCreate(savedInstanceState: Bundle?) {
+		// Manifest daje oknu motyw z logo w tle, żeby start na Androidzie 8–11 (bez
+		// systemowego ekranu powitalnego) nie był pustym czarnym prostokątem. Zanim
+		// cokolwiek narysujemy, wracamy do zwykłego motywu — inaczej logo
+		// prześwitywałoby zza każdego przezroczystego ekranu.
+		setTheme(R.style.Theme_Songly)
+		// Ciemne paski z jasnymi ikonami niezależnie od trybu systemu: aplikacja jest
+		// zawsze ciemna (SonglyPalette), a wariant „auto" dałby czarne ikony na czerni.
+		enableEdgeToEdge(
+			statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+			navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+		)
 		super.onCreate(savedInstanceState)
 		// Po obrocie albo odtworzeniu procesu Activity dostaje ten sam intent jeszcze
 		// raz — obsłużony już link nie może potwierdzać adresu drugi raz.
@@ -114,7 +138,10 @@ class MainActivity : ComponentActivity() {
 		val apiClient = (application as SonglyApplication).apiClient
 		setContent {
 			SonglyTheme {
-				Surface(modifier = Modifier.fillMaxSize()) {
+				// imePadding u samej góry drzewa: klawiatura zabiera miejsce wszystkim
+				// ekranom naraz, a Scaffoldy niżej widzą wcięcie paska nawigacji jako już
+				// zużyte (nie dokładają drugiego odstępu nad klawiaturą).
+				Surface(modifier = Modifier.fillMaxSize().imePadding()) {
 					AppRoot(
 						apiClient,
 						authLink = pendingAuthLink,
@@ -247,14 +274,18 @@ private fun AuthOrApp(
 			}
 		}
 
-		false -> AuthNav(
-			client = client,
-			notice = authNotice,
-			onNotice = onAuthNotice,
-			onAuthenticated = { onAuthNotice(null); onLoggedInChange(true) },
-			authLink = authLink,
-			onAuthLinkHandled = onAuthLinkHandled,
-		)
+		// Ekrany logowania nie mają Scaffolda, więc odstęp od pasków systemu dają sobie
+		// same; poświata rysuje się pod paskiem stanu.
+		false -> Box(modifier = Modifier.fillMaxSize().songlyBackdrop().systemBarsPadding()) {
+			AuthNav(
+				client = client,
+				notice = authNotice,
+				onNotice = onAuthNotice,
+				onAuthenticated = { onAuthNotice(null); onLoggedInChange(true) },
+				authLink = authLink,
+				onAuthLinkHandled = onAuthLinkHandled,
+			)
+		}
 	}
 }
 
@@ -496,11 +527,13 @@ private fun LoggedInNav(
 				key = "suspended",
 				factory = viewModelFactory { initializer { SuspendedViewModel(client) } },
 			)
-			SuspendedScreen(
-				viewModel = suspendedViewModel,
-				onLifted = { suspended = false; feedViewModel.refresh() },
-				onSessionEnded = { onLoggedOut(null) },
-			)
+			Box(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+				SuspendedScreen(
+					viewModel = suspendedViewModel,
+					onLifted = { suspended = false; feedViewModel.refresh() },
+					onSessionEnded = { onLoggedOut(null) },
+				)
+			}
 			return
 		}
 
@@ -512,10 +545,21 @@ private fun LoggedInNav(
 	// ich ułożyć w stałą kolejność gałęzi `when` jak ekranów niżej. Trzymamy je na
 	// stosie: rysujemy wierzch, Wstecz zdejmuje jedną warstwę.
 	val overlays = rememberSaveable(saver = OverlayStackSaver) { mutableStateListOf<Overlay>() }
+
+	// Stan zapisywalny (pozycja na liście, wpisany tekst) każdego ekranu z osobna.
+	// Bez tego wejście w komentarze i powrót przewijały feed na sam początek, bo
+	// zakładki znikały z kompozycji razem z całym swoim `rememberSaveable`.
+	val screenStates = rememberSaveableStateHolder()
+	val tabStates = rememberSaveableStateHolder()
+
 	val openUserProfile: (String) -> Unit = { overlays.add(Overlay.UserProfile(it)) }
 	val openComments: (String) -> Unit = { overlays.add(Overlay.Comments(it)) }
 	val openPost: (String) -> Unit = { overlays.add(Overlay.PostDetail(it)) }
-	val closeOverlay: () -> Unit = { overlays.removeAt(overlays.lastIndex) }
+	val closeOverlay: () -> Unit = {
+		// Zdjęta warstwa nie wróci — jej stan nie ma po co czekać w pamięci.
+		screenStates.removeState(overlayStateKey(overlays.lastIndex, overlays.last()))
+		overlays.removeAt(overlays.lastIndex)
+	}
 	// Zgłoszenie żyje tyle, co jego dialog — świeży stan przy każdym otwarciu.
 	val createReportViewModel: (String) -> ReportPostViewModel = { ReportPostViewModel(client, it) }
 	val adminViewModel: AdminViewModel = viewModel(
@@ -555,286 +599,315 @@ private fun LoggedInNav(
 	BackHandler(enabled = closeTopScreen != null) { closeTopScreen?.invoke() }
 
 	val topOverlay = overlays.lastOrNull()
-	when {
-		// Klucze ViewModeli per zasób — inaczej viewModel() oddałby dane innej
-		// osoby/posta. Klucz zawiera też głębokość stosu: ten sam profil otwarty
-		// dwa razy (profil → komentarze → ten sam profil) dostaje świeży stan.
-		topOverlay is Overlay.UserProfile -> {
-			val key = "${overlays.lastIndex}-${topOverlay.userId}"
-			val userProfileViewModel: UserProfileViewModel = viewModel(
-				key = "user-profile-$key",
-				factory = viewModelFactory {
-					initializer { UserProfileViewModel(client, topOverlay.userId) }
-				},
-			)
-			val postsViewModel: PostListViewModel = viewModel(
-				key = "user-posts-$key",
-				factory = viewModelFactory {
-					initializer {
-						PostListViewModel(client) { page, size -> postsByAuthor(topOverlay.userId, page, size) }
-					}
-				},
-			)
-			UserProfileScreen(
-				viewModel = userProfileViewModel,
-				postsViewModel = postsViewModel,
-				onBack = closeOverlay,
-				onOpenComments = openComments,
-				isAdminViewer = isAdmin,
-				onOpenModerationHistory = { userId ->
-					overlays.clear()
-					showAdmin = true
-					adminViewModel.showLogFor(userId)
-				},
-			)
-		}
-
-		topOverlay is Overlay.PostDetail -> {
-			val postViewModel: PostDetailViewModel = viewModel(
-				key = "post-${overlays.lastIndex}-${topOverlay.postId}",
-				factory = viewModelFactory {
-					initializer { PostDetailViewModel(client, topOverlay.postId) }
-				},
-			)
-			PostDetailScreen(
-				viewModel = postViewModel,
-				onBack = closeOverlay,
-				onOpenComments = openComments,
-				onOpenUserProfile = openUserProfile,
-				createReportViewModel = createReportViewModel,
-			)
-		}
-
-		topOverlay is Overlay.Comments -> {
-			val postId = topOverlay.postId
-			val commentsViewModel: CommentsViewModel = viewModel(
-				key = "comments-${overlays.lastIndex}-$postId",
-				factory = viewModelFactory {
-					initializer { CommentsViewModel(client, postId) }
-				},
-			)
-			CommentsScreen(
-				viewModel = commentsViewModel,
-				onBack = closeOverlay,
-				onCommentAdded = { feedViewModel.incrementCommentCount(postId) },
-				onCommentDeleted = { feedViewModel.decrementCommentCount(postId) },
-				onOpenUserProfile = openUserProfile,
-			)
-		}
-
-		showAdmin -> AdminScreen(
-			viewModel = adminViewModel,
-			onBack = { showAdmin = false },
-			onOpenUserProfile = openUserProfile,
-			onOpenCommunity = { showAdmin = false; communityDetailId = it },
-		)
-
-		showMatches -> {
-			val matchesViewModel: MatchesViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { MatchesViewModel(client) }
-				},
-			)
-			MatchesScreen(
-				viewModel = matchesViewModel,
-				onBack = { showMatches = false },
-				onOpenUserProfile = openUserProfile,
-			)
-		}
-
-		communityDetailId != null -> {
-			val id = communityDetailId!!
-			// Klucz per społeczność — inaczej viewModel() oddałby dane innej.
-			val detailViewModel: CommunityDetailViewModel = viewModel(
-				key = "community-$id",
-				factory = viewModelFactory {
-					initializer { CommunityDetailViewModel(client, id) }
-				},
-			)
-			val communityPostsViewModel: PostListViewModel = viewModel(
-				key = "community-posts-$id",
-				factory = viewModelFactory {
-					initializer { PostListViewModel(client) { page, size -> communityPosts(id, page, size) } }
-				},
-			)
-			val moderationViewModel: CommunityModerationViewModel = viewModel(
-				key = "community-moderation-$id",
-				factory = viewModelFactory {
-					initializer { CommunityModerationViewModel(client, id) }
-				},
-			)
-			CommunityDetailScreen(
-				viewModel = detailViewModel,
-				postsViewModel = communityPostsViewModel,
-				onOpenComments = openComments,
-				onBack = { communityDetailId = null },
-				// Po usunięciu wróć do listy — CommunitiesScreen odświeży się sam przy wejściu.
-				onDeleted = { communityDetailId = null },
-				onOpenUserProfile = openUserProfile,
-				moderationViewModel = moderationViewModel,
-				createReportViewModel = createReportViewModel,
-				onOpenPost = openPost,
-			)
-		}
-
-		showMailPreferences -> {
-			val mailPreferencesViewModel: MailPreferencesViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { MailPreferencesViewModel(client) }
-				},
-			)
-			MailPreferencesScreen(
-				viewModel = mailPreferencesViewModel,
-				onBack = { showMailPreferences = false },
-			)
-		}
-
-		showFriends -> {
-			val friendsViewModel: FriendsViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { FriendsViewModel(client) }
-				},
-			)
-			FriendsScreen(
-				viewModel = friendsViewModel,
-				onBack = { showFriends = false },
-				onOpenUserProfile = openUserProfile,
-				onOpenMatches = { showMatches = true },
-			)
-		}
-
-		showNotifications -> {
-			val notificationsViewModel: NotificationsViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { NotificationsViewModel(client) }
-				},
-			)
-			NotificationsScreen(
-				viewModel = notificationsViewModel,
-				// Powrót odświeża feed, żeby badge nieprzeczytanych zszedł po lekturze.
-				onBack = { showNotifications = false; feedViewModel.refresh() },
-				onOpenUserProfile = openUserProfile,
-				onOpenPost = openPost,
-				onOpenCommunity = { communityDetailId = it },
-				onOpenFriends = { showFriends = true },
-				onOpenMailPreferences = { showMailPreferences = true },
-			)
-		}
-
-		showFriendsPresence -> {
-			val presenceViewModel: FriendsPresenceViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { FriendsPresenceViewModel(client) }
-				},
-			)
-			FriendsPresenceScreen(
-				viewModel = presenceViewModel,
-				onBack = { showFriendsPresence = false },
-				onOpenUserProfile = openUserProfile,
-			)
-		}
-
-		showProfile -> {
-			ProfileScreen(
-				viewModel = profileViewModel(client),
-				onBack = { showProfile = false },
-				onAccountDeleted = { showProfile = false; onLoggedOut(null) },
-				onPasswordChanged = {
-					showProfile = false
-					onLoggedOut("Hasło zostało zmienione, a wszystkie sesje zakończone. Zaloguj się nowym hasłem.")
-				},
-			)
-		}
-
-		creatingPost -> {
-			val createPostViewModel: CreatePostViewModel = viewModel(
-				factory = viewModelFactory {
-					initializer { CreatePostViewModel(client) }
-				},
-			)
-			CreatePostScreen(
-				viewModel = createPostViewModel,
-				onCancel = { creatingPost = false },
-				onCreated = {
-					creatingPost = false
-					feedViewModel.refresh()
-				},
-			)
-		}
-
-		else -> MainTabs(selected = tab, onSelect = { tab = it }) {
-			when (tab) {
-				MainTab.HOME -> FeedScreen(
-					viewModel = feedViewModel,
-					onSessionExpired = { onLoggedOut("Sesja wygasła. Zaloguj się ponownie.") },
-					onCreatePost = { creatingPost = true },
-					onOpenComments = openComments,
-					onOpenUserProfile = openUserProfile,
-					onOpenNotifications = { showNotifications = true },
-					// Zawieszenie w trakcie sesji — sprawdzamy stan od nowa i pokazujemy ekran zawieszenia.
-					onAccountSuspended = { suspended = null },
+	val screenKey = when {
+		topOverlay != null -> overlayStateKey(overlays.lastIndex, topOverlay)
+		showAdmin -> "admin"
+		showMatches -> "matches"
+		communityDetailId != null -> "community-$communityDetailId"
+		showMailPreferences -> "mail-preferences"
+		showFriends -> "friends"
+		showNotifications -> "notifications"
+		showFriendsPresence -> "friends-presence"
+		showProfile -> "profile"
+		creatingPost -> "create-post"
+		else -> "tabs"
+	}
+	screenStates.SaveableStateProvider(screenKey) {
+		when {
+			// Klucze ViewModeli per zasób — inaczej viewModel() oddałby dane innej
+			// osoby/posta. Klucz zawiera też głębokość stosu: ten sam profil otwarty
+			// dwa razy (profil → komentarze → ten sam profil) dostaje świeży stan.
+			topOverlay is Overlay.UserProfile -> {
+				val key = "${overlays.lastIndex}-${topOverlay.userId}"
+				val userProfileViewModel: UserProfileViewModel = viewModel(
+					key = "user-profile-$key",
+					factory = viewModelFactory {
+						initializer { UserProfileViewModel(client, topOverlay.userId) }
+					},
 				)
-
-				MainTab.MUSIC -> NowPlayingScreen(
-					viewModel = nowPlayingViewModel(client),
-					onOpenFriendsPresence = { showFriendsPresence = true },
-				)
-
-				MainTab.COMMUNITIES -> {
-					val communitiesViewModel: CommunitiesViewModel = viewModel(
-						factory = viewModelFactory {
-							initializer { CommunitiesViewModel(client) }
-						},
-					)
-					CommunitiesScreen(
-						viewModel = communitiesViewModel,
-						onOpenCommunity = { communityDetailId = it },
-						onOpenUserProfile = openUserProfile,
-					)
-				}
-
-				MainTab.FRIENDS -> {
-					val friendsViewModel: FriendsViewModel = viewModel(
-						factory = viewModelFactory {
-							initializer { FriendsViewModel(client) }
-						},
-					)
-					FriendsScreen(
-						viewModel = friendsViewModel,
-						onOpenUserProfile = openUserProfile,
-						onOpenMatches = { showMatches = true },
-					)
-				}
-
-				MainTab.PROFILE -> ProfileHubScreen(
-					viewModel = profileViewModel(client),
-					isAdmin = isAdmin,
-					onEditProfile = { showProfile = true },
-					onOpenMailPreferences = { showMailPreferences = true },
-					onOpenAdmin = { showAdmin = true },
-					onLogout = {
-						scope.launch {
-							client.logout()
-							onLoggedOut(null)
+				val postsViewModel: PostListViewModel = viewModel(
+					key = "user-posts-$key",
+					factory = viewModelFactory {
+						initializer {
+							PostListViewModel(client) { page, size -> postsByAuthor(topOverlay.userId, page, size) }
 						}
 					},
 				)
+				UserProfileScreen(
+					viewModel = userProfileViewModel,
+					postsViewModel = postsViewModel,
+					onBack = closeOverlay,
+					onOpenComments = openComments,
+					isAdminViewer = isAdmin,
+					onOpenModerationHistory = { userId ->
+						overlays.clear()
+						showAdmin = true
+						adminViewModel.showLogFor(userId)
+					},
+				)
+			}
+
+			topOverlay is Overlay.PostDetail -> {
+				val postViewModel: PostDetailViewModel = viewModel(
+					key = "post-${overlays.lastIndex}-${topOverlay.postId}",
+					factory = viewModelFactory {
+						initializer { PostDetailViewModel(client, topOverlay.postId) }
+					},
+				)
+				PostDetailScreen(
+					viewModel = postViewModel,
+					onBack = closeOverlay,
+					onOpenComments = openComments,
+					onOpenUserProfile = openUserProfile,
+					createReportViewModel = createReportViewModel,
+				)
+			}
+
+			topOverlay is Overlay.Comments -> {
+				val postId = topOverlay.postId
+				val commentsViewModel: CommentsViewModel = viewModel(
+					key = "comments-${overlays.lastIndex}-$postId",
+					factory = viewModelFactory {
+						initializer { CommentsViewModel(client, postId) }
+					},
+				)
+				CommentsScreen(
+					viewModel = commentsViewModel,
+					onBack = closeOverlay,
+					onCommentAdded = { feedViewModel.incrementCommentCount(postId) },
+					onCommentDeleted = { feedViewModel.decrementCommentCount(postId) },
+					onOpenUserProfile = openUserProfile,
+				)
+			}
+
+			showAdmin -> AdminScreen(
+				viewModel = adminViewModel,
+				onBack = { showAdmin = false },
+				onOpenUserProfile = openUserProfile,
+				onOpenCommunity = { showAdmin = false; communityDetailId = it },
+			)
+
+			showMatches -> {
+				val matchesViewModel: MatchesViewModel = viewModel(
+					factory = viewModelFactory {
+						initializer { MatchesViewModel(client) }
+					},
+				)
+				MatchesScreen(
+					viewModel = matchesViewModel,
+					onBack = { showMatches = false },
+					onOpenUserProfile = openUserProfile,
+				)
+			}
+
+			communityDetailId != null -> {
+				val id = communityDetailId!!
+				// Klucz per społeczność — inaczej viewModel() oddałby dane innej.
+				val detailViewModel: CommunityDetailViewModel = viewModel(
+					key = "community-$id",
+					factory = viewModelFactory {
+						initializer { CommunityDetailViewModel(client, id) }
+					},
+				)
+				val communityPostsViewModel: PostListViewModel = viewModel(
+					key = "community-posts-$id",
+					factory = viewModelFactory {
+						initializer { PostListViewModel(client) { page, size -> communityPosts(id, page, size) } }
+					},
+				)
+				val moderationViewModel: CommunityModerationViewModel = viewModel(
+					key = "community-moderation-$id",
+					factory = viewModelFactory {
+						initializer { CommunityModerationViewModel(client, id) }
+					},
+				)
+				CommunityDetailScreen(
+					viewModel = detailViewModel,
+					postsViewModel = communityPostsViewModel,
+					onOpenComments = openComments,
+					onBack = { communityDetailId = null },
+					// Po usunięciu wróć do listy — CommunitiesScreen odświeży się sam przy wejściu.
+					onDeleted = { communityDetailId = null },
+					onOpenUserProfile = openUserProfile,
+					moderationViewModel = moderationViewModel,
+					createReportViewModel = createReportViewModel,
+					onOpenPost = openPost,
+				)
+			}
+
+			showMailPreferences -> {
+				val mailPreferencesViewModel: MailPreferencesViewModel = viewModel(
+					factory = viewModelFactory {
+						initializer { MailPreferencesViewModel(client) }
+					},
+				)
+				MailPreferencesScreen(
+					viewModel = mailPreferencesViewModel,
+					onBack = { showMailPreferences = false },
+				)
+			}
+
+			showFriends -> {
+				val friendsViewModel: FriendsViewModel = viewModel(
+					factory = viewModelFactory {
+						initializer { FriendsViewModel(client) }
+					},
+				)
+				FriendsScreen(
+					viewModel = friendsViewModel,
+					onBack = { showFriends = false },
+					onOpenUserProfile = openUserProfile,
+					onOpenMatches = { showMatches = true },
+				)
+			}
+
+			showNotifications -> {
+				val notificationsViewModel: NotificationsViewModel = viewModel(
+					factory = viewModelFactory {
+						initializer { NotificationsViewModel(client) }
+					},
+				)
+				NotificationsScreen(
+					viewModel = notificationsViewModel,
+					// Powrót odświeża feed, żeby badge nieprzeczytanych zszedł po lekturze.
+					onBack = { showNotifications = false; feedViewModel.refresh() },
+					onOpenUserProfile = openUserProfile,
+					onOpenPost = openPost,
+					onOpenCommunity = { communityDetailId = it },
+					onOpenFriends = { showFriends = true },
+					onOpenMailPreferences = { showMailPreferences = true },
+				)
+			}
+
+			showFriendsPresence -> {
+				val presenceViewModel: FriendsPresenceViewModel = viewModel(
+					factory = viewModelFactory {
+						initializer { FriendsPresenceViewModel(client) }
+					},
+				)
+				FriendsPresenceScreen(
+					viewModel = presenceViewModel,
+					onBack = { showFriendsPresence = false },
+					onOpenUserProfile = openUserProfile,
+				)
+			}
+
+			showProfile -> {
+				ProfileScreen(
+					viewModel = profileViewModel(client),
+					onBack = { showProfile = false },
+					onAccountDeleted = { showProfile = false; onLoggedOut(null) },
+					onPasswordChanged = {
+						showProfile = false
+						onLoggedOut("Hasło zostało zmienione, a wszystkie sesje zakończone. Zaloguj się nowym hasłem.")
+					},
+				)
+			}
+
+			creatingPost -> {
+				val createPostViewModel: CreatePostViewModel = viewModel(
+					factory = viewModelFactory {
+						initializer { CreatePostViewModel(client) }
+					},
+				)
+				CreatePostScreen(
+					viewModel = createPostViewModel,
+					onCancel = { creatingPost = false },
+					onCreated = {
+						creatingPost = false
+						feedViewModel.refresh(scrollToTop = true)
+					},
+				)
+			}
+
+			else -> MainTabs(selected = tab, onSelect = { tab = it }) {
+				tabStates.SaveableStateProvider(tab.name) {
+					when (tab) {
+						MainTab.HOME -> FeedScreen(
+							viewModel = feedViewModel,
+							onSessionExpired = { onLoggedOut("Sesja wygasła. Zaloguj się ponownie.") },
+							onCreatePost = { creatingPost = true },
+							onOpenComments = openComments,
+							onOpenUserProfile = openUserProfile,
+							onOpenNotifications = { showNotifications = true },
+							// Zawieszenie w trakcie sesji — sprawdzamy stan od nowa i pokazujemy ekran zawieszenia.
+							onAccountSuspended = { suspended = null },
+							onOpenFriendsPresence = { showFriendsPresence = true },
+						)
+
+						MainTab.MUSIC -> NowPlayingScreen(
+							viewModel = nowPlayingViewModel(client),
+							onOpenFriendsPresence = { showFriendsPresence = true },
+						)
+
+						MainTab.COMMUNITIES -> {
+							val communitiesViewModel: CommunitiesViewModel = viewModel(
+								factory = viewModelFactory {
+									initializer { CommunitiesViewModel(client) }
+								},
+							)
+							CommunitiesScreen(
+								viewModel = communitiesViewModel,
+								onOpenCommunity = { communityDetailId = it },
+								onOpenUserProfile = openUserProfile,
+							)
+						}
+
+						MainTab.FRIENDS -> {
+							val friendsViewModel: FriendsViewModel = viewModel(
+								factory = viewModelFactory {
+									initializer { FriendsViewModel(client) }
+								},
+							)
+							FriendsScreen(
+								viewModel = friendsViewModel,
+								onOpenUserProfile = openUserProfile,
+								onOpenMatches = { showMatches = true },
+							)
+						}
+
+						MainTab.PROFILE -> ProfileHubScreen(
+							viewModel = profileViewModel(client),
+							isAdmin = isAdmin,
+							onEditProfile = { showProfile = true },
+							onOpenMailPreferences = { showMailPreferences = true },
+							onOpenAdmin = { showAdmin = true },
+							onLogout = {
+								scope.launch {
+									client.logout()
+									onLoggedOut(null)
+								}
+							},
+						)
+					}
+				}
 			}
 		}
 	}
 }
 
+/** Klucz stanu warstwy — z głębokością stosu, jak klucze ViewModeli niżej. */
+private fun overlayStateKey(index: Int, overlay: Overlay): String = "overlay-$index-$overlay"
+
 /**
  * Zakładka z dolnym paskiem. Ekrany w środku mają własne Scaffoldy (pasek u góry,
  * FAB), więc pasek nawigacji systemu, który zasłania już nasz dolny pasek, trzeba
  * oznaczyć jako zużyty — inaczej ekran zostawiłby nad paskiem drugi, pusty odstęp
- * tej samej wysokości (Android 15 rysuje aplikację pod paskami systemu).
+ * tej samej wysokości (aplikacja rysuje się pod paskami systemu).
+ *
+ * Za zakładkami jest wspólna zielona poświata ([songlyBackdrop]), a ich Scaffoldy
+ * są przezroczyste. Przy otwartej klawiaturze dolny pasek się chowa: nad
+ * klawiaturą zabierałby miejsce polu, w którym właśnie się pisze.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MainTabs(selected: MainTab, onSelect: (MainTab) -> Unit, content: @Composable () -> Unit) {
 	Scaffold(
-		bottomBar = { SonglyNavigationBar(selected = selected, onSelect = onSelect) },
+		modifier = Modifier.songlyBackdrop(),
+		containerColor = androidx.compose.ui.graphics.Color.Transparent,
+		bottomBar = {
+			if (!WindowInsets.isImeVisible) SonglyNavigationBar(selected = selected, onSelect = onSelect)
+		},
 		contentWindowInsets = WindowInsets(0, 0, 0, 0),
 	) { padding ->
 		Box(modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {

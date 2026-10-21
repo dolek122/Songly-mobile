@@ -74,8 +74,8 @@ class CommunityModerationViewModel(
 		viewModelScope.launch {
 			uiState = try {
 				when (section) {
-					ModerationSection.REPORTS -> uiState.copy(reports = uiState.reports.append(loadReports(uiState.reports.nextPage)))
-					ModerationSection.BANS -> uiState.copy(bans = uiState.bans.append(loadBans(uiState.bans.nextPage)))
+					ModerationSection.REPORTS -> uiState.copy(reports = uiState.reports.append(loadReports(uiState.reports.nextPage)) { it.id })
+					ModerationSection.BANS -> uiState.copy(bans = uiState.bans.append(loadBans(uiState.bans.nextPage)) { it.userId })
 					ModerationSection.LOG -> uiState.copy(log = uiState.log.append(loadLog(uiState.log.nextPage)))
 				}
 			} catch (e: Exception) {

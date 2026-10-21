@@ -12,4 +12,11 @@
         <item name="android:statusBarColor">@color/window_background</item>
         <item name="android:navigationBarColor">@color/navigation_bar</item>
     </style>
+
+    <!-- Motyw okna startowego (manifest): to samo z kroplą w tle. MainActivity wraca
+         do Theme.Songly, zanim cokolwiek narysuje, więc logo nie prześwituje potem
+         zza ekranów. -->
+    <style name="Theme.Songly.Starting">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
 </resources>
