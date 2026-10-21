@@ -269,8 +269,10 @@ class SonglyApiClient internal constructor(
 
 	/**
 	 * Wgrywa awatar. Backend rozpoznaje format po bajtach (JPEG, PNG, WebP; 415
-	 * `UNSUPPORTED_IMAGE`) i przyjmuje najwyżej 5 MB (413), więc nazwa pliku i typ
-	 * są tu tylko formalnością multiparta.
+	 * `UNSUPPORTED_IMAGE`, także dla pliku o uszkodzonej strukturze) i przyjmuje
+	 * najwyżej 5 MB (413), więc nazwa pliku i typ są tu tylko formalnością
+	 * multiparta. Metadane (EXIF z GPS-em) backend usuwa sam (ADR 0047), więc
+	 * klient nie musi tego robić dla prywatności.
 	 */
 	@Throws(Exception::class)
 	suspend fun uploadAvatar(image: ByteArray, contentType: String): Profile =
@@ -285,6 +287,9 @@ class SonglyApiClient internal constructor(
 	/**
 	 * Wgrywa zdjęcie do posta. Samo w sobie niczego nie publikuje — zwrócony
 	 * [PostImage.key] podaje się potem w [createPost] / [createCommunityPost].
+	 *
+	 * Klucz jest jednorazowy i nietrwały (backend ADR 0048): przepada po dobie bez
+	 * posta, a ponad 10 oczekujących wgrań kolejne wypiera najstarsze.
 	 */
 	@Throws(Exception::class)
 	suspend fun uploadPostImage(image: ByteArray, contentType: String): PostImage =
@@ -314,8 +319,8 @@ class SonglyApiClient internal constructor(
 
 	/**
 	 * Tworzy nowy post autorstwa zalogowanego użytkownika. [imageKey] z
-	 * [uploadPostImage]; backend przyjmuje tylko klucz z własnego wgrania (400
-	 * `UNKNOWN_POST_IMAGE`).
+	 * [uploadPostImage]; backend przyjmuje tylko klucz z własnego, jeszcze
+	 * nieużytego i niewygasłego wgrania (400 `UNKNOWN_POST_IMAGE`).
 	 */
 	@Throws(Exception::class)
 	suspend fun createPost(content: String, imageKey: String? = null): Post =

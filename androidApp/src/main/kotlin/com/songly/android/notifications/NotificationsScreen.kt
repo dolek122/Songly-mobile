@@ -17,11 +17,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -171,16 +173,35 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.spacedBy(12.dp),
 		) {
-			// Avatar aktora prowadzi do jego profilu (osobny tap-target nad kliknięciem karty).
-			Avatar(
-				displayName = notification.actorDisplayName ?: "?",
-				avatarUrl = notification.actorAvatarUrl,
-				size = 40.dp,
-				modifier = Modifier.accessibleAction(
-					description = "Profil: ${notification.actorDisplayName ?: "nieznany użytkownik"}",
-					onClick = onOpenProfile,
-				),
-			)
+			if (isModerationDecision(notification)) {
+				// Decyzję podpisuje społeczność, nie moderator (ADR 0015, 0045): backend nie
+				// wydaje tu nazwy ani awatara, a przejście do profilu po `actorId` i tak
+				// wskazałoby osobę.
+				Box(
+					modifier = Modifier
+						.size(40.dp)
+						.clip(CircleShape)
+						.background(MaterialTheme.colorScheme.primaryContainer),
+					contentAlignment = Alignment.Center,
+				) {
+					Icon(
+						imageVector = Icons.Outlined.Groups,
+						contentDescription = null,
+						tint = MaterialTheme.colorScheme.onPrimaryContainer,
+					)
+				}
+			} else {
+				// Avatar aktora prowadzi do jego profilu (osobny tap-target nad kliknięciem karty).
+				Avatar(
+					displayName = notification.actorDisplayName ?: "?",
+					avatarUrl = notification.actorAvatarUrl,
+					size = 40.dp,
+					modifier = Modifier.accessibleAction(
+						description = "Profil: ${notification.actorDisplayName ?: "nieznany użytkownik"}",
+						onClick = onOpenProfile,
+					),
+				)
+			}
 			Column(modifier = Modifier.weight(1f)) {
 				Text(
 					text = notificationText(notification),
@@ -223,10 +244,11 @@ internal sealed interface NotificationTarget {
  *
  * `POST_REPORT_DISMISSED` i `COMMUNITY_POST_REMOVED` celowo nie prowadzą do
  * posta: pierwszy dotyczy cudzego posta, który zostaje, ale zgłaszający niczego
- * tam już nie zrobi, a drugi — posta, którego już nie ma.
+ * tam już nie zrobi, a drugi — posta, którego już nie ma. Usunięty komentarz
+ * prowadzi za to do posta, bo post został (backend: zasobem jest post).
  */
 internal fun targetOf(notification: Notification): NotificationTarget? = when (notification.type) {
-	"POST_LIKED", "POST_COMMENTED", "POST_SHARED", "COMMUNITY_POST_REPORTED" ->
+	"POST_LIKED", "POST_COMMENTED", "POST_SHARED", "COMMUNITY_POST_REPORTED", "COMMUNITY_COMMENT_REMOVED" ->
 		NotificationTarget.Post(notification.resourceId)
 
 	"COMMUNITY_MEMBER_JOINED", "COMMUNITY_BANNED", "COMMUNITY_POST_REMOVED", "BAN_APPEAL_SUBMITTED",
@@ -238,6 +260,19 @@ internal fun targetOf(notification: Notification): NotificationTarget? = when (n
 
 	else -> null
 }
+
+/**
+ * Typy, w których aktorem jest moderator albo administrator rozstrzygający w
+ * sprawie adresata — kopia `NotificationType.DECIDED_BY_MODERATION` z backendu.
+ * Zmiana roli moderatora jest poza zbiorem celowo: tam aktorem jest właściciel
+ * społeczności i to zwykłe powiadomienie z nazwą (ADR 0016).
+ */
+internal val MODERATION_DECISIONS = setOf(
+	"COMMUNITY_BANNED", "COMMUNITY_POST_REMOVED", "COMMUNITY_COMMENT_REMOVED", "POST_REPORT_DISMISSED",
+	"BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED",
+)
+
+internal fun isModerationDecision(notification: Notification): Boolean = notification.type in MODERATION_DECISIONS
 
 /** Mapuje typ powiadomienia + nazwę autora na zdanie po polsku. */
 internal fun notificationText(notification: Notification): String {
@@ -253,6 +288,7 @@ internal fun notificationText(notification: Notification): String {
 		"COMMUNITY_MEMBER_JOINED" -> "$actor dołączył(a) do Twojej społeczności"
 		"COMMUNITY_BANNED" -> "Moderacja zbanowała Cię w społeczności"
 		"COMMUNITY_POST_REMOVED" -> "Moderacja usunęła Twój post w społeczności"
+		"COMMUNITY_COMMENT_REMOVED" -> "Moderacja usunęła Twój komentarz w społeczności"
 		"COMMUNITY_POST_REPORTED" -> "Nowe zgłoszenie posta do rozpatrzenia"
 		"POST_REPORT_DISMISSED" -> "Moderacja odrzuciła Twoje zgłoszenie"
 		"BAN_APPEAL_SUBMITTED" -> "Nowe odwołanie od bana do rozpatrzenia"

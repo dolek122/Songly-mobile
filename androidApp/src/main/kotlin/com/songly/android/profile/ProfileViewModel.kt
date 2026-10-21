@@ -11,11 +11,22 @@ import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
+/**
+ * Nazwa, którą backend nadaje nowemu kontu (ADR 0046): „Użytkownik ” i sześć
+ * cyfr. Wcześniej była to część adresu e-mail, więc nikt nie musiał jej zmieniać;
+ * teraz bez zachęty większość kont zostałaby nierozpoznawalna dla znajomych.
+ */
+private val DEFAULT_DISPLAY_NAME = Regex("Użytkownik \\d{6}")
+
+internal fun isDefaultDisplayName(name: String): Boolean = DEFAULT_DISPLAY_NAME.matches(name)
+
 /** Stan ekranu profilu (dane profilowe + ulubione gatunki). */
 data class ProfileUiState(
 	val isLoading: Boolean = true,
 	val errorMessage: String? = null,
 	val displayName: String = "",
+	// Z zapisanej nazwy, nie z pola edycji — zachęta nie może znikać przy samym pisaniu.
+	val hasDefaultName: Boolean = false,
 	val bio: String = "",
 	val avatarUrl: String? = null, // tylko do wyświetlenia; zmiana awatara to upload pliku
 	val isSavingProfile: Boolean = false,
@@ -80,6 +91,7 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 				uiState = uiState.copy(
 					isLoading = false,
 					displayName = profile.displayName,
+					hasDefaultName = isDefaultDisplayName(profile.displayName),
 					bio = profile.bio.orEmpty(),
 					avatarUrl = profile.avatarUrl,
 					allGenres = all,
@@ -122,6 +134,7 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 				uiState = uiState.copy(
 					isSavingProfile = false,
 					displayName = updated.displayName,
+					hasDefaultName = isDefaultDisplayName(updated.displayName),
 					bio = updated.bio.orEmpty(),
 					statusMessage = "Zapisano profil",
 				)

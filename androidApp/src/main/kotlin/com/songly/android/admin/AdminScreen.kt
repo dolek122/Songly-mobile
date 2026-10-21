@@ -313,6 +313,7 @@ private fun analyticsLabel(type: String): String = when (type) {
 	"POST_FIRST_REPORTED" -> "Zgłoszone posty"
 	"POST_REPORT_DISMISSED" -> "Odrzucone zgłoszenia"
 	"COMMUNITY_POST_REMOVED" -> "Posty usunięte przez moderację"
+	"COMMUNITY_COMMENT_REMOVED" -> "Komentarze usunięte przez moderację"
 	"COMMUNITY_BAN_ISSUED_PERMANENT" -> "Bany bezterminowe"
 	"COMMUNITY_BAN_ISSUED_TEMPORARY" -> "Bany czasowe"
 	"BAN_APPEAL_SUBMITTED" -> "Odwołania od banów"

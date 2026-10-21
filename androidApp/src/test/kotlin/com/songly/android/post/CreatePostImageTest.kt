@@ -68,6 +68,33 @@ class CreatePostImageTest {
 		assertFalse(backend.lastBody(HttpMethod.Post, "/api/v1/posts")!!.contains("imageKey"))
 	}
 
+	/**
+	 * Wgranie przepadło po stronie serwera (doba bez posta, wyparte przez nowsze —
+	 * backend ADR 0048). Zdjęcie znika z formularza z jasnym komunikatem, a
+	 * napisana treść zostaje.
+	 */
+	@Test
+	fun expiredUploadIsDroppedAndContentKept() {
+		val backend = FakeBackend().apply {
+			onJson("/api/v1/posts/image", """{"key":"posts/me-1/abc.jpg","url":"http://cdn/posts/me-1/abc.jpg"}""")
+			on(HttpMethod.Post, "/api/v1/posts", HttpStatusCode.BadRequest) {
+				"""{"code":"UNKNOWN_POST_IMAGE","message":"Zdjęcie nie pochodzi z Twojego wgrania",""" +
+					""""timestamp":"2026-01-01T00:00:00Z","path":"/api/v1/posts"}"""
+			}
+		}
+		val viewModel = CreatePostViewModel(backend.client())
+
+		viewModel.onContentChange("po przerwie")
+		viewModel.attachImage { image }
+		awaitUntil { viewModel.uiState.image != null }
+		viewModel.submit {}
+		awaitUntil { !viewModel.uiState.isSubmitting }
+
+		assertNull(viewModel.uiState.image)
+		assertEquals(EXPIRED_IMAGE_MESSAGE, viewModel.uiState.errorMessage)
+		assertEquals("po przerwie", viewModel.uiState.content)
+	}
+
 	/** Backend odrzuca format — komunikat serwera trafia do użytkownika, post nie wychodzi. */
 	@Test
 	fun rejectedImageShowsServerMessage() {
