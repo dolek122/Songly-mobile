@@ -160,7 +160,10 @@ fun PostCard(
 private fun PostMenu(onReport: (() -> Unit)?, onDelete: (() -> Unit)?) {
 	var expanded by remember { mutableStateOf(false) }
 	Box {
-		IconButton(onClick = { expanded = true }) {
+		// 48 dp wprost: IconButton rysuje przycisk 40 dp i tylko rezerwuje miejsce do 48,
+		// więc węzeł widziany przez TalkBack i Accessibility Scanner był za mały
+		// (ta sama pułapka co opisana przy accessibleAction).
+		IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp)) {
 			Icon(
 				Icons.Outlined.MoreVert,
 				contentDescription = "Więcej akcji posta",
