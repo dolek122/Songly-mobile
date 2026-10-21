@@ -5,4 +5,6 @@
          systemu z Black, czyli z dolnym paskiem aplikacji, który stoi tuż nad nim. -->
     <color name="window_background">#121212</color>
     <color name="navigation_bar">#000000</color>
+    <!-- Tło ikony aplikacji = SonglyPalette.Green, jak kółko logo w aplikacji. -->
+    <color name="ic_launcher_background">#1ED760</color>
 </resources>

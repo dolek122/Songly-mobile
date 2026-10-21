@@ -38,6 +38,12 @@ Pozostałe ekrany otwierają się nad zakładkami ze strzałką wstecz. Wspólne
 (strzałka wstecz, zielony przycisk akcji, wiersz nawigacyjny, pusty stan,
 pigułka filtra) są w `ui/Components.kt`.
 
+Ikona aplikacji to ikona adaptacyjna: zielone tło (`ic_launcher_background` w
+`res/values/colors.xml`) i czarny korektor (`res/drawable/ic_launcher_foreground.xml`),
+ten sam znak co logo na ekranie logowania. Ten sam rysunek jest warstwą
+monochromatyczną, więc na Androidzie 13+ ikona przyjmuje kolory motywu. Wersja
+512×512 do karty sklepu leży w `androidApp/src/main/ic_launcher-playstore.png`.
+
 ## Kontrakt z backendem
 
 Modele w `shared/.../model` odwzorowują DTO z backendu 1:1. Źródłem prawdy jest
