@@ -22,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -143,7 +142,7 @@ private fun FriendPresenceCard(friend: FriendNowPlaying, onClick: () -> Unit) {
 					overflow = TextOverflow.Ellipsis,
 				)
 				Text(
-					text = if (status.playing) status.providerLabel else "${status.providerLabel} · zatrzymane",
+					text = if (status.playing) status.providerLabel else "${status.providerLabel} · wstrzymane",
 					style = MaterialTheme.typography.labelSmall,
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 				)

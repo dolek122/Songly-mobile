@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.Comment
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.paging.plusDistinct
 import kotlinx.coroutines.launch
 
 /** Maksymalna długość komentarza — zgodna z walidacją backendu (@Size max 500). */
@@ -132,7 +133,7 @@ class CommentsViewModel(
 					isLoadingMore = false,
 					// Dokładamy do aktualnej listy, nie do zapamiętanej kopii: w międzyczasie
 					// mógł dojść własny komentarz albo zniknąć usunięty.
-					comments = uiState.comments + page.content,
+					comments = uiState.comments.plusDistinct(page.content) { it.id },
 					endReached = page.last,
 					appendErrorMessage = null,
 				)

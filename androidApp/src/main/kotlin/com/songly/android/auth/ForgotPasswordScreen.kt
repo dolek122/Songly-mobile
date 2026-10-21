@@ -2,14 +2,10 @@ package com.songly.android.auth
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -24,6 +20,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.announcedWhenChanged
+import com.songly.android.ui.CenteredScrollColumn
 
 /**
  * „Nie pamiętam hasła" (backend ADR 0008). Lokalnie (`MAIL_PROVIDER=log`) link
@@ -42,11 +39,7 @@ fun ForgotPasswordScreen(
 	}
 	BackHandler(enabled = state.linkRequested && !state.isSubmitting) { viewModel.backToEmail() }
 
-	Column(
-		modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-		verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-		horizontalAlignment = Alignment.CenterHorizontally,
-	) {
+	CenteredScrollColumn(verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)) {
 		SonglyLogo(modifier = Modifier.padding(bottom = 8.dp))
 		Text("Reset hasła", style = MaterialTheme.typography.titleLarge)
 

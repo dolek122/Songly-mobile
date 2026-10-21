@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Pierwszy plan ikony aplikacji: korektor z pięciu słupków, ten sam znak co logo
-  na ekranie logowania (SonglyLogo). Siatka 108×108 jak każda ikona adaptacyjna;
-  system przycina ją do własnego kształtu (koło, zaokrąglony kwadrat…) i widać
-  tylko środkowe koło o średnicy 66, więc słupki mieszczą się w nim z zapasem
-  (najdalszy punkt ~24 od środka).
+  Pierwszy plan ikony aplikacji: zielona kropla (koło z ostrym prawym górnym
+  rogiem) z korektorem z pięciu słupków — ten sam znak co SonglyMark w aplikacji.
+  Liczby są wspólne: kropla to bok 56 z lewym górnym rogiem w (22, 30), a słupki
+  leżą w niej dokładnie tam, gdzie rysuje je SonglyMark (ui/Brand.kt).
 
-  Ten sam rysunek służy za warstwę monochromatyczną (ikony w kolorach motywu,
-  Android 13+) — tam system bierze sam kształt i barwi go po swojemu.
+  Siatka 108×108 jak każda ikona adaptacyjna; system przycina ją do własnego
+  kształtu i pewne jest tylko środkowe koło o średnicy 66. Kropla jest w nim
+  wyważona: koło przesunięte w lewo i w dół o tyle, ile róg wystaje w prawo i w
+  górę, więc najdalszy punkt (róg i przeciwległy łuk) leży ~34 od środka — w kole
+  o średnicy 72, które widać przy każdym kształcie launchera.
+
+  Słupki są wycięte (evenOdd), a nie domalowane na czarno: przez dziury widać tło
+  ikony, a ten sam rysunek może być warstwą monochromatyczną (ikony w kolorach
+  motywu, Android 13+), w której liczy się sam kształt.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -15,8 +21,12 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:pathData="M34,50V58 M44,42V66 M54,34V74 M64,42V66 M74,50V58"
-        android:strokeWidth="7"
-        android:strokeColor="#FF000000"
-        android:strokeLineCap="round" />
+        android:fillColor="#FF1ED760"
+        android:fillType="evenOdd"
+        android:pathData="M50,30H78V58A28,28 0,1 1,50 30Z
+            M34,52A2.5,2.5 0,0 1,39 52V61A2.5,2.5 0,0 1,34 61Z
+            M41.5,46.5A2.5,2.5 0,0 1,46.5 46.5V66.5A2.5,2.5 0,0 1,41.5 66.5Z
+            M49,40.5A2.5,2.5 0,0 1,54 40.5V72.5A2.5,2.5 0,0 1,49 72.5Z
+            M56.5,46.5A2.5,2.5 0,0 1,61.5 46.5V66.5A2.5,2.5 0,0 1,56.5 66.5Z
+            M64,52A2.5,2.5 0,0 1,69 52V61A2.5,2.5 0,0 1,64 61Z" />
 </vector>

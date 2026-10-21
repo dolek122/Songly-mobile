@@ -41,9 +41,13 @@ data class PagedSection<T>(
 		endReached = page.last,
 	)
 
-	/** Kolejna strona: dokłada na koniec. */
-	fun append(page: Page<T>): PagedSection<T> = copy(
-		items = items + page.content,
+	/**
+	 * Kolejna strona: dokłada na koniec. [keyOf] to klucz, po którym lista na
+	 * ekranie rozróżnia pozycje — pozycja, która już jest, nie wejdzie drugi raz
+	 * (patrz [plusDistinct]).
+	 */
+	fun append(page: Page<T>, keyOf: (T) -> Any? = { it }): PagedSection<T> = copy(
+		items = items.plusDistinct(page.content, keyOf),
 		nextPage = page.number + 1,
 		endReached = page.last,
 		isLoadingMore = false,
@@ -57,4 +61,18 @@ data class PagedSection<T>(
 	fun retrying(): PagedSection<T> = copy(isLoadingMore = true, appendError = null)
 
 	fun removeIf(predicate: (T) -> Boolean): PagedSection<T> = copy(items = items.filterNot(predicate))
+}
+
+/**
+ * Dokłada [more] na koniec, pomijając pozycje o kluczu, który już jest na liście.
+ *
+ * Stronicowanie po numerze strony przesuwa się, gdy w międzyczasie coś przybędzie
+ * (nowy post znajomego wypycha ostatni post strony 0 na początek strony 1), więc
+ * kolejna strona potrafi powtórzyć pozycję z poprzedniej. Dla `LazyColumn` z
+ * kluczami to nie kosmetyka, tylko wyjątek „Key was already used" — czyli crash
+ * przy zwykłym przewijaniu feedu.
+ */
+fun <T> List<T>.plusDistinct(more: List<T>, keyOf: (T) -> Any?): List<T> {
+	val seen = mapTo(HashSet(), keyOf)
+	return this + more.filter { seen.add(keyOf(it)) }
 }

@@ -3,6 +3,7 @@ package com.songly.android.communities
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -84,7 +85,8 @@ class CommunityModerationScreenTest {
 		awaitText("Post Bartka")
 
 		compose.onNodeWithText("Moderacja").assertDoesNotExist()
-		// Cudzy post w społeczności da się zgłosić, ale nie usunąć.
+		// Cudzy post w społeczności da się zgłosić, ale nie usunąć (obie akcje są pod „⋮").
+		compose.onNodeWithContentDescription("Więcej akcji posta").performClick()
 		compose.onNodeWithText("Zgłoś").assertIsDisplayed()
 		compose.onNodeWithText("Usuń").assertDoesNotExist()
 	}
@@ -94,7 +96,11 @@ class CommunityModerationScreenTest {
 		show(backend(myRole = "MODERATOR", membership = """{"status":"MEMBER","role":"MODERATOR"}"""))
 		awaitText("Post Bartka")
 
-		compose.onNodeWithText("Usuń").assertIsDisplayed()
+		compose.onNodeWithContentDescription("Więcej akcji posta").performClick()
+		compose.onNodeWithText("Usuń").performClick()
+		// Usunięcie cudzego posta pyta o potwierdzenie; wycofujemy się, żeby sprawdzić resztę.
+		compose.onNodeWithText("Usunąć post?").assertIsDisplayed()
+		compose.onNodeWithText("Anuluj").performClick()
 		compose.onNodeWithText("Moderacja").performClick()
 
 		awaitText("Brak zgłoszeń do rozpatrzenia.")

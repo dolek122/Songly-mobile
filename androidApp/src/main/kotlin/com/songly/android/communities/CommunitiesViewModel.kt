@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.Community
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
+import com.songly.shared.paging.plusDistinct
 import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
@@ -187,7 +188,7 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 				} else {
 					client.communities(page = nextPage, size = PAGE_SIZE)
 				}
-				val merged = if (reset) page.content else uiState.communities + page.content
+				val merged = if (reset) page.content else uiState.communities.plusDistinct(page.content) { it.id }
 				nextPage = page.number + 1
 				uiState = uiState.copy(
 					isLoading = false,

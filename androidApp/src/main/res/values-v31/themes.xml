@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ sam pokazuje ekran powitalny z ikony aplikacji. Tło ustawiamy
+  wprost, bo tło okna startowego jest tu obrazkiem (splash_background), a system
+  bierze je za domyślne tylko wtedy, gdy jest jednolitym kolorem. Na tym samym
+  kolorze co tło ikony widać samą zieloną kroplę.
+-->
+<resources>
+    <style name="Theme.Songly.Starting">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowSplashScreenBackground">@color/window_background</item>
+    </style>
+</resources>

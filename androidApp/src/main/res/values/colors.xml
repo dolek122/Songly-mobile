@@ -5,6 +5,10 @@
          systemu z Black, czyli z dolnym paskiem aplikacji, który stoi tuż nad nim. -->
     <color name="window_background">#121212</color>
     <color name="navigation_bar">#000000</color>
-    <!-- Tło ikony aplikacji = SonglyPalette.Green, jak kółko logo w aplikacji. -->
-    <color name="ic_launcher_background">#1ED760</color>
+    <!-- SonglyPalette.Green — akcent powiadomień push, które rysuje system, nie Compose. -->
+    <color name="brand_green">#1ED760</color>
+    <!-- Tło ikony aplikacji = SonglyPalette.Background: na czerni zielona kropla jest
+         kształtem, a nie tylko kolorem, który launcher przytnie po swojemu. Ten sam
+         kolor co tło okna, więc systemowy ekran powitalny (12+) pokazuje samą kroplę. -->
+    <color name="ic_launcher_background">#121212</color>
 </resources>

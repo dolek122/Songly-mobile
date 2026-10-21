@@ -133,7 +133,7 @@ class PostListViewModel(
 		uiState = uiState.copy(posts = loading)
 		viewModelScope.launch {
 			uiState = try {
-				uiState.copy(posts = uiState.posts.append(client.loadPage(uiState.posts.nextPage, PAGE_SIZE)))
+				uiState.copy(posts = uiState.posts.append(client.loadPage(uiState.posts.nextPage, PAGE_SIZE)) { it.id })
 			} catch (e: Exception) {
 				uiState.copy(posts = uiState.posts.failed(errorText(e, "doczytać postów")))
 			}

@@ -1,5 +1,7 @@
 package com.songly.android.feed
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,12 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Notifications
@@ -27,9 +31,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,15 +43,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.songly.android.ui.Avatar
 import com.songly.android.ui.DeletePostDialog
 import com.songly.android.ui.EmptyState
 import com.songly.android.ui.PostCard
 import com.songly.android.ui.SonglyFab
+import com.songly.android.ui.SonglyMark
+import com.songly.android.ui.TabTopBar
+import com.songly.shared.model.FriendNowPlaying
 
 /**
  * Ekran feedu z paginacją (Compose, natywny UI — §14) — pierwsza zakładka dolnego
@@ -55,7 +67,9 @@ import com.songly.android.ui.SonglyFab
  * żeby wrócić do logowania.
  *
  * W pasku tylko dzwonek powiadomień — reszta aplikacji jest w dolnym pasku, a
- * nie w menu „⋮", w którym trzeba było jej szukać.
+ * nie w menu „⋮", w którym trzeba było jej szukać. Nad postami pasek „Teraz
+ * słuchają" ze znajomymi, którzy coś grają — muzyka jest pierwszą rzeczą, jaką
+ * widać po otwarciu aplikacji, a nie trzy stuknięcia dalej.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,14 +81,28 @@ fun FeedScreen(
 	onOpenUserProfile: (String) -> Unit,
 	onOpenNotifications: () -> Unit,
 	onAccountSuspended: () -> Unit = {},
+	onOpenFriendsPresence: () -> Unit = {},
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
+	val snackbarHostState = remember { SnackbarHostState() }
 
-	// Odśwież przy każdym wejściu na ekran (także po ponownym logowaniu — ViewModel
-	// bywa cache'owany na Activity, więc init{} by nie wystarczył).
+	// Każde wejście na ekran: za pierwszym razem wczytanie, potem ciche odświeżenie
+	// (pozycja na liście przeżywa wyjście do komentarzy czy innej zakładki).
 	LaunchedEffect(Unit) {
-		viewModel.refresh()
+		viewModel.onScreenShown()
+	}
+
+	LaunchedEffect(state.snackbarMessage) {
+		val message = state.snackbarMessage ?: return@LaunchedEffect
+		viewModel.snackbarShown()
+		snackbarHostState.showSnackbar(message)
+	}
+	LaunchedEffect(state.scrollToTopPending) {
+		if (state.scrollToTopPending) {
+			listState.scrollToItem(0)
+			viewModel.scrolledToTop()
+		}
 	}
 
 	LaunchedEffect(state.sessionExpired) {
@@ -107,8 +135,10 @@ fun FeedScreen(
 	}
 
 	Scaffold(
+		// Przezroczyste tło: za ekranem jest zielona poświata zakładek (songlyBackdrop).
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
+			TabTopBar(
 				title = { BrandTitle() },
 				actions = {
 					NotificationsButton(unread = state.unreadNotifications, onClick = onOpenNotifications)
@@ -118,6 +148,7 @@ fun FeedScreen(
 		floatingActionButton = {
 			SonglyFab(icon = Icons.Filled.Add, contentDescription = "Nowy post", onClick = onCreatePost)
 		},
+		snackbarHost = { SnackbarHost(snackbarHostState) },
 	) { padding ->
 		PullToRefreshBox(
 			isRefreshing = state.isRefreshing,
@@ -136,8 +167,11 @@ fun FeedScreen(
 				}
 
 				state.isEmpty -> {
-					EmptyState(icon = Icons.Outlined.LibraryMusic, message = "Brak postów w feedzie.") {
-						Button(onClick = viewModel::refresh) { Text("Odśwież") }
+					EmptyState(
+						icon = Icons.Outlined.LibraryMusic,
+						message = "Tu pojawią się Twoje posty i posty znajomych. Zacznij od pierwszego!",
+					) {
+						Button(onClick = onCreatePost) { Text("Napisz post") }
 					}
 				}
 
@@ -149,6 +183,15 @@ fun FeedScreen(
 						verticalArrangement = Arrangement.spacedBy(12.dp),
 						modifier = Modifier.fillMaxSize(),
 					) {
+						if (state.friendsNowPlaying.isNotEmpty()) {
+							item(key = "now-playing") {
+								FriendsListeningStrip(
+									friends = state.friendsNowPlaying,
+									onOpenFriend = onOpenUserProfile,
+									onOpenAll = onOpenFriendsPresence,
+								)
+							}
+						}
 						items(state.posts, key = { it.id }) { post ->
 							PostCard(
 								post = post,
@@ -176,21 +219,89 @@ fun FeedScreen(
 	}
 }
 
-/** Nazwa aplikacji z zielonym znakiem „korektora" — jedyna ozdoba w pasku. */
+/** Nazwa aplikacji ze znakiem kropli — jedyna ozdoba w pasku. */
 @Composable
 private fun BrandTitle() {
 	Row(
 		verticalAlignment = Alignment.CenterVertically,
-		horizontalArrangement = Arrangement.spacedBy(8.dp),
+		horizontalArrangement = Arrangement.spacedBy(10.dp),
 		modifier = Modifier.semantics { heading() },
 	) {
-		Icon(
-			Icons.Filled.GraphicEq,
-			contentDescription = null,
-			tint = MaterialTheme.colorScheme.primary,
-			modifier = Modifier.size(28.dp),
-		)
+		SonglyMark(size = 28.dp)
 		Text(text = "Songly", style = MaterialTheme.typography.headlineSmall)
+	}
+}
+
+/**
+ * „Teraz słuchają": poziomy pasek znajomych, którzy właśnie coś grają — awatar w
+ * zielonej obwódce, imię i utwór. Migawka z chwili wejścia na ekran; na żywo (SSE)
+ * aktualizuje się dopiero pełny ekran pod „Wszyscy", żeby feed nie trzymał
+ * otwartego strumienia (backend limituje ich liczbę na użytkownika).
+ */
+@Composable
+private fun FriendsListeningStrip(
+	friends: List<FriendNowPlaying>,
+	onOpenFriend: (String) -> Unit,
+	onOpenAll: () -> Unit,
+) {
+	Column {
+		Row(
+			modifier = Modifier.fillMaxWidth(),
+			verticalAlignment = Alignment.CenterVertically,
+		) {
+			Text(
+				text = "Teraz słuchają",
+				style = MaterialTheme.typography.titleLarge,
+				modifier = Modifier.weight(1f).semantics { heading() },
+			)
+			TextButton(onClick = onOpenAll) { Text("Wszyscy") }
+		}
+		LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+			items(friends, key = { it.userId }) { friend ->
+				ListeningFriend(friend = friend, onClick = { onOpenFriend(friend.userId) })
+			}
+		}
+	}
+}
+
+@Composable
+private fun ListeningFriend(friend: FriendNowPlaying, onClick: () -> Unit) {
+	val name = friend.displayName ?: "Znajomy"
+	val track = friend.status?.title.orEmpty()
+	Column(
+		modifier = Modifier
+			.width(76.dp)
+			.clickable(role = Role.Button, onClickLabel = "Otwórz profil", onClick = onClick)
+			.semantics(mergeDescendants = true) {}
+			.padding(vertical = 4.dp),
+		horizontalAlignment = Alignment.CenterHorizontally,
+	) {
+		Box {
+			Avatar(
+				displayName = name,
+				avatarUrl = friend.avatarUrl,
+				size = 64.dp,
+				modifier = Modifier
+					.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+					.padding(4.dp),
+			)
+			// Znak w rogu mówi to samo co zielona obwódka: ta osoba właśnie gra.
+			SonglyMark(size = 20.dp, modifier = Modifier.align(Alignment.BottomEnd))
+		}
+		Text(
+			text = name,
+			style = MaterialTheme.typography.labelLarge,
+			maxLines = 1,
+			overflow = TextOverflow.Ellipsis,
+			modifier = Modifier.padding(top = 6.dp),
+		)
+		Text(
+			text = track,
+			style = MaterialTheme.typography.labelSmall,
+			color = MaterialTheme.colorScheme.onSurfaceVariant,
+			maxLines = 1,
+			overflow = TextOverflow.Ellipsis,
+		)
 	}
 }
 

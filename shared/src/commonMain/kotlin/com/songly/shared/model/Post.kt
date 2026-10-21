@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CreatePostRequest(
 	val content: String,
-	// Klucz z `POST /posts/image` (ADR 0010); wysyłanie zdjęć jeszcze nie ma UI.
+	// Klucz z `POST /posts/image` (ADR 0010) — zdjęcie wgrywa się osobno, przed postem.
 	val imageKey: String? = null,
 )
 

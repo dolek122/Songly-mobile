@@ -17,11 +17,16 @@
         <!-- usesCleartextTraffic tylko dla debug (dev backend po http). W release
              ruch idzie po https, więc cleartext jest domyślnie wyłączony. -->
         <!-- singleTask: link z maila przy otwartej aplikacji trafia do onNewIntent
-             istniejącej Activity, zamiast otwierać drugą kopię aplikacji nad pierwszą. -->
+             istniejącej Activity, zamiast otwierać drugą kopię aplikacji nad pierwszą.
+             adjustResize: aplikacja rysuje się od krawędzi do krawędzi, więc okno się
+             nie zmniejsza, ale bez tego trybu klawiatura nie zgłasza Compose swojej
+             wysokości (imePadding) na Androidzie starszym niż 11. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Songly.Starting"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

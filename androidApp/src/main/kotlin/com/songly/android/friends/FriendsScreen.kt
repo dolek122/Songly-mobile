@@ -1,5 +1,6 @@
 package com.songly.android.friends
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,14 +13,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -30,10 +34,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,23 +47,34 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.BackButton
 import com.songly.android.ui.EmptyState
-import com.songly.android.ui.NavigationRow
+import com.songly.android.ui.TabTopBar
+import com.songly.android.ui.TeardropShape
+import com.songly.android.ui.formatDate
 import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Friend
-import com.songly.shared.paging.PagedSection
 import com.songly.shared.model.FriendRequest
+import com.songly.shared.paging.PagedSection
+import com.songly.shared.util.RelativeTime
 
 /**
- * Ekran znajomych (Compose, natywny UI — §14): lista znajomych, zaproszenia
- * otrzymane (akceptuj/odrzuć) i wysłane (anuluj) oraz wysyłka zaproszenia po ID.
- * Stan z [FriendsViewModel]; dane z modułu social-graph przez `shared`.
+ * Ekran znajomych (Compose, natywny UI — §14): wyszukiwarka ludzi po nazwie,
+ * zaproszenia otrzymane (akceptuj/odrzuć) i wysłane (anuluj), znajomi i
+ * zablokowani. Stan z [FriendsViewModel]; dane z modułu social-graph przez `shared`.
+ *
+ * Sekcje bez zawartości się chowają (poza samymi znajomymi): cztery nagłówki z
+ * „brak…" pod każdym to ściana tekstu, która mówi tylko, czego nie ma.
  *
  * Ekran bywa zakładką dolnego paska ([onBack] `null`, bez strzałki) albo
  * otwiera się nad powiadomieniami, gdy ktoś przyszedł przyjąć zaproszenie.
@@ -74,18 +90,26 @@ fun FriendsScreen(
 	onOpenMatches: (() -> Unit)? = null,
 ) {
 	val state = viewModel.uiState
+	val snackbarHostState = remember { SnackbarHostState() }
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
 	}
+	LaunchedEffect(state.statusMessage) {
+		val message = state.statusMessage ?: return@LaunchedEffect
+		viewModel.statusMessageShown()
+		snackbarHostState.showSnackbar(message)
+	}
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text("Znajomi") },
+			TabTopBar(
+				title = "Znajomi",
 				navigationIcon = { if (onBack != null) BackButton(onBack) },
 			)
 		},
+		snackbarHost = { SnackbarHost(snackbarHostState) },
 	) { padding ->
 		PullToRefreshBox(
 			isRefreshing = state.isRefreshing,
@@ -104,27 +128,6 @@ fun FriendsScreen(
 					verticalArrangement = Arrangement.spacedBy(10.dp),
 					modifier = Modifier.fillMaxSize(),
 				) {
-					if (state.statusMessage != null) {
-						item(key = "status") {
-							Text(
-								text = state.statusMessage,
-								style = MaterialTheme.typography.bodyMedium,
-								color = MaterialTheme.colorScheme.primary,
-							)
-						}
-					}
-
-					if (onOpenMatches != null) {
-						item(key = "matches") {
-							NavigationRow(
-								icon = Icons.Outlined.AutoAwesome,
-								title = "Dopasowani",
-								subtitle = "Osoby o podobnym guście muzycznym",
-								onClick = onOpenMatches,
-							)
-						}
-					}
-
 					item(key = "search") {
 						SearchSection(
 							query = state.searchQuery,
@@ -149,10 +152,14 @@ fun FriendsScreen(
 						item(key = "sr-empty") { EmptyHint("Brak użytkowników dla tej frazy.") }
 					}
 
-					item(key = "h-incoming") { SectionHeader("Zaproszenia otrzymane") }
-					if (state.incoming.items.isEmpty()) {
-						item(key = "e-incoming") { EmptyHint("Brak nowych zaproszeń.") }
-					} else {
+					if (onOpenMatches != null) {
+						item(key = "matches") { MatchesCard(onClick = onOpenMatches) }
+					}
+
+					// Zaproszenia otrzymane na samej górze list: to jedyna sekcja, która na
+					// coś czeka. Pusta znika — „brak nowych zaproszeń" nikomu nie pomaga.
+					if (state.incoming.items.isNotEmpty()) {
+						item(key = "h-incoming") { SectionHeader("Zaproszenia (${state.incoming.items.size})") }
 						items(state.incoming.items, key = { "in-${it.id}" }) { request ->
 							IncomingRequestRow(
 								request = request,
@@ -162,28 +169,9 @@ fun FriendsScreen(
 								onOpenProfile = { onOpenUserProfile(request.requesterId) },
 							)
 						}
-					}
-
-					item(key = "f-incoming") {
-						SectionFooter(state.incoming, viewModel::loadMoreIncoming, viewModel::retryMoreIncoming)
-					}
-
-					item(key = "h-outgoing") { SectionHeader("Zaproszenia wysłane") }
-					if (state.outgoing.items.isEmpty()) {
-						item(key = "e-outgoing") { EmptyHint("Brak wysłanych zaproszeń.") }
-					} else {
-						items(state.outgoing.items, key = { "out-${it.id}" }) { request ->
-							OutgoingRequestRow(
-								request = request,
-								enabled = !state.isBusy,
-								onCancel = { viewModel.cancel(request.id) },
-								onOpenProfile = { onOpenUserProfile(request.addresseeId) },
-							)
+						item(key = "f-incoming") {
+							SectionFooter(state.incoming, viewModel::loadMoreIncoming, viewModel::retryMoreIncoming)
 						}
-					}
-
-					item(key = "f-outgoing") {
-						SectionFooter(state.outgoing, viewModel::loadMoreOutgoing, viewModel::retryMoreOutgoing)
 					}
 
 					item(key = "h-friends") { SectionHeader("Znajomi") }
@@ -205,10 +193,23 @@ fun FriendsScreen(
 						SectionFooter(state.friends, viewModel::loadMoreFriends, viewModel::retryMoreFriends)
 					}
 
-					item(key = "h-blocked") { SectionHeader("Zablokowani") }
-					if (state.blocked.items.isEmpty()) {
-						item(key = "e-blocked") { EmptyHint("Nie masz zablokowanych użytkowników.") }
-					} else {
+					if (state.outgoing.items.isNotEmpty()) {
+						item(key = "h-outgoing") { SectionHeader("Wysłane zaproszenia") }
+						items(state.outgoing.items, key = { "out-${it.id}" }) { request ->
+							OutgoingRequestRow(
+								request = request,
+								enabled = !state.isBusy,
+								onCancel = { viewModel.cancel(request.id) },
+								onOpenProfile = { onOpenUserProfile(request.addresseeId) },
+							)
+						}
+						item(key = "f-outgoing") {
+							SectionFooter(state.outgoing, viewModel::loadMoreOutgoing, viewModel::retryMoreOutgoing)
+						}
+					}
+
+					if (state.blocked.items.isNotEmpty()) {
+						item(key = "h-blocked") { SectionHeader("Zablokowani") }
 						items(state.blocked.items, key = { "bl-${it.userId}" }) { blocked ->
 							BlockedRow(
 								blocked = blocked,
@@ -216,10 +217,9 @@ fun FriendsScreen(
 								onUnblock = { viewModel.unblock(blocked.userId) },
 							)
 						}
-					}
-
-					item(key = "f-blocked") {
-						SectionFooter(state.blocked, viewModel::loadMoreBlocked, viewModel::retryMoreBlocked)
+						item(key = "f-blocked") {
+							SectionFooter(state.blocked, viewModel::loadMoreBlocked, viewModel::retryMoreBlocked)
+						}
 					}
 				}
 			}
@@ -227,6 +227,11 @@ fun FriendsScreen(
 	}
 }
 
+/**
+ * Wyszukiwarka ludzi: jedno pole, szuka klawiszem „Szukaj" na klawiaturze albo
+ * lupą na końcu pola (bez osobnego przycisku pod spodem, który tylko dublował
+ * klawiaturę). W trakcie szukania lupę zastępuje kręciołek.
+ */
 @Composable
 private fun SearchSection(
 	query: String,
@@ -235,21 +240,73 @@ private fun SearchSection(
 	onChange: (String) -> Unit,
 	onSearch: () -> Unit,
 ) {
-	Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-		SectionHeader("Znajdź znajomych")
-		OutlinedTextField(
-			value = query,
-			onValueChange = onChange,
-			label = { Text("Szukaj po nazwie") },
-			leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-			singleLine = true,
-			enabled = !isSearching,
-			keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-			keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-			modifier = Modifier.fillMaxWidth(),
-		)
-		Button(onClick = onSearch, enabled = canSearch, modifier = Modifier.align(Alignment.End)) {
-			Text(if (isSearching) "Szukanie…" else "Szukaj")
+	OutlinedTextField(
+		value = query,
+		onValueChange = onChange,
+		placeholder = { Text("Znajdź ludzi po nazwie") },
+		trailingIcon = {
+			if (isSearching) {
+				CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+			} else {
+				IconButton(onClick = onSearch, enabled = canSearch) {
+					Icon(Icons.Outlined.Search, contentDescription = "Szukaj")
+				}
+			}
+		},
+		singleLine = true,
+		enabled = !isSearching,
+		shape = RoundedCornerShape(28.dp),
+		keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+		keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+		modifier = Modifier.fillMaxWidth(),
+	)
+}
+
+/**
+ * Wejście do dopasowanych jako wyróżniona karta z zieloną poświatą: to jedyne
+ * miejsce, gdzie poznaje się nowych ludzi, więc nie może wyglądać jak kolejny
+ * wiersz ustawień.
+ */
+@Composable
+private fun MatchesCard(onClick: () -> Unit) {
+	Card(
+		modifier = Modifier
+			.fillMaxWidth()
+			.padding(top = 4.dp)
+			.clickable(role = Role.Button, onClick = onClick),
+	) {
+		Row(
+			modifier = Modifier
+				.fillMaxWidth()
+				.background(
+					Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primaryContainer, Color.Transparent)),
+				)
+				.padding(16.dp),
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(16.dp),
+		) {
+			Box(
+				modifier = Modifier
+					.size(44.dp)
+					.clip(TeardropShape)
+					.background(MaterialTheme.colorScheme.primary),
+				contentAlignment = Alignment.Center,
+			) {
+				Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+			}
+			Column(modifier = Modifier.weight(1f)) {
+				Text(text = "Dopasowani", style = MaterialTheme.typography.titleMedium)
+				Text(
+					text = "Osoby o podobnym guście muzycznym",
+					style = MaterialTheme.typography.bodySmall,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+				)
+			}
+			Icon(
+				Icons.AutoMirrored.Filled.KeyboardArrowRight,
+				contentDescription = null,
+				tint = MaterialTheme.colorScheme.onSurfaceVariant,
+			)
 		}
 	}
 }
@@ -283,6 +340,7 @@ private fun IncomingRequestRow(
 ) {
 	PersonRow(
 		name = request.requesterDisplayName,
+		subtitle = RelativeTime.format(request.createdAt),
 		leading = {
 			Avatar(displayName = request.requesterDisplayName, avatarUrl = request.requesterAvatarUrl, size = 44.dp)
 		},
@@ -302,6 +360,7 @@ private fun OutgoingRequestRow(
 ) {
 	PersonRow(
 		name = request.addresseeDisplayName,
+		subtitle = "wysłane ${RelativeTime.format(request.createdAt)}",
 		leading = {
 			Avatar(displayName = request.addresseeDisplayName, avatarUrl = request.addresseeAvatarUrl, size = 44.dp)
 		},
@@ -321,6 +380,7 @@ private fun FriendRow(
 ) {
 	PersonRow(
 		name = friend.displayName,
+		subtitle = "znajomi od ${formatDate(friend.friendsSince)}",
 		leading = { Avatar(displayName = friend.displayName, avatarUrl = friend.avatarUrl, size = 44.dp) },
 		onClick = onOpenProfile,
 	) {
@@ -334,7 +394,7 @@ private fun FriendRow(
 
 @Composable
 private fun BlockedRow(blocked: BlockedUser, enabled: Boolean, onUnblock: () -> Unit) {
-	PersonRow(name = blocked.displayName) {
+	PersonRow(name = blocked.displayName, subtitle = "zablokowano ${RelativeTime.format(blocked.blockedAt)}") {
 		OutlinedButton(onClick = onUnblock, enabled = enabled) { Text("Odblokuj") }
 	}
 }
@@ -342,6 +402,7 @@ private fun BlockedRow(blocked: BlockedUser, enabled: Boolean, onUnblock: () -> 
 @Composable
 private fun PersonRow(
 	name: String,
+	subtitle: String? = null,
 	leading: (@Composable () -> Unit)? = null,
 	onClick: (() -> Unit)? = null,
 	actions: @Composable () -> Unit,
@@ -358,12 +419,23 @@ private fun PersonRow(
 			horizontalArrangement = Arrangement.spacedBy(12.dp),
 		) {
 			leading?.invoke()
-			Text(
-				text = name,
-				style = MaterialTheme.typography.titleMedium,
-				maxLines = 1,
-				overflow = TextOverflow.Ellipsis,
-			)
+			Column {
+				Text(
+					text = name,
+					style = MaterialTheme.typography.titleMedium,
+					maxLines = 1,
+					overflow = TextOverflow.Ellipsis,
+				)
+				if (subtitle != null) {
+					Text(
+						text = subtitle,
+						style = MaterialTheme.typography.bodySmall,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+						maxLines = 1,
+						overflow = TextOverflow.Ellipsis,
+					)
+				}
+			}
 		}
 		actions()
 	}
@@ -399,7 +471,7 @@ private fun SectionHeader(title: String) {
 	Text(
 		text = title,
 		style = MaterialTheme.typography.titleLarge,
-		modifier = Modifier.padding(top = 12.dp),
+		modifier = Modifier.padding(top = 12.dp).semantics { heading() },
 	)
 }
 

@@ -31,18 +31,36 @@ Paleta jest w `ui/theme/Color.kt` (`SonglyPalette`), a jej kontrast liczy
 wywali testy. Zieleń jest tylko dla akcji i stanów (główny przycisk, polubienie,
 „na żywo"); reszta to czerń i szarości.
 
-Nawigacja to dolny pasek z pięcioma zakładkami (`ui/MainNavigation.kt`): Główna,
-Muzyka, Społeczności, Znajomi, Profil. Powiadomienia są pod dzwonkiem na głównej,
-dopasowani — w zakładce Znajomi, ustawienia i wylogowanie — w zakładce Profil.
-Pozostałe ekrany otwierają się nad zakładkami ze strzałką wstecz. Wspólne klocki
-(strzałka wstecz, zielony przycisk akcji, wiersz nawigacyjny, pusty stan,
-pigułka filtra) są w `ui/Components.kt`.
+Znakiem rozpoznawczym jest **kropla** — koło z jednym ostrym rogiem w prawym górnym
+rogu (`TeardropShape` w `ui/Brand.kt`). Ma ją ikona aplikacji, logo (`SonglyMark`:
+zielona kropla z korektorem), przycisk głównej akcji, okładka „teraz gram" i kafelki
+społeczności. Za zakładkami jest wspólna zielona poświata gasnąca w czerń
+(`songlyBackdrop`), a paski zakładek są przezroczyste. To cały „ozdobnik" — reszta
+zostaje minimalistyczna.
 
-Ikona aplikacji to ikona adaptacyjna: zielone tło (`ic_launcher_background` w
-`res/values/colors.xml`) i czarny korektor (`res/drawable/ic_launcher_foreground.xml`),
-ten sam znak co logo na ekranie logowania. Ten sam rysunek jest warstwą
-monochromatyczną, więc na Androidzie 13+ ikona przyjmuje kolory motywu. Wersja
-512×512 do karty sklepu leży w `androidApp/src/main/ic_launcher-playstore.png`.
+Nawigacja to dolny pasek z pięcioma zakładkami (`ui/MainNavigation.kt`): Główna,
+Muzyka, Społeczności, Znajomi, Profil. Powiadomienia są pod dzwonkiem na głównej
+(nad postami pasek „Teraz słuchają" ze znajomymi, którzy coś grają), dopasowani —
+w zakładce Znajomi, ustawienia i wylogowanie — w zakładce Profil. Pozostałe ekrany
+otwierają się nad zakładkami ze strzałką wstecz; pozycja na liście i wpisany tekst
+przeżywają wyjście z ekranu i powrót (osobny `SaveableStateHolder` na ekrany i na
+zakładki w `MainActivity`). Wspólne klocki (strzałka wstecz, pasek zakładki, przycisk
+akcji, wiersz nawigacyjny, pusty stan, pigułka filtra) są w `ui/Components.kt`.
+
+Aplikacja rysuje się od krawędzi do krawędzi na każdej wersji Androida (na 15+
+system i tak to wymusza). Odstęp od klawiatury daje jeden `imePadding()` u góry
+drzewa, a dolny pasek chowa się przy otwartej klawiaturze. Ekrany bez Scaffolda
+(logowanie, zawieszone konto) same dodają odstęp od pasków systemu.
+
+Ikona aplikacji to ikona adaptacyjna: czarne tło (`ic_launcher_background` w
+`res/values/colors.xml`) i zielona kropla z wyciętym korektorem
+(`res/drawable/ic_launcher_foreground.xml`) — te same proporcje co `SonglyMark`.
+Słupki są wycięte (`evenOdd`), więc ten sam rysunek jest warstwą monochromatyczną i na
+Androidzie 13+ ikona przyjmuje kolory motywu. Ikona pushy (`ic_stat_songly`) to ta
+sama kropla z trzema słupkami. Na Androidzie 8–11 okno startowe pokazuje kroplę na
+czerni (`Theme.Songly.Starting` + `splash_background`), na 12+ robi to systemowy ekran
+powitalny. Wersja 512×512 do karty sklepu leży w
+`androidApp/src/main/ic_launcher-playstore.png`.
 
 ## Kontrakt z backendem
 
