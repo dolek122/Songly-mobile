@@ -62,6 +62,19 @@ czerni (`Theme.Songly.Starting` + `splash_background`), na 12+ robi to systemowy
 powitalny. Wersja 512×512 do karty sklepu leży w
 `androidApp/src/main/ic_launcher-playstore.png`.
 
+## Onboarding (Android)
+
+Konto bez ulubionych gatunków dostaje po zalogowaniu ekran „Co lubisz słuchać?"
+(`onboarding/`). Bez gatunków nie ma dopasowań, a edycji profilu nikt nie otwiera
+w pierwszej minucie. Po zapisie aplikacja od razu otwiera dopasowanych.
+
+Decyzja zapada jeszcze pod spinnerem startowym (`needsGenreOnboarding`), więc nowe
+konto nie miga pustym feedem. Kto zapisał gatunki albo stuknął „Pomiń", nie dostanie
+tego ekranu drugi raz: zapamiętuje to `OnboardingStore` (SharedPreferences, osobno dla
+każdego konta na urządzeniu), bo backend nie ma takiej flagi. Systemowy Wstecz tylko
+wychodzi z aplikacji, a pytanie wraca przy następnym starcie. Przypadkowy gest nie
+może go schować na zawsze.
+
 ## Kontrakt z backendem
 
 Modele w `shared/.../model` odwzorowują DTO z backendu 1:1. Źródłem prawdy jest
