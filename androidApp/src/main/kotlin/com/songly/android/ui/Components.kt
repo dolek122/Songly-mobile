@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -86,6 +87,33 @@ fun TabTopBar(
 ) {
 	TabTopBar(
 		title = { Text(text = title, style = MaterialTheme.typography.headlineSmall) },
+		navigationIcon = navigationIcon,
+		actions = actions,
+	)
+}
+
+/**
+ * Pasek ekranu otwieranego nad zakładkami: strzałka wstecz (albo inna ikona, np.
+ * „zamknij"), tytuł i akcje — przezroczysty jak [TabTopBar], żeby poświata
+ * ([songlyBackdrop]) była pod każdym ekranem, a nie tylko pod zakładkami. Tytuł
+ * mniejszy niż na zakładce i w jednej linii: tu często stoi nazwa społeczności czy
+ * osoby, a obok jeszcze akcje.
+ */
+@Composable
+fun ScreenTopBar(
+	title: String,
+	navigationIcon: @Composable () -> Unit = {},
+	actions: @Composable RowScope.() -> Unit = {},
+) {
+	TabTopBar(
+		title = {
+			Text(
+				text = title,
+				style = MaterialTheme.typography.titleLarge,
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis,
+			)
+		},
 		navigationIcon = navigationIcon,
 		actions = actions,
 	)

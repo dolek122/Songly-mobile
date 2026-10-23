@@ -13,17 +13,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -33,11 +37,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.BackButton
+import com.songly.android.ui.ScreenTopBar
 import com.songly.android.ui.accessibleAction
 import com.songly.shared.model.Comment
 import com.songly.shared.util.RelativeTime
@@ -89,9 +95,10 @@ fun CommentsScreen(
 	}
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text("Komentarze") },
+			ScreenTopBar(
+				title = "Komentarze",
 				navigationIcon = { BackButton(onBack) },
 			)
 		},
@@ -258,8 +265,11 @@ private fun CommentInput(
 				modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
 			)
 		}
+		// Jak w komunikatorach: zaokrąglone pole i okrągły zielony przycisk wysyłania,
+		// który świeci dopiero, gdy jest co wysłać.
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(8.dp),
 			modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
 		) {
 			OutlinedTextField(
@@ -269,13 +279,18 @@ private fun CommentInput(
 				enabled = !isSubmitting,
 				isError = remaining < 0,
 				maxLines = 4,
+				shape = RoundedCornerShape(24.dp),
 				modifier = Modifier.weight(1f),
 			)
-			TextButton(onClick = onSubmit, enabled = canSubmit) {
+			FilledIconButton(
+				onClick = onSubmit,
+				enabled = canSubmit,
+				modifier = Modifier.size(48.dp),
+			) {
 				if (isSubmitting) {
-					CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
+					CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
 				} else {
-					Text(text = "Wyślij")
+					Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Wyślij komentarz")
 				}
 			}
 		}

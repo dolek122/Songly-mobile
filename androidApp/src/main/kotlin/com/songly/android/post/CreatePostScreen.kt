@@ -28,17 +28,18 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.songly.android.media.ImagePreparer
+import com.songly.android.ui.ScreenTopBar
 
 /**
  * Ekran tworzenia posta (Compose, natywny UI — §14). Stan z [CreatePostViewModel];
@@ -61,9 +62,10 @@ fun CreatePostScreen(
 	}
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text("Nowy post") },
+			ScreenTopBar(
+				title = "Nowy post",
 				navigationIcon = {
 					IconButton(onClick = onCancel, enabled = !state.isSubmitting) {
 						Icon(Icons.Outlined.Close, contentDescription = "Anuluj")

@@ -17,20 +17,22 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -38,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.clip
@@ -46,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.BackButton
 import com.songly.android.ui.EmptyState
+import com.songly.android.ui.ScreenTopBar
 import com.songly.android.ui.accessibleAction
 import com.songly.shared.model.Notification
 import com.songly.shared.util.RelativeTime
@@ -87,15 +91,22 @@ fun NotificationsScreen(
 	}
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text(if (state.hasUnread) "Powiadomienia (${state.unreadCount})" else "Powiadomienia") },
+			ScreenTopBar(
+				title = if (state.hasUnread) "Powiadomienia (${state.unreadCount})" else "Powiadomienia",
 				navigationIcon = { BackButton(onBack) },
+				// Ikony zamiast napisów: dwa przyciski tekstowe obok tytułu z licznikiem
+				// ściskały go na wąskich telefonach do „Powiad…".
 				actions = {
 					if (state.hasUnread) {
-						TextButton(onClick = viewModel::markAllRead) { Text("Oznacz wszystkie") }
+						IconButton(onClick = viewModel::markAllRead) {
+							Icon(Icons.Outlined.DoneAll, contentDescription = "Oznacz wszystkie jako przeczytane")
+						}
 					}
-					TextButton(onClick = onOpenMailPreferences) { Text("E-mail") }
+					IconButton(onClick = onOpenMailPreferences) {
+						Icon(Icons.Outlined.MailOutline, contentDescription = "Powiadomienia e-mail")
+					}
 				},
 			)
 		},

@@ -29,11 +29,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,6 +43,7 @@ import com.songly.android.media.ImagePreparer
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.BackButton
 import com.songly.android.ui.FilterPill
+import com.songly.android.ui.ScreenTopBar
 import com.songly.android.ui.SectionTitle
 
 /**
@@ -98,9 +99,10 @@ fun ProfileScreen(
 	}
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text("Edytuj profil") },
+			ScreenTopBar(
+				title = "Edytuj profil",
 				navigationIcon = { BackButton(onBack) },
 			)
 		},
