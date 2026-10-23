@@ -1,6 +1,8 @@
 package com.songly.android
 
 import android.app.Application
+import com.songly.android.onboarding.OnboardingStore
+import com.songly.android.onboarding.SharedPreferencesOnboardingStore
 import com.songly.android.push.PushRegistration
 import com.songly.shared.config.ApiConfig
 import com.songly.shared.network.SonglyApiClient
@@ -24,6 +26,9 @@ import kotlinx.coroutines.SupervisorJob
 open class SonglyApplication : Application() {
 
 	val apiClient: SonglyApiClient by lazy { createClient() }
+
+	/** Kto przeszedł już onboarding z gatunkami — per konto, na tym urządzeniu. */
+	val onboardingStore: OnboardingStore by lazy { SharedPreferencesOnboardingStore(this) }
 
 	/**
 	 * Zakres na pracę, która ma przeżyć ekran: rejestracja tokenu push kończy się w

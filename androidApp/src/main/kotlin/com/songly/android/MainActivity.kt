@@ -69,6 +69,10 @@ import com.songly.android.notifications.NotificationsScreen
 import com.songly.android.notifications.NotificationsViewModel
 import com.songly.android.nowplaying.NowPlayingScreen
 import com.songly.android.nowplaying.NowPlayingViewModel
+import com.songly.android.onboarding.GenreOnboardingScreen
+import com.songly.android.onboarding.GenreOnboardingViewModel
+import com.songly.android.onboarding.OnboardingStore
+import com.songly.android.onboarding.needsGenreOnboarding
 import com.songly.android.presence.FriendsPresenceScreen
 import com.songly.android.presence.FriendsPresenceViewModel
 import com.songly.android.post.CreatePostScreen
@@ -135,7 +139,7 @@ class MainActivity : ComponentActivity() {
 		// Po obrocie albo odtworzeniu procesu Activity dostaje ten sam intent jeszcze
 		// raz — obsłużony już link nie może potwierdzać adresu drugi raz.
 		if (savedInstanceState == null) takeLink(intent)
-		val apiClient = (application as SonglyApplication).apiClient
+		val app = application as SonglyApplication
 		setContent {
 			SonglyTheme {
 				// imePadding u samej góry drzewa: klawiatura zabiera miejsce wszystkim
@@ -143,7 +147,8 @@ class MainActivity : ComponentActivity() {
 				// zużyte (nie dokładają drugiego odstępu nad klawiaturą).
 				Surface(modifier = Modifier.fillMaxSize().imePadding()) {
 					AppRoot(
-						apiClient,
+						app.apiClient,
+						onboardingStore = app.onboardingStore,
 						authLink = pendingAuthLink,
 						onAuthLinkHandled = { pendingAuthLink = null },
 						spotifyResult = pendingSpotifyResult,
@@ -182,6 +187,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppRoot(
 	client: SonglyApiClient,
+	onboardingStore: OnboardingStore,
 	authLink: AuthLink?,
 	onAuthLinkHandled: () -> Unit,
 	spotifyResult: SpotifyConnectResult?,
@@ -210,6 +216,7 @@ private fun AppRoot(
 	SessionViewModels(generation) {
 		AuthOrApp(
 			client = client,
+			onboardingStore = onboardingStore,
 			loggedIn = loggedIn,
 			authNotice = authNotice,
 			onAuthNotice = { authNotice = it },
@@ -235,6 +242,7 @@ private fun AppRoot(
 @Composable
 private fun AuthOrApp(
 	client: SonglyApiClient,
+	onboardingStore: OnboardingStore,
 	loggedIn: Boolean?,
 	authNotice: String?,
 	onAuthNotice: (String?) -> Unit,
@@ -263,6 +271,7 @@ private fun AuthOrApp(
 		true -> {
 			LoggedInNav(
 				client = client,
+				onboardingStore = onboardingStore,
 				onLoggedOut = { notice -> onAuthNotice(notice); onLoggedInChange(false) },
 				spotifyResult = spotifyResult,
 				onSpotifyResultHandled = onSpotifyResultHandled,
@@ -449,6 +458,7 @@ private fun profileViewModel(client: SonglyApiClient): ProfileViewModel = viewMo
 @Composable
 private fun LoggedInNav(
 	client: SonglyApiClient,
+	onboardingStore: OnboardingStore,
 	onLoggedOut: (notice: String?) -> Unit,
 	spotifyResult: SpotifyConnectResult?,
 	onSpotifyResultHandled: () -> Unit,
@@ -508,9 +518,19 @@ private fun LoggedInNav(
 	// — feed i tak pokaże wtedy błąd połączenia, a nie fałszywe zawieszenie.
 	var suspended by rememberSaveable { mutableStateOf<Boolean?>(null) }
 	var isAdmin by rememberSaveable { mutableStateOf(false) }
+	// Onboarding z gatunkami dla konta, które ich nie ma (patrz GenreOnboardingViewModel).
+	var showOnboarding by rememberSaveable { mutableStateOf(false) }
 	LaunchedEffect(suspended) {
 		if (suspended == null) {
-			suspended = runCatching { client.mySuspension().suspended }.getOrDefault(false)
+			val isSuspended = runCatching { client.mySuspension().suspended }.getOrDefault(false)
+			// Jeszcze pod spinnerem startowym, żeby nowe konto nie mignęło pustym feedem.
+			// Zwykle bez dodatkowego żądania: po pierwszym razie decyduje flaga w pamięci
+			// urządzenia, a id konta i tak pobiera feed. Błąd = bez onboardingu (wróci
+			// przy następnym starcie), bo blokowanie aplikacji przez niego byłoby gorsze.
+			if (!isSuspended) {
+				showOnboarding = runCatching { needsGenreOnboarding(client, onboardingStore) }.getOrDefault(false)
+			}
+			suspended = isSuspended
 		}
 		if (suspended == false) {
 			isAdmin = runCatching { client.isCurrentUserAdmin() }.getOrDefault(false)
@@ -538,6 +558,25 @@ private fun LoggedInNav(
 		}
 
 		false -> Unit
+	}
+
+	// Onboarding zasłania całą aplikację, jak ekran zawieszenia: to pierwsza rzecz po
+	// zalogowaniu i nie ma pod nim czego pokazywać. Bez własnej obsługi Wstecz —
+	// systemowy Wstecz wychodzi z aplikacji, a pytanie wraca przy następnym starcie.
+	if (showOnboarding) {
+		val onboardingViewModel: GenreOnboardingViewModel = viewModel(
+			key = "genre-onboarding",
+			factory = viewModelFactory { initializer { GenreOnboardingViewModel(client, onboardingStore) } },
+		)
+		GenreOnboardingScreen(
+			viewModel = onboardingViewModel,
+			onFinished = { saved ->
+				showOnboarding = false
+				// Po zapisie od razu dopasowani — to obietnica z ekranu onboardingu.
+				if (saved) showMatches = true
+			},
+		)
+		return
 	}
 
 	// Profil, post i komentarze to nakładki otwierane z dowolnego ekranu i z siebie
