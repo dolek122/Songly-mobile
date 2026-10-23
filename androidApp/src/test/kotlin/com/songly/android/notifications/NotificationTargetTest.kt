@@ -2,7 +2,9 @@ package com.songly.android.notifications
 
 import com.songly.shared.model.Notification
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -22,7 +24,7 @@ class NotificationTargetTest {
 
 	@Test
 	fun postNotificationsOpenPost() {
-		listOf("POST_LIKED", "POST_COMMENTED", "POST_SHARED", "COMMUNITY_POST_REPORTED").forEach {
+		listOf("POST_LIKED", "POST_COMMENTED", "POST_SHARED", "COMMUNITY_POST_REPORTED", "COMMUNITY_COMMENT_REMOVED").forEach {
 			assertEquals(it, NotificationTarget.Post("r1"), targetOf(notification(it)))
 		}
 	}
@@ -47,5 +49,32 @@ class NotificationTargetTest {
 	@Test
 	fun banNotificationDoesNotNameModerator() {
 		assertEquals("Moderacja zbanowała Cię w społeczności", notificationText(notification("COMMUNITY_BANNED")))
+	}
+
+	/**
+	 * Nowy typ z backendu (ADR 0045) — bez własnego tekstu trafiłby do ogólnego
+	 * „Ktoś ma dla Ciebie powiadomienie”.
+	 */
+	@Test
+	fun removedCommentHasItsOwnText() {
+		assertEquals(
+			"Moderacja usunęła Twój komentarz w społeczności",
+			notificationText(notification("COMMUNITY_COMMENT_REMOVED")),
+		)
+	}
+
+	/**
+	 * Przy decyzjach karta nie pokazuje awatara ani nie prowadzi do profilu
+	 * aktora — `actorId` wskazałby moderatora. Zmiana roli to zwykłe powiadomienie
+	 * od właściciela i zostaje podpisana (ADR 0016).
+	 */
+	@Test
+	fun moderationDecisionsHideTheModerator() {
+		listOf(
+			"COMMUNITY_BANNED", "COMMUNITY_POST_REMOVED", "COMMUNITY_COMMENT_REMOVED", "POST_REPORT_DISMISSED",
+			"BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED",
+		).forEach { assertTrue(it, isModerationDecision(notification(it))) }
+		listOf("POST_LIKED", "COMMUNITY_MODERATOR_GRANTED", "COMMUNITY_POST_REPORTED", "BAN_APPEAL_SUBMITTED")
+			.forEach { assertFalse(it, isModerationDecision(notification(it))) }
 	}
 }

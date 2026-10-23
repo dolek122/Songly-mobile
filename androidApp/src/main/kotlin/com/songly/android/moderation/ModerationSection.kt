@@ -262,6 +262,7 @@ fun logActionLabel(action: String): String = when (action) {
 	"COMMUNITY_BAN_ISSUED" -> "Ban"
 	"COMMUNITY_BAN_LIFTED" -> "Zdjęcie bana"
 	"COMMUNITY_POST_REMOVED" -> "Usunięcie posta"
+	"COMMUNITY_COMMENT_REMOVED" -> "Usunięcie komentarza"
 	"POST_REPORT_DISMISSED" -> "Odrzucone zgłoszenie"
 	"POST_REPORT_UPHELD" -> "Trafne zgłoszenie"
 	"COMMUNITY_BAN_APPEAL_SUBMITTED" -> "Odwołanie od bana"

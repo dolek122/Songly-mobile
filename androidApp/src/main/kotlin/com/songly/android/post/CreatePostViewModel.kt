@@ -14,6 +14,10 @@ import kotlinx.coroutines.launch
 /** Maksymalna długość treści posta — zgodna z walidacją backendu (@Size max 1000). */
 const val MAX_POST_LENGTH = 1000
 
+private const val UNKNOWN_POST_IMAGE = "UNKNOWN_POST_IMAGE"
+
+internal const val EXPIRED_IMAGE_MESSAGE = "Zdjęcie wygasło. Dodaj je jeszcze raz."
+
 /** Stan ekranu tworzenia posta. */
 data class CreatePostUiState(
 	val content: String = "",
@@ -84,10 +88,17 @@ class CreatePostViewModel(private val client: SonglyApiClient) : ViewModel() {
 				uiState = CreatePostUiState() // reset — czysty ekran przy następnym wejściu
 				onCreated()
 			} catch (e: SonglyApiException) {
-				uiState = uiState.copy(
-					isSubmitting = false,
-					errorMessage = e.error?.message ?: "Nie udało się dodać posta (HTTP ${e.status})",
-				)
+				uiState = if (e.error?.code == UNKNOWN_POST_IMAGE) {
+					// Wgranie przepadło: czekało ponad dobę, wyparły je nowsze albo trafiło już
+					// do innego posta (backend ADR 0048). Ten klucz niczego już nie wskaże, więc
+					// zdjęcie znika z formularza, a treść zostaje.
+					uiState.copy(isSubmitting = false, image = null, errorMessage = EXPIRED_IMAGE_MESSAGE)
+				} else {
+					uiState.copy(
+						isSubmitting = false,
+						errorMessage = e.error?.message ?: "Nie udało się dodać posta (HTTP ${e.status})",
+					)
+				}
 			} catch (e: Exception) {
 				uiState = uiState.copy(
 					isSubmitting = false,

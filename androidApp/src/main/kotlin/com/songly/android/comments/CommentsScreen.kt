@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -26,7 +28,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -54,6 +58,8 @@ fun CommentsScreen(
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
+	// Cudzy komentarz czekający na potwierdzenie moderatora.
+	var pendingRemoval by remember { mutableStateOf<Comment?>(null) }
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
@@ -70,6 +76,16 @@ fun CommentsScreen(
 	}
 	LaunchedEffect(shouldLoadMore) {
 		if (shouldLoadMore) viewModel.loadNextPage()
+	}
+
+	pendingRemoval?.let { comment ->
+		RemoveCommentDialog(
+			onConfirm = {
+				viewModel.delete(comment, onCommentDeleted)
+				pendingRemoval = null
+			},
+			onDismiss = { pendingRemoval = null },
+		)
 	}
 
 	Scaffold(
@@ -124,8 +140,14 @@ fun CommentsScreen(
 					items(state.comments, key = { it.id }) { comment ->
 						CommentRow(
 							comment = comment,
-							canDelete = comment.authorId == state.currentUserId,
-							onDelete = { viewModel.delete(comment, onCommentDeleted) },
+							canDelete = state.canDelete(comment),
+							onDelete = {
+								if (state.isModeration(comment)) {
+									pendingRemoval = comment
+								} else {
+									viewModel.delete(comment, onCommentDeleted)
+								}
+							},
 							onOpenProfile = { onOpenUserProfile(comment.authorId) },
 						)
 					}
@@ -142,6 +164,31 @@ fun CommentsScreen(
 			}
 		}
 	}
+}
+
+/**
+ * Potwierdzenie przed usunięciem cudzego komentarza: to decyzja moderacyjna, po
+ * której autor dostaje powiadomienie i mail (backend ADR 0045), więc nie może
+ * wyjść z przypadkowego stuknięcia.
+ */
+@Composable
+private fun RemoveCommentDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text("Usunąć komentarz?") },
+		text = { Text("Autor dostanie powiadomienie, że moderacja usunęła jego komentarz. Tej operacji nie można cofnąć.") },
+		confirmButton = {
+			TextButton(
+				onClick = onConfirm,
+				colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+			) {
+				Text("Usuń")
+			}
+		},
+		dismissButton = {
+			TextButton(onClick = onDismiss) { Text("Anuluj") }
+		},
+	)
 }
 
 @Composable
@@ -172,7 +219,7 @@ private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Uni
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 					modifier = Modifier.weight(1f).padding(start = 8.dp),
 				)
-				// Kosz tylko na własnych komentarzach.
+				// Na własnych komentarzach, a moderatorowi społeczności także na cudzych.
 				if (canDelete) {
 					Text(
 						text = "Usuń",

@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -67,6 +69,10 @@ fun ProfileHubScreen(
 		) {
 			ProfileHeader(state = state, onRetry = viewModel::load)
 
+			if (state.hasDefaultName) {
+				DefaultNameHint(onSetName = onEditProfile)
+			}
+
 			// Zdjęcie, nazwa, bio, ulubione gatunki i hasło — wszystko na jednym ekranie edycji.
 			OutlinedButton(
 				onClick = onEditProfile,
@@ -100,6 +106,28 @@ fun ProfileHubScreen(
 				onClick = onLogout,
 				showChevron = false,
 			)
+		}
+	}
+}
+
+/**
+ * Zachęta przy nazwie nadanej automatycznie (backend ADR 0046). Znajomi szukają po
+ * nazwie, a „Użytkownik 123456” nie mówi im, kim jesteś.
+ */
+@Composable
+private fun DefaultNameHint(onSetName: () -> Unit) {
+	Card(
+		modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+	) {
+		Column(modifier = Modifier.padding(16.dp)) {
+			Text(
+				text = "Tę nazwę nadaliśmy automatycznie. Ustaw własną, żeby znajomi mogli Cię znaleźć.",
+				style = MaterialTheme.typography.bodyMedium,
+			)
+			TextButton(onClick = onSetName, modifier = Modifier.align(Alignment.End)) {
+				Text("Ustaw nazwę")
+			}
 		}
 	}
 }

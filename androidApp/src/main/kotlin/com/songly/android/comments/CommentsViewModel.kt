@@ -30,9 +30,16 @@ data class CommentsUiState(
 	val isLoadingMore: Boolean = false, // doczytywanie kolejnej strony
 	val appendErrorMessage: String? = null, // błąd doczytywania (lista zostaje)
 	val endReached: Boolean = false, // ostatnia strona wczytana
+	// Moderuje społeczność, w której jest post — usuwa też cudze komentarze (backend ADR 0045).
+	val canModerate: Boolean = false,
 ) {
 	val isEmpty: Boolean
 		get() = !isLoading && errorMessage == null && comments.isEmpty()
+
+	fun canDelete(comment: Comment): Boolean = comment.authorId == currentUserId || canModerate
+
+	/** Usunięcie cudzego komentarza to decyzja moderacyjna: autor dostaje powiadomienie. */
+	fun isModeration(comment: Comment): Boolean = canModerate && comment.authorId != currentUserId
 
 	val canSubmit: Boolean
 		get() = draft.isNotBlank() && draft.length <= MAX_COMMENT_LENGTH && !isSubmitting
@@ -53,6 +60,7 @@ class CommentsViewModel(
 
 	private var nextPage = 0
 	private var loadingMore = false
+	private var moderationChecked = false
 
 	fun load() {
 		uiState = uiState.copy(isLoading = true, errorMessage = null)
@@ -61,11 +69,13 @@ class CommentsViewModel(
 				val page = client.comments(postId, page = 0, size = PAGE_SIZE)
 				// Id usera best-effort — służy tylko do pokazania usuwania własnych komentarzy.
 				val userId = uiState.currentUserId ?: runCatching { client.currentUserId() }.getOrNull()
+				val canModerate = uiState.canModerate || checkModeration()
 				nextPage = page.number + 1
 				uiState = uiState.copy(
 					isLoading = false,
 					comments = page.content,
 					currentUserId = userId,
+					canModerate = canModerate,
 					endReached = page.last,
 					appendErrorMessage = null,
 				)
@@ -85,8 +95,23 @@ class CommentsViewModel(
 	}
 
 	/**
-	 * Usuwa własny komentarz optymistycznie: znika od razu, a przy błędzie wraca na
-	 * miejsce. Po sukcesie [onDeleted] pozwala feedowi obniżyć licznik komentarzy.
+	 * Czy przeglądający moderuje społeczność, w której jest post. Best-effort jak id
+	 * użytkownika: bez odpowiedzi zostaje usuwanie własnych komentarzy, a
+	 * uprawnienie i tak sprawdza backend. Po pierwszej odpowiedzi już nie pytamy;
+	 * zwykłe posty (bez społeczności) kończą się na jednym zapytaniu o post.
+	 */
+	private suspend fun checkModeration(): Boolean {
+		if (moderationChecked) return false
+		return runCatching {
+			val communityId = client.post(postId).communityId
+			(communityId != null && client.community(communityId).isModerator).also { moderationChecked = true }
+		}.getOrDefault(false)
+	}
+
+	/**
+	 * Usuwa komentarz optymistycznie: znika od razu, a przy błędzie wraca na
+	 * miejsce. Własny albo — dla moderatora społeczności — cudzy. Po sukcesie
+	 * [onDeleted] pozwala feedowi obniżyć licznik komentarzy.
 	 */
 	fun delete(comment: Comment, onDeleted: () -> Unit) {
 		val snapshot = uiState.comments
