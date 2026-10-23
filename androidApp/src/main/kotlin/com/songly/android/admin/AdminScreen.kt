@@ -24,15 +24,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.BackButton
 import com.songly.android.moderation.logActionLabel
+import com.songly.android.ui.ScreenTopBar
 import com.songly.android.ui.formatDateTime
 import com.songly.shared.model.EscalatedAppeal
 import com.songly.shared.model.SuspendedAccount
@@ -51,9 +52,10 @@ fun AdminScreen(
 	LaunchedEffect(Unit) { viewModel.refresh() }
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text("Panel administratora") },
+			ScreenTopBar(
+				title = "Panel administratora",
 				navigationIcon = { BackButton(onBack) },
 			)
 		},

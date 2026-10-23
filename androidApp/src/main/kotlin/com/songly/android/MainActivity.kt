@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -142,10 +143,18 @@ class MainActivity : ComponentActivity() {
 		val app = application as SonglyApplication
 		setContent {
 			SonglyTheme {
+				// Zielona poświata pod całą aplikacją: ekrany (zakładki i te otwierane nad
+				// nimi) mają przezroczyste tła, więc wszystkie stoją na tym samym tle.
+				//
 				// imePadding u samej góry drzewa: klawiatura zabiera miejsce wszystkim
 				// ekranom naraz, a Scaffoldy niżej widzą wcięcie paska nawigacji jako już
-				// zużyte (nie dokładają drugiego odstępu nad klawiaturą).
-				Surface(modifier = Modifier.fillMaxSize().imePadding()) {
+				// zużyte (nie dokładają drugiego odstępu nad klawiaturą). Kolor treści
+				// wprost, bo przy przezroczystym Surface domyślny byłby czarny.
+				Surface(
+					modifier = Modifier.fillMaxSize().songlyBackdrop().imePadding(),
+					color = androidx.compose.ui.graphics.Color.Transparent,
+					contentColor = MaterialTheme.colorScheme.onBackground,
+				) {
 					AppRoot(
 						app.apiClient,
 						onboardingStore = app.onboardingStore,
@@ -284,8 +293,8 @@ private fun AuthOrApp(
 		}
 
 		// Ekrany logowania nie mają Scaffolda, więc odstęp od pasków systemu dają sobie
-		// same; poświata rysuje się pod paskiem stanu.
-		false -> Box(modifier = Modifier.fillMaxSize().songlyBackdrop().systemBarsPadding()) {
+		// same; poświata z korzenia rysuje się pod paskiem stanu.
+		false -> Box(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
 			AuthNav(
 				client = client,
 				notice = authNotice,
@@ -934,15 +943,15 @@ private fun overlayStateKey(index: Int, overlay: Overlay): String = "overlay-$in
  * oznaczyć jako zużyty — inaczej ekran zostawiłby nad paskiem drugi, pusty odstęp
  * tej samej wysokości (aplikacja rysuje się pod paskami systemu).
  *
- * Za zakładkami jest wspólna zielona poświata ([songlyBackdrop]), a ich Scaffoldy
- * są przezroczyste. Przy otwartej klawiaturze dolny pasek się chowa: nad
- * klawiaturą zabierałby miejsce polu, w którym właśnie się pisze.
+ * Zakładki stoją na wspólnej zielonej poświacie z korzenia aplikacji
+ * ([songlyBackdrop]), więc ich Scaffoldy są przezroczyste. Przy otwartej
+ * klawiaturze dolny pasek się chowa: nad klawiaturą zabierałby miejsce polu, w
+ * którym właśnie się pisze.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MainTabs(selected: MainTab, onSelect: (MainTab) -> Unit, content: @Composable () -> Unit) {
 	Scaffold(
-		modifier = Modifier.songlyBackdrop(),
 		containerColor = androidx.compose.ui.graphics.Color.Transparent,
 		bottomBar = {
 			if (!WindowInsets.isImeVisible) SonglyNavigationBar(selected = selected, onSelect = onSelect)

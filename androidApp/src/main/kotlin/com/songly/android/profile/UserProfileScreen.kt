@@ -26,11 +26,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.BackButton
@@ -38,6 +38,7 @@ import com.songly.android.post.PostListDialogs
 import com.songly.android.post.PostListViewModel
 import com.songly.android.post.postListItems
 import com.songly.android.ui.Avatar
+import com.songly.android.ui.ScreenTopBar
 
 /**
  * Ekran cudzego profilu (read-only, §14 natywny UI): avatar, nazwa, bio i ulubione
@@ -77,9 +78,11 @@ fun UserProfileScreen(
 	}
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text(state.profile?.displayName ?: "Profil") },
+			// Bez tytułu: nazwa stoi duża pod awatarem, tuż pod paskiem.
+			ScreenTopBar(
+				title = "",
 				navigationIcon = { BackButton(onBack) },
 			)
 		},

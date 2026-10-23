@@ -34,9 +34,11 @@ wywali testy. Zieleń jest tylko dla akcji i stanów (główny przycisk, polubie
 Znakiem rozpoznawczym jest **kropla** — koło z jednym ostrym rogiem w prawym górnym
 rogu (`TeardropShape` w `ui/Brand.kt`). Ma ją ikona aplikacji, logo (`SonglyMark`:
 zielona kropla z korektorem), przycisk głównej akcji, okładka „teraz gram" i kafelki
-społeczności. Za zakładkami jest wspólna zielona poświata gasnąca w czerń
-(`songlyBackdrop`), a paski zakładek są przezroczyste. To cały „ozdobnik" — reszta
-zostaje minimalistyczna.
+społeczności. Pod całą aplikacją jest jedna zielona poświata gasnąca w czerń
+(`songlyBackdrop`, w korzeniu `MainActivity`). Ekrany mają więc przezroczyste tła i
+paski: `TabTopBar` na zakładkach, `ScreenTopBar` (ze strzałką wstecz) na ekranach nad
+nimi. Nowy ekran dostaje poświatę, gdy ustawi `containerColor = Color.Transparent`. To
+cały „ozdobnik" — reszta zostaje minimalistyczna.
 
 Nawigacja to dolny pasek z pięcioma zakładkami (`ui/MainNavigation.kt`): Główna,
 Muzyka, Społeczności, Znajomi, Profil. Powiadomienia są pod dzwonkiem na głównej

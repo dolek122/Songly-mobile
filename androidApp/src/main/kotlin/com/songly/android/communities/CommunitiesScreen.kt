@@ -40,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.BackButton
@@ -265,17 +267,17 @@ private fun CommunityCard(
  * karcie punkt zaczepienia dla oka.
  */
 @Composable
-private fun CommunityTile(name: String) {
+internal fun CommunityTile(name: String, size: Dp = 52.dp, textStyle: TextStyle = MaterialTheme.typography.titleLarge) {
 	Box(
 		modifier = Modifier
-			.size(52.dp)
+			.size(size)
 			.clip(TeardropShape)
 			.background(MaterialTheme.colorScheme.primaryContainer),
 		contentAlignment = Alignment.Center,
 	) {
 		Text(
 			text = name.trim().firstOrNull()?.uppercase() ?: "?",
-			style = MaterialTheme.typography.titleLarge,
+			style = textStyle,
 			color = MaterialTheme.colorScheme.onPrimaryContainer,
 		)
 	}

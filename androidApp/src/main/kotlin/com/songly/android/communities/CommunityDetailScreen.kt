@@ -13,15 +13,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -30,7 +38,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -40,10 +47,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.BackButton
+import com.songly.android.ui.ScreenTopBar
 import com.songly.shared.model.Community
 import com.songly.shared.model.BanDetails
 import com.songly.shared.model.CommunityMember
@@ -154,18 +166,17 @@ fun CommunityDetailScreen(
 	}
 
 	Scaffold(
+		containerColor = Color.Transparent,
 		topBar = {
-			TopAppBar(
-				title = { Text(state.community?.name ?: "Społeczność") },
+			// Bez tytułu: nazwa stoi w nagłówku pod paskiem, duża — dwa razy ta sama
+			// nazwa jedna nad drugą tylko by szumiała.
+			ScreenTopBar(
+				title = "",
 				navigationIcon = { BackButton(onBack) },
 				actions = {
-					// Zarządzanie widoczne tylko dla właściciela.
+					// Zarządzanie widoczne tylko dla właściciela; rzadkie, więc pod „⋮".
 					if (state.community?.isOwner == true) {
-						TextButton(onClick = viewModel::openEditDialog) { Text("Edytuj") }
-						TextButton(
-							onClick = viewModel::openDeleteDialog,
-							colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-						) { Text("Usuń") }
+						OwnerMenu(onEdit = viewModel::openEditDialog, onDelete = viewModel::openDeleteDialog)
 					}
 				},
 			)
@@ -202,7 +213,8 @@ fun CommunityDetailScreen(
 						)
 					}
 					item(key = "tabs") {
-						TabRow(selectedTabIndex = state.selectedTab.ordinal) {
+						// Przezroczyste tło, inaczej pod poświatą byłby ciemny pas.
+						TabRow(selectedTabIndex = state.selectedTab.ordinal, containerColor = Color.Transparent) {
 							Tab(
 								selected = state.selectedTab == CommunityTab.POSTS,
 								onClick = { viewModel.selectTab(CommunityTab.POSTS) },
@@ -310,6 +322,40 @@ fun CommunityDetailScreen(
 	}
 }
 
+/** „⋮" właściciela: edycja i usunięcie społeczności. */
+@Composable
+private fun OwnerMenu(onEdit: () -> Unit, onDelete: () -> Unit) {
+	var expanded by remember { mutableStateOf(false) }
+	Box {
+		IconButton(onClick = { expanded = true }) {
+			Icon(Icons.Outlined.MoreVert, contentDescription = "Zarządzaj społecznością")
+		}
+		DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+			DropdownMenuItem(
+				text = { Text("Edytuj społeczność") },
+				leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+				onClick = {
+					expanded = false
+					onEdit()
+				},
+			)
+			val danger = MaterialTheme.colorScheme.error
+			DropdownMenuItem(
+				text = { Text("Usuń społeczność", color = danger) },
+				leadingIcon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null, tint = danger) },
+				onClick = {
+					expanded = false
+					onDelete()
+				},
+			)
+		}
+	}
+}
+
+/**
+ * Nagłówek jak strona albumu: duży kafelek-kropla z inicjałem, nazwa, liczba
+ * członków, opis i jedna główna akcja (dołącz / opuść).
+ */
 @Composable
 private fun CommunityHeader(
 	community: Community,
@@ -318,8 +364,32 @@ private fun CommunityHeader(
 	onToggleMembership: () -> Unit,
 ) {
 	Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(16.dp),
+		) {
+			CommunityTile(name = community.name, size = 88.dp, textStyle = MaterialTheme.typography.headlineLarge)
+			Column(modifier = Modifier.weight(1f)) {
+				Text(
+					text = community.name,
+					style = MaterialTheme.typography.headlineSmall,
+					maxLines = 2,
+					overflow = TextOverflow.Ellipsis,
+					modifier = Modifier.semantics { heading() },
+				)
+				Text(
+					text = membersLabel(community.memberCount),
+					style = MaterialTheme.typography.bodyMedium,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+				)
+			}
+		}
 		if (!community.description.isNullOrBlank()) {
-			Text(text = community.description!!, style = MaterialTheme.typography.bodyMedium)
+			Text(
+				text = community.description!!,
+				style = MaterialTheme.typography.bodyMedium,
+				modifier = Modifier.padding(top = 4.dp),
+			)
 		}
 		if (statusMessage != null) {
 			Text(
