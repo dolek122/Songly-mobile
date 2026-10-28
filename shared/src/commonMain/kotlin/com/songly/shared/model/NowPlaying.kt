@@ -45,6 +45,10 @@ data class ManualNowPlayingRequest(
 @Serializable
 data class ConnectResponse(val authorizeUrl: String)
 
+/** Dokończenie łączenia ze Spotify (backend: nowplaying.dto.CompleteConnectRequest, ADR 0050). */
+@Serializable
+data class CompleteConnectRequest(val ticket: String)
+
 /**
  * Status znajomego na liście „co słuchają znajomi" i w strumieniu presence
  * (backend: nowplaying.dto.FriendNowPlayingResponse, ADR 0007).

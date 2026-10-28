@@ -8,12 +8,33 @@ class SpotifyConnectResultTest {
 
 	@Test
 	fun recognizesEveryResult() {
-		assertEquals(SpotifyConnectResult.Connected, SpotifyConnectResult.parse("songly://now-playing/spotify?result=connected"))
+		assertEquals(
+			SpotifyConnectResult.Authorized("t1cket_-x"),
+			SpotifyConnectResult.parse("songly://now-playing/spotify?result=authorized&ticket=t1cket_-x"),
+		)
 		assertEquals(SpotifyConnectResult.Denied, SpotifyConnectResult.parse("songly://now-playing/spotify?result=denied"))
 		assertEquals(
 			SpotifyConnectResult.Failed("INVALID_OAUTH_STATE"),
 			SpotifyConnectResult.parse("songly://now-playing/spotify?result=error&code=INVALID_OAUTH_STATE"),
 		)
+	}
+
+	@Test
+	fun authorizedWithoutTicketIsAFailure() {
+		assertEquals(SpotifyConnectResult.Failed(null), SpotifyConnectResult.parse("songly://now-playing/spotify?result=authorized"))
+		assertEquals(
+			SpotifyConnectResult.Failed(null),
+			SpotifyConnectResult.parse("songly://now-playing/spotify?result=authorized&ticket="),
+		)
+	}
+
+	/**
+	 * Backend przed ADR 0050 łączył konto już w callbacku. Ten wynik nie wraca, a
+	 * udawanie sukcesu bez dokończenia pokazałoby „Połączono” przy niepołączonym.
+	 */
+	@Test
+	fun formerConnectedResultIsUnknown() {
+		assertNull(SpotifyConnectResult.parse("songly://now-playing/spotify?result=connected"))
 	}
 
 	@Test

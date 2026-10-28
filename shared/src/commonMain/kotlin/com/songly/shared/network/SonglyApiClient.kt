@@ -20,6 +20,7 @@ import com.songly.shared.model.ReportPostRequest
 import com.songly.shared.model.SetMemberRoleRequest
 import com.songly.shared.model.AuthTokens
 import com.songly.shared.model.Comment
+import com.songly.shared.model.CompleteConnectRequest
 import com.songly.shared.model.ConnectResponse
 import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.Community
@@ -546,11 +547,23 @@ class SonglyApiClient internal constructor(
 	/**
 	 * Rozpoczyna łączenie ze Spotify — zwraca URL autoryzacji do otwarcia w
 	 * przeglądarce. Po zgodzie Spotify przekierowuje na publiczny callback backendu,
-	 * który dokańcza połączenie; aplikacja po powrocie odświeża [nowPlaying].
+	 * a ten odsyła do aplikacji z biletem dla [completeSpotifyConnect].
 	 */
 	@Throws(Exception::class)
 	suspend fun connectSpotify(): String =
 		http.post("$base/api/v1/now-playing/spotify/connect").decodeOrThrow<ConnectResponse>().authorizeUrl
+
+	/**
+	 * Kończy łączenie biletem z linku powrotnego (backend ADR 0050). Backend
+	 * odrzuca bilet z łączenia rozpoczętego na innym koncie
+	 * (`INVALID_CONNECT_TICKET`) — tak zatrzymuje podesłany link autoryzacji.
+	 */
+	@Throws(Exception::class)
+	suspend fun completeSpotifyConnect(ticket: String) =
+		http.post("$base/api/v1/now-playing/spotify/connect/complete") {
+			contentType(ContentType.Application.Json)
+			setBody(CompleteConnectRequest(ticket))
+		}.ensureSuccessOrThrow()
 
 	/** Odłącza konto Spotify. */
 	@Throws(Exception::class)

@@ -127,8 +127,8 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	/**
 	 * Rozpoczyna łączenie ze Spotify i przekazuje URL autoryzacji do otwarcia w
-	 * przeglądarce ([onAuthorizeUrl]). Sam OAuth kończy się na callbacku backendu,
-	 * który odsyła do aplikacji linkiem — ten trafia do [onSpotifyConnectResult].
+	 * przeglądarce ([onAuthorizeUrl]). Callback backendu odsyła do aplikacji
+	 * linkiem — ten trafia do [onSpotifyConnectResult], który łączenie kończy.
 	 */
 	fun connectSpotify(onAuthorizeUrl: (String) -> Unit) {
 		if (uiState.isBusy) return
@@ -148,21 +148,48 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 	 * Wynik OAuth z linku powrotnego (backend ADR 0038). Status pobieramy na nowo
 	 * przy każdym wyniku, nie tylko po sukcesie — ekran mógł wisieć w pamięci od
 	 * dawna, a odmowa nie znaczy, że wcześniejsze połączenie zniknęło.
+	 *
+	 * Zgoda ([SpotifyConnectResult.Authorized]) jeszcze niczego nie łączy (backend
+	 * ADR 0050): bilet oddajemy backendowi z naszym tokenem, a ten przypina
+	 * Spotify tylko wtedy, gdy łączenie zaczęło to samo konto.
 	 */
 	fun onSpotifyConnectResult(result: SpotifyConnectResult) {
-		uiState = uiState.copy(statusMessage = connectResultText(result))
+		when (result) {
+			SpotifyConnectResult.Denied -> showConnectOutcome("Anulowano łączenie ze Spotify")
+			is SpotifyConnectResult.Failed ->
+				showConnectOutcome(connectErrorText(result.code) ?: "Nie udało się połączyć ze Spotify.")
+			is SpotifyConnectResult.Authorized -> completeSpotifyConnect(result.ticket)
+		}
+	}
+
+	private fun completeSpotifyConnect(ticket: String) {
+		uiState = uiState.copy(isBusy = true, statusMessage = null)
+		viewModelScope.launch {
+			val message = try {
+				client.completeSpotifyConnect(ticket)
+				"Połączono ze Spotify"
+			} catch (e: SonglyApiException) {
+				connectErrorText(e.error?.code) ?: errorText(e, "połączyć ze Spotify")
+			} catch (e: Exception) {
+				errorText(e, "połączyć ze Spotify")
+			}
+			uiState = uiState.copy(isBusy = false)
+			showConnectOutcome(message)
+		}
+	}
+
+	private fun showConnectOutcome(message: String) {
+		uiState = uiState.copy(statusMessage = message)
 		load()
 	}
 
-	private fun connectResultText(result: SpotifyConnectResult): String = when (result) {
-		SpotifyConnectResult.Connected -> "Połączono ze Spotify"
-		SpotifyConnectResult.Denied -> "Anulowano łączenie ze Spotify"
-		is SpotifyConnectResult.Failed -> when (result.code) {
-			"INVALID_OAUTH_STATE", "INVALID_AUTHORIZATION_CODE" ->
-				"Logowanie do Spotify wygasło. Połącz jeszcze raz."
-			"MUSIC_PROVIDER_ERROR" -> "Spotify nie odpowiada. Spróbuj ponownie później."
-			else -> "Nie udało się połączyć ze Spotify."
-		}
+	/** Kody błędów łączenia — z linku powrotnego i z dokończenia. */
+	private fun connectErrorText(code: String?): String? = when (code) {
+		"INVALID_CONNECT_TICKET" ->
+			"Nie udało się dokończyć łączenia ze Spotify. Link wygasł albo łączenie zaczęto na innym koncie."
+		"INVALID_OAUTH_STATE", "INVALID_AUTHORIZATION_CODE" -> "Logowanie do Spotify wygasło. Połącz jeszcze raz."
+		"MUSIC_PROVIDER_ERROR" -> "Spotify nie odpowiada. Spróbuj ponownie później."
+		else -> null
 	}
 
 	fun disconnectSpotify() =
