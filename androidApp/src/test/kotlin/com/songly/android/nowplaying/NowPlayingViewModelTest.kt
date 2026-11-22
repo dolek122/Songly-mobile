@@ -30,6 +30,10 @@ class NowPlayingViewModelTest {
 	@get:Rule
 	val mainDispatcher = MainDispatcherRule()
 
+	private companion object {
+		const val COMPLETE = "/api/v1/now-playing/spotify/connect/complete"
+	}
+
 	private val notConnected =
 		"""{"code":"PROVIDER_NOT_CONNECTED","message":"Brak połączonego serwisu muzycznego","timestamp":"2026-01-01T00:00:00Z","path":"/api/v1/now-playing/me"}"""
 
@@ -92,22 +96,49 @@ class NowPlayingViewModelTest {
 	}
 
 	/**
-	 * Powrót z OAuth (backend ADR 0038): ekran wisiał pod przeglądarką ze starym
-	 * statusem, więc wynik musi go odświeżyć, a nie tylko pokazać komunikat.
+	 * Powrót z OAuth (backend ADR 0038, 0050): zgoda niesie bilet, który dopiero
+	 * dokończenie zamienia na połączenie. Ekran wisiał pod przeglądarką ze starym
+	 * statusem, więc wynik musi go też odświeżyć, a nie tylko pokazać komunikat.
 	 */
 	@Test
-	fun spotifyConnectResultRefreshesStatusAndExplainsOutcome() {
-		val backend = backend()
+	fun authorizedResultCompletesConnectAndRefreshesStatus() {
+		val backend = backend().apply {
+			on(HttpMethod.Post, COMPLETE, HttpStatusCode.NoContent) { "" }
+		}
 		val viewModel = NowPlayingViewModel(backend.client())
 		viewModel.load()
 		awaitIdle(viewModel)
 		val callsBefore = backend.callCount("/api/v1/now-playing/me")
 
-		viewModel.onSpotifyConnectResult(SpotifyConnectResult.Connected)
+		viewModel.onSpotifyConnectResult(SpotifyConnectResult.Authorized("bilet-123"))
 		awaitIdle(viewModel)
 
+		assertEquals(1, backend.callCount(HttpMethod.Post, COMPLETE))
+		assertEquals("""{"ticket":"bilet-123"}""", backend.lastBody(HttpMethod.Post, COMPLETE))
 		assertEquals(callsBefore + 1, backend.callCount("/api/v1/now-playing/me"))
 		assertEquals("Połączono ze Spotify", viewModel.uiState.statusMessage)
+	}
+
+	/**
+	 * Link autoryzacji podesłany przez kogoś innego: backend odrzuca bilet z
+	 * cudzego łączenia. Użytkownik musi wiedzieć, że nic się nie połączyło.
+	 */
+	@Test
+	fun foreignTicketIsReportedAsNotConnected() {
+		val backend = backend().apply {
+			on(HttpMethod.Post, COMPLETE, HttpStatusCode.BadRequest) {
+				"""{"code":"INVALID_CONNECT_TICKET","message":"x","timestamp":"2026-01-01T00:00:00Z","path":"$COMPLETE"}"""
+			}
+		}
+		val viewModel = NowPlayingViewModel(backend.client())
+
+		viewModel.onSpotifyConnectResult(SpotifyConnectResult.Authorized("cudzy-bilet"))
+		awaitIdle(viewModel)
+
+		assertEquals(
+			"Nie udało się dokończyć łączenia ze Spotify. Link wygasł albo łączenie zaczęto na innym koncie.",
+			viewModel.uiState.statusMessage,
+		)
 	}
 
 	/** Odmowa zgody to decyzja użytkownika, nie awaria — bez słowa o błędzie. */

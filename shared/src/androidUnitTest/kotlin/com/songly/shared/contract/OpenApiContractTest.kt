@@ -27,6 +27,7 @@ import com.songly.shared.model.BlockedUser
 import com.songly.shared.model.Comment
 import com.songly.shared.model.Community
 import com.songly.shared.model.CommunityMember
+import com.songly.shared.model.CompleteConnectRequest
 import com.songly.shared.model.ConnectResponse
 import com.songly.shared.model.CreateCommentRequest
 import com.songly.shared.model.CreateCommunityRequest
@@ -132,6 +133,7 @@ class OpenApiContractTest {
 		UpdateNowPlayingSettingsRequest.serializer() to "UpdateNowPlayingSettingsRequest",
 		ManualNowPlayingRequest.serializer() to "ManualNowPlayingRequest",
 		ConnectResponse.serializer() to "ConnectResponse",
+		CompleteConnectRequest.serializer() to "CompleteConnectRequest",
 		ReportPostRequest.serializer() to "ReportPostRequest",
 		PostReport.serializer() to "PostReportResponse",
 		CommunityBan.serializer() to "CommunityBanResponse",
