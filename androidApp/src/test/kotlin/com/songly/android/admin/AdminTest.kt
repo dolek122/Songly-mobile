@@ -36,8 +36,6 @@ class AdminTest {
 		"""{"userId":"$userId","reason":"nękanie","suspendedAt":"2026-01-01T10:00:00Z","expiresAt":null,""" +
 			""""appealStatus":${appeal?.let { "\"$it\"" } ?: "null"},"appealText":"to pomyłka"}"""
 
-	// --- Wykrywanie roli ---
-
 	@Test
 	fun adminIsRecognizedByOwnIdOnAdminList() {
 		val client = FakeBackend().apply {
@@ -48,7 +46,6 @@ class AdminTest {
 		assertTrue(runBlocking { client.isCurrentUserAdmin() })
 	}
 
-	/** Zwykły user dostaje 403 — to odpowiedź „nie jesteś adminem", nie awaria. */
 	@Test
 	fun forbiddenAdminListMeansNotAdmin() {
 		val client = FakeBackend().apply {
@@ -58,8 +55,6 @@ class AdminTest {
 
 		assertFalse(runBlocking { client.isCurrentUserAdmin() })
 	}
-
-	// --- Zawieszenia ---
 
 	@Test
 	fun liftingWithPendingAppealIsReportedAsAcceptedAppeal() {
@@ -96,10 +91,6 @@ class AdminTest {
 		assertEquals("REJECTED", viewModel.uiState.suspensions.single().appealStatus)
 	}
 
-	/**
-	 * Profil zawieszonego jest ukryty (404, ADR 0026), więc nazwa musi przyjść z
-	 * endpointu administracji (ADR 0036) — inaczej wykaz zawieszeń pokazywałby same id.
-	 */
 	@Test
 	fun suspendedAccountsGetNamesFromAdminEndpoint() {
 		val backend = FakeBackend().apply {
@@ -117,9 +108,6 @@ class AdminTest {
 		assertEquals(1, backend.callCount("/api/v1/admin/profiles"))
 	}
 
-	// --- Eskalacje ---
-
-	/** Wykaz niesie same id — nazwy dociągamy z profili, i nie mogą zginąć przy zapisie stanu. */
 	@Test
 	fun escalationsResolveNamesAndOverturnRemovesEntry() {
 		val backend = FakeBackend().apply {
@@ -145,8 +133,6 @@ class AdminTest {
 		assertTrue(viewModel.uiState.escalations.isEmpty())
 	}
 
-	// --- Zawieszenie z profilu ---
-
 	@Test
 	fun suspendRequiresReasonAndSendsIt() {
 		val backend = FakeBackend().apply {
@@ -165,8 +151,6 @@ class AdminTest {
 		val body = backend.lastBody(HttpMethod.Put, "/api/v1/admin/users/u2/suspension")!!
 		assertTrue(body, body.contains("\"reason\":\"nękanie innych\"") && !body.contains("durationDays"))
 	}
-
-	// --- Zawieszone konto ---
 
 	@Test
 	fun suspendedUserAppealsOnce() {
@@ -192,7 +176,6 @@ class AdminTest {
 		assertEquals("PENDING", viewModel.uiState.suspension?.appealStatus)
 	}
 
-	/** Zawieszenie wygasło (leniwie, ADR 0022) — ekran ma oddać aplikację, nie wisieć. */
 	@Test
 	fun expiredSuspensionReturnsToApp() {
 		val backend = FakeBackend().apply { onJson("/api/v1/auth/me/suspension", """{"suspended":false}""") }
@@ -204,7 +187,6 @@ class AdminTest {
 		assertTrue(viewModel.uiState.lifted)
 	}
 
-	/** Zawieszenie w trakcie sesji: feed nie pokazuje gołego błędu, tylko przekazuje sprawę dalej. */
 	@Test
 	fun feedRecognizesSuspendedAccount() {
 		val backend = FakeBackend().apply {

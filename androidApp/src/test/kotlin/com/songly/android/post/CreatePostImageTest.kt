@@ -16,7 +16,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Zdjęcie w poście: najpierw upload (klucz), potem post z tym kluczem (ADR 0010). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CreatePostImageTest {
@@ -68,11 +67,6 @@ class CreatePostImageTest {
 		assertFalse(backend.lastBody(HttpMethod.Post, "/api/v1/posts")!!.contains("imageKey"))
 	}
 
-	/**
-	 * Wgranie przepadło po stronie serwera (doba bez posta, wyparte przez nowsze —
-	 * backend ADR 0048). Zdjęcie znika z formularza z jasnym komunikatem, a
-	 * napisana treść zostaje.
-	 */
 	@Test
 	fun expiredUploadIsDroppedAndContentKept() {
 		val backend = FakeBackend().apply {
@@ -95,7 +89,6 @@ class CreatePostImageTest {
 		assertEquals("po przerwie", viewModel.uiState.content)
 	}
 
-	/** Backend odrzuca format — komunikat serwera trafia do użytkownika, post nie wychodzi. */
 	@Test
 	fun rejectedImageShowsServerMessage() {
 		val backend = FakeBackend().apply {

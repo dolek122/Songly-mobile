@@ -42,11 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/**
- * Strzałka „wstecz" w pasku ekranu. Zastępuje napis „Wróć": strzałka w lewym
- * górnym rogu to miejsce, w którym każdy jej szuka, a czytnik ekranu dostaje to
- * samo słowo co wcześniej.
- */
 @Composable
 fun BackButton(onClick: () -> Unit) {
 	IconButton(onClick = onClick) {
@@ -54,12 +49,6 @@ fun BackButton(onClick: () -> Unit) {
 	}
 }
 
-/**
- * Pasek zakładki: duży, pogrubiony tytuł na przezroczystym tle, żeby było widać
- * zieloną poświatę ([songlyBackdrop]) za nim. Na ekranach otwieranych nad
- * zakładkami zostaje zwykły TopAppBar — tam ważniejsza jest strzałka wstecz niż
- * nagłówek.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TabTopBar(
@@ -78,7 +67,6 @@ fun TabTopBar(
 	)
 }
 
-/** [TabTopBar] z samym tekstem — przypadek wszystkich zakładek poza główną. */
 @Composable
 fun TabTopBar(
 	title: String,
@@ -92,13 +80,6 @@ fun TabTopBar(
 	)
 }
 
-/**
- * Pasek ekranu otwieranego nad zakładkami: strzałka wstecz (albo inna ikona, np.
- * „zamknij"), tytuł i akcje — przezroczysty jak [TabTopBar], żeby poświata
- * ([songlyBackdrop]) była pod każdym ekranem, a nie tylko pod zakładkami. Tytuł
- * mniejszy niż na zakładce i w jednej linii: tu często stoi nazwa społeczności czy
- * osoby, a obok jeszcze akcje.
- */
 @Composable
 fun ScreenTopBar(
 	title: String,
@@ -119,11 +100,6 @@ fun ScreenTopBar(
 	)
 }
 
-/**
- * Główna akcja ekranu (nowy post, nowa społeczność): zielona kropla z czarną
- * ikoną — jedyny tak jaskrawy element na ekranie, więc od razu wiadomo, gdzie
- * zacząć, a kształt powtarza logo.
- */
 @Composable
 fun SonglyFab(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
 	FloatingActionButton(
@@ -136,14 +112,6 @@ fun SonglyFab(icon: ImageVector, contentDescription: String, onClick: () -> Unit
 	}
 }
 
-/**
- * Wiersz prowadzący do innego ekranu: ikona, tytuł, opcjonalny opis i strzałka.
- * Cały wiersz jest jednym przyciskiem, więc palcem trafia się bez celowania, a
- * TalkBack czyta tytuł z opisem jako jedną rzecz.
- *
- * [tint] pozwala wyróżnić wiersz (np. czerwone „Wyloguj się"); [showChevron]
- * chowa strzałkę przy akcjach, które nigdzie nie prowadzą.
- */
 @Composable
 fun NavigationRow(
 	icon: ImageVector,
@@ -193,11 +161,6 @@ fun NavigationRow(
 	}
 }
 
-/**
- * Pusty stan albo błąd na środku ekranu: duża, wyszarzona ikona, jedno zdanie i
- * (opcjonalnie) przycisk. Ikona od razu mówi, o czym jest ekran, nawet zanim ktoś
- * przeczyta tekst.
- */
 @Composable
 fun EmptyState(
 	icon: ImageVector,
@@ -229,12 +192,6 @@ fun EmptyState(
 	}
 }
 
-/**
- * Kolumna wyśrodkowana w pionie, która przewija się, gdy treść się nie mieści —
- * dla formularzy logowania i rejestracji. Samo wyśrodkowanie bez przewijania
- * chowało przycisk „Zaloguj się" pod klawiaturą na niższych telefonach, a samo
- * przewijanie zrzucało krótki formularz pod górną krawędź.
- */
 @Composable
 fun CenteredScrollColumn(
 	modifier: Modifier = Modifier,
@@ -255,7 +212,6 @@ fun CenteredScrollColumn(
 	}
 }
 
-/** Nagłówek sekcji na długim ekranie — pogrubiony, z oddechem nad sobą. */
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 	Text(
@@ -265,11 +221,6 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 	)
 }
 
-/**
- * Pigułka wyboru (filtr listy, gatunek): wybrana świeci zielenią z czarnym
- * napisem, niewybrana jest ciemnoszara — bez obramowań, które na czarnym tle
- * tylko szumią.
- */
 @Composable
 fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
 	FilterChip(

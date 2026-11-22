@@ -17,10 +17,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * „Nie pamiętam hasła" (backend ADR 0008). Do tej pory mobilka nie miała tej
- * ścieżki wcale, więc zapomniane hasło znaczyło utracone konto.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w411dp-h891dp-xhdpi")
 class ForgotPasswordScreenTest {
@@ -58,7 +54,6 @@ class ForgotPasswordScreenTest {
 		compose.onNodeWithText("Ustaw nowe hasło").performClick()
 	}
 
-	/** Backend nie zdradza, czy konto istnieje — komunikat też nie może. */
 	@Test
 	fun requestNeverClaimsAccountExists() {
 		show(FakeBackend().apply { on("$resetPath-request", HttpStatusCode.Accepted) { "" } })

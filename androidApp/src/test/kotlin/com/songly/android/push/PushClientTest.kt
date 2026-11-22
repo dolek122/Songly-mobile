@@ -8,7 +8,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Rejestracja urządzenia push w kliencie (backend ADR 0040). */
 class PushClientTest {
 
 	private val removal = "/api/v1/notifications/push-devices/removal"
@@ -30,10 +29,6 @@ class PushClientTest {
 		assertTrue(body, body.contains("\"token\":\"fcm-token-1\"") && body.contains("\"platform\":\"ANDROID\""))
 	}
 
-	/**
-	 * Backend nie wie, które urządzenie należy do której sesji, więc wylogowany
-	 * telefon dalej dostawałby pushe, gdyby klient go nie wyrejestrował.
-	 */
 	@Test
 	fun logoutUnregistersTheDeviceFromThisSession() {
 		val backend = backend()
@@ -56,7 +51,6 @@ class PushClientTest {
 		assertEquals(0, backend.callCount(removal))
 	}
 
-	/** Awaria wyrejestrowania nie może zatrzymać wylogowania. */
 	@Test
 	fun failedRemovalStillLogsOut() {
 		val backend = backend().apply { on(removal, HttpStatusCode.InternalServerError) { "{}" } }

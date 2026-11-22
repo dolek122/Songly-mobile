@@ -16,13 +16,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
-/**
- * Okrągły awatar użytkownika. Gdy [avatarUrl] jest ustawiony, ładuje obraz przez
- * Coil; w przeciwnym razie pokazuje fallback z inicjałami z [displayName]. Backend
- * niesie `avatarUrl` w większości DTO odczytowych (posty, komentarze, znajomi,
- * powiadomienia, społeczności, dopasowania), więc `null` jest normalnym przypadkiem
- * — po prostu wtedy renderujemy inicjały.
- */
 @Composable
 fun Avatar(
 	displayName: String,
@@ -34,8 +27,6 @@ fun Avatar(
 	if (!avatarUrl.isNullOrBlank()) {
 		AsyncImage(
 			model = avatarUrl,
-			// Ozdoba: nazwa stoi zawsze obok, a czytnik czytał ją dwa razy („Awatar: Ola,
-			// Ola"). Klikalny awatar dostaje opis od wywołującego.
 			contentDescription = null,
 			contentScale = ContentScale.Crop,
 			modifier = modifier
@@ -53,7 +44,6 @@ fun Avatar(
 		) {
 			Text(
 				text = initials(displayName),
-				// Inicjały czytane litera po literze („O L") niczego nie mówią.
 				modifier = Modifier.clearAndSetSemantics {},
 				style = MaterialTheme.typography.labelLarge,
 				color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -62,7 +52,6 @@ fun Avatar(
 	}
 }
 
-/** Do dwóch pierwszych liter (z pierwszych dwóch słów) nazwy; „?" gdy brak. */
 private fun initials(displayName: String): String =
 	displayName.trim().split(Regex("\\s+"))
 		.take(2)

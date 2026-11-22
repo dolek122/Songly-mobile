@@ -40,8 +40,6 @@ class ModerationViewModelsTest {
 		"""{"userId":"$userId","displayName":"Troll","reason":"spam","createdAt":"2026-01-01T10:00:00Z",""" +
 			""""expiresAt":null,"appealStatus":${appealStatus?.let { "\"$it\"" } ?: "null"},"appealText":"przepraszam"}"""
 
-	// --- Zgłoszenie ---
-
 	@Test
 	fun reportSendsReasonAndDetails() {
 		val backend = FakeBackend().apply { on("/api/v1/posts/p1/reports", HttpStatusCode.Accepted) { "" } }
@@ -56,7 +54,6 @@ class ModerationViewModelsTest {
 		assertTrue(body, body.contains("\"reason\":\"HARASSMENT\"") && body.contains("\"details\":\"obraża ludzi\""))
 	}
 
-	/** Bez powodu nie ma czego wysłać — backend wymaga go (@NotNull). */
 	@Test
 	fun reportRequiresReason() {
 		val viewModel = ReportPostViewModel(FakeBackend().client(), "p1")
@@ -77,12 +74,6 @@ class ModerationViewModelsTest {
 		assertEquals("Zgłaszasz za często. Spróbuj ponownie później.", viewModel.uiState.errorMessage)
 	}
 
-	// --- Kolejka zgłoszeń ---
-
-	/**
-	 * Usunięcie posta zabiera na backendzie wszystkie jego zgłoszenia (kaskada),
-	 * więc kolejka nie może dalej pokazywać pozostałych zgłoszeń tego posta.
-	 */
 	@Test
 	fun removingPostClearsAllItsReports() {
 		val backend = FakeBackend().apply {
@@ -116,9 +107,6 @@ class ModerationViewModelsTest {
 		assertEquals(listOf("r2"), viewModel.uiState.reports.items.map { it.id })
 	}
 
-	// --- Bany i odwołania ---
-
-	/** Zdjęcie bana z oczekującym odwołaniem JEST jego uznaniem (ADR 0017) — i tak to nazywamy. */
 	@Test
 	fun unbanWithPendingAppealIsReportedAsAcceptedAppeal() {
 		val backend = FakeBackend().apply {

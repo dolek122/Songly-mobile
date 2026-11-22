@@ -41,13 +41,6 @@ import coil.compose.AsyncImage
 import com.songly.android.media.ImagePreparer
 import com.songly.android.ui.ScreenTopBar
 
-/**
- * Ekran tworzenia posta (Compose, natywny UI — §14). Stan z [CreatePostViewModel];
- * po udanym dodaniu woła [onCreated] (powrót na feed + odświeżenie).
- *
- * „Opublikuj" stoi w pasku u góry, jak w każdej aplikacji do pisania — na dole
- * ekranu chował się pod klawiaturą, czyli dokładnie wtedy, gdy był potrzebny.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePostScreen(

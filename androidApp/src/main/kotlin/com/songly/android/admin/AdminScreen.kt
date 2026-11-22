@@ -155,7 +155,6 @@ private fun SuspensionCard(
 					TextButton(onClick = { viewModel.rejectAppeal(account) }, enabled = !busy) { Text("Odrzuć odwołanie") }
 				}
 				OutlinedButton(onClick = { viewModel.lift(account) }, enabled = !busy) {
-					// Zdjęcie zawieszenia przy oczekującym odwołaniu JEST jego uznaniem (ADR 0023).
 					Text(if (account.hasPendingAppeal) "Uznaj odwołanie" else "Zdejmij zawieszenie")
 				}
 			}
@@ -182,7 +181,6 @@ private fun LazyListScope.escalationItems(
 	}
 }
 
-/** Obie strony sporu — powód bana i odwołanie — bo admin rozstrzyga między nimi (ADR 0028). */
 @Composable
 private fun EscalationCard(
 	appeal: EscalatedAppeal,
@@ -311,7 +309,6 @@ private fun analyticsLabel(type: String): String = when (type) {
 	"FRIEND_REQUEST_SENT" -> "Wysłane zaproszenia"
 	"FRIEND_REQUEST_ACCEPTED" -> "Przyjęte zaproszenia"
 	"COMMUNITY_MEMBER_JOINED" -> "Dołączenia do społeczności"
-	// Liczy posty, nie kliknięcia „zgłoś" — zdarzenie powstaje przy pierwszym zgłoszeniu (§13).
 	"POST_FIRST_REPORTED" -> "Zgłoszone posty"
 	"POST_REPORT_DISMISSED" -> "Odrzucone zgłoszenia"
 	"COMMUNITY_POST_REMOVED" -> "Posty usunięte przez moderację"

@@ -11,37 +11,28 @@ import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
-/**
- * Nazwa, którą backend nadaje nowemu kontu (ADR 0046): „Użytkownik ” i sześć
- * cyfr. Wcześniej była to część adresu e-mail, więc nikt nie musiał jej zmieniać;
- * teraz bez zachęty większość kont zostałaby nierozpoznawalna dla znajomych.
- */
 private val DEFAULT_DISPLAY_NAME = Regex("Użytkownik \\d{6}")
 
 internal fun isDefaultDisplayName(name: String): Boolean = DEFAULT_DISPLAY_NAME.matches(name)
 
-/** Stan ekranu profilu (dane profilowe + ulubione gatunki). */
 data class ProfileUiState(
 	val isLoading: Boolean = true,
 	val errorMessage: String? = null,
 	val displayName: String = "",
-	// Z zapisanej nazwy, nie z pola edycji — zachęta nie może znikać przy samym pisaniu.
 	val hasDefaultName: Boolean = false,
 	val bio: String = "",
-	val avatarUrl: String? = null, // tylko do wyświetlenia; zmiana awatara to upload pliku
+	val avatarUrl: String? = null,
 	val isSavingProfile: Boolean = false,
 	val allGenres: List<Genre> = emptyList(),
 	val selectedGenreIds: Set<String> = emptySet(),
 	val isSavingGenres: Boolean = false,
 	val statusMessage: String? = null,
-	// Usuwanie konta (RODO, hard delete — wymaga potwierdzenia hasłem).
 	val showDeleteDialog: Boolean = false,
 	val deletePassword: String = "",
 	val isDeleting: Boolean = false,
 	val deleteError: String? = null,
 	val accountDeleted: Boolean = false,
 	val isUpdatingAvatar: Boolean = false,
-	// Zmiana hasła — kończy wszystkie sesje, łącznie z bieżącą (backend §9).
 	val showPasswordDialog: Boolean = false,
 	val currentPassword: String = "",
 	val newPassword: String = "",
@@ -63,7 +54,6 @@ data class ProfileUiState(
 	val canSaveProfile: Boolean
 		get() = displayName.isNotBlank() && !isSavingProfile
 
-	// Backend wymaga zbioru niepustego (@NotEmpty).
 	val canSaveGenres: Boolean
 		get() = selectedGenreIds.isNotEmpty() && !isSavingGenres
 
@@ -71,11 +61,6 @@ data class ProfileUiState(
 		get() = deletePassword.isNotBlank() && !isDeleting
 }
 
-/**
- * Logika ekranu profilu. Ładuje profil, ulubione gatunki i listę wszystkich
- * gatunków z modułu `profile` backendu (przez `shared`). Zapis profilu i zapis
- * gatunków to dwie niezależne akcje.
- */
 class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(ProfileUiState())
@@ -157,14 +142,12 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	// --- Usuwanie konta (RODO, Claude.md §9) ---
-
 	fun openDeleteDialog() {
 		uiState = uiState.copy(showDeleteDialog = true, deletePassword = "", deleteError = null)
 	}
 
 	fun dismissDeleteDialog() {
-		if (uiState.isDeleting) return // nie zamykaj w trakcie kasowania
+		if (uiState.isDeleting) return
 		uiState = uiState.copy(showDeleteDialog = false, deletePassword = "", deleteError = null)
 	}
 
@@ -172,11 +155,6 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 		uiState = uiState.copy(deletePassword = value, deleteError = null)
 	}
 
-	/**
-	 * Trwale usuwa konto po potwierdzeniu hasłem. Sukces czyści sesję w `shared`
-	 * i ustawia [accountDeleted], co ekran przekłada na powrót do logowania. Błędne
-	 * hasło zostaje w dialogu jako [deleteError].
-	 */
 	fun confirmDelete() {
 		if (!uiState.canConfirmDelete) return
 		uiState = uiState.copy(isDeleting = true, deleteError = null)
@@ -190,12 +168,6 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	// --- Awatar (upload pliku, backend ADR 0010) ---
-
-	/**
-	 * [prepare] przygotowuje zdjęcie (dekodowanie i przekodowanie poza wątkiem
-	 * UI) — przekazane z ekranu, bo wymaga `Context`, a ViewModel go nie trzyma.
-	 */
 	fun changeAvatar(prepare: suspend () -> PreparedImage) {
 		if (uiState.isUpdatingAvatar) return
 		uiState = uiState.copy(isUpdatingAvatar = true, statusMessage = null)
@@ -225,8 +197,6 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	// --- Zmiana hasła ---
-
 	fun openPasswordDialog() {
 		uiState = uiState.copy(
 			showPasswordDialog = true,
@@ -254,10 +224,6 @@ class ProfileViewModel(private val client: SonglyApiClient) : ViewModel() {
 		uiState = uiState.copy(confirmNewPassword = value, passwordError = null)
 	}
 
-	/**
-	 * Po sukcesie `shared` kończy już sesję lokalnie (backend odwołał wszystkie,
-	 * łącznie z bieżącą), a [passwordChanged] przenosi do logowania.
-	 */
 	fun changePassword() {
 		if (!uiState.canChangePassword) return
 		uiState = uiState.copy(isChangingPassword = true, passwordError = null)

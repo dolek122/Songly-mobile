@@ -20,10 +20,8 @@ private val SonglyColors = darkColorScheme(
 	primaryContainer = SonglyPalette.GreenContainer,
 	onPrimaryContainer = SonglyPalette.OnGreenContainer,
 	inversePrimary = SonglyPalette.GreenContainer,
-	// Biały jako drugi kolor: przyciski drugiego planu i ikony, bez dokładania barw.
 	secondary = SonglyPalette.TextPrimary,
 	onSecondary = SonglyPalette.Black,
-	// Wybrane chipy (np. gatunki w profilu) świecą zielenią z czarnym napisem.
 	secondaryContainer = SonglyPalette.Green,
 	onSecondaryContainer = SonglyPalette.OnGreen,
 	tertiary = SonglyPalette.Green,
@@ -36,8 +34,6 @@ private val SonglyColors = darkColorScheme(
 	onSurface = SonglyPalette.TextPrimary,
 	surfaceVariant = SonglyPalette.SurfaceVariant,
 	onSurfaceVariant = SonglyPalette.TextSecondary,
-	// Neutralny odcień uniesienia: płaszczyzny z tonalElevation jaśnieją, a nie
-	// zielenieją (domyślnie Material barwi je kolorem wiodącym).
 	surfaceTint = SonglyPalette.TextPrimary,
 	inverseSurface = SonglyPalette.TextPrimary,
 	inverseOnSurface = SonglyPalette.Background,
@@ -54,16 +50,9 @@ private val SonglyColors = darkColorScheme(
 	surfaceContainerLow = SonglyPalette.SurfaceLow,
 	surfaceContainer = SonglyPalette.SurfaceRaised,
 	surfaceContainerHigh = SonglyPalette.SurfaceHigh,
-	// Material bierze ten kolor na tło każdej Card. Celowo ciemniejszy niż
-	// surfaceContainerHigh (dialogi): karty to treść, mają się ledwo odcinać od tła.
 	surfaceContainerHighest = SonglyPalette.SurfaceCard,
 )
 
-/**
- * Typografia: krój systemowy, ale nagłówki i tytuły pogrubione — wyraźna hierarchia
- * zastępuje ozdobniki. Etykiety przycisków półgrube, żeby przycisk czytał się jako
- * przycisk, a nie zwykły tekst.
- */
 private val SonglyTypography = Typography().let { base ->
 	Typography(
 		displayLarge = base.displayLarge.copy(fontWeight = FontWeight.Bold),
@@ -84,10 +73,6 @@ private val SonglyTypography = Typography().let { base ->
 	)
 }
 
-/**
- * Zaokrąglenia: karty i obrazki 8 dp (spokojne, prawie kanciaste), dialogi 16 dp.
- * Przyciski zostają w pełni zaokrąglone („pigułki") — tak ma je Material domyślnie.
- */
 private val SonglyShapes = Shapes(
 	extraSmall = RoundedCornerShape(4.dp),
 	small = RoundedCornerShape(8.dp),
@@ -96,17 +81,10 @@ private val SonglyShapes = Shapes(
 	extraLarge = RoundedCornerShape(16.dp),
 )
 
-/**
- * Motyw aplikacji — zawsze ciemny, niezależnie od ustawienia systemu (powód w
- * [SonglyPalette]). Dzięki temu każdy ekran wygląda tak samo na każdym telefonie
- * i nie ma przypadku „jasny pasek nad czarną aplikacją".
- */
 @Composable
 fun SonglyTheme(content: @Composable () -> Unit) {
 	val view = LocalView.current
 	if (!view.isInEditMode) {
-		// Ikony w paskach systemowych muszą być jasne na ciemnym tle — Compose nie
-		// ustawia tego sam, a domyślnie bywają ciemne (czarne na czarnym).
 		SideEffect {
 			val window = (view.context as Activity).window
 			val insetsController = WindowCompat.getInsetsController(window, view)

@@ -12,11 +12,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.SonglyMark
 
-/**
- * Znak aplikacji nad formularzami logowania, rejestracji i resetu hasła: zielona
- * kropla z korektorem (jak ikona aplikacji) i nazwa. Ten sam na każdym z tych
- * ekranów, żeby przejście między nimi nie wyglądało jak wejście do innej aplikacji.
- */
 @Composable
 internal fun SonglyLogo(modifier: Modifier = Modifier) {
 	Column(

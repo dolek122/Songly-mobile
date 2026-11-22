@@ -24,3 +24,6 @@ DerivedData/
 *.hmap
 *.ipa
 .DS_Store
+
+*.md
+!/README.md

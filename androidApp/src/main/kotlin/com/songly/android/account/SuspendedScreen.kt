@@ -75,7 +75,6 @@ fun SuspendedScreen(
 
 			HorizontalDivider()
 
-			// Jedno odwołanie na zawieszenie; odrzucenie jest ostateczne (ADR 0023).
 			when (suspension.appealStatus) {
 				null -> {
 					OutlinedTextField(

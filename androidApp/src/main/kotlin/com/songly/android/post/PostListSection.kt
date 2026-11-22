@@ -18,21 +18,11 @@ import androidx.compose.ui.unit.dp
 import com.songly.android.ui.DeletePostDialog
 import com.songly.android.ui.PostCard
 
-/**
- * Posty z [PostListViewModel] jako fragment cudzej `LazyColumn` — ekrany
- * społeczności i profilu mają nad listą własny nagłówek, więc lista nie może być
- * osobnym przewijanym kontenerem (zagnieżdżone przewijanie w tym samym kierunku
- * Compose odrzuca).
- *
- * Doczytywanie jest przyciskiem, nie automatem przy końcu listy: na tych ekranach
- * są też inne sekcje, więc „koniec listy" nie musi znaczyć „koniec postów".
- */
 fun LazyListScope.postListItems(
 	viewModel: PostListViewModel,
 	emptyText: String,
 	onOpenComments: (postId: String) -> Unit,
 	onOpenAuthor: (userId: String) -> Unit,
-	// Moderator społeczności może usunąć każdy post na tej liście.
 	canModerate: Boolean = false,
 	onReport: ((postId: String) -> Unit)? = null,
 ) {
@@ -102,7 +92,6 @@ fun LazyListScope.postListItems(
 	}
 }
 
-/** Dialog potwierdzenia usunięcia — poza `LazyColumn`, bo okno nie jest pozycją listy. */
 @Composable
 fun PostListDialogs(viewModel: PostListViewModel) {
 	val state = viewModel.uiState

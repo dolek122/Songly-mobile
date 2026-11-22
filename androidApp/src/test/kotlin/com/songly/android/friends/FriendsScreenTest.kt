@@ -17,18 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Pierwszy test UI w repo. Ekran renderuje się naprawdę (Robolectric symuluje
- * Androida na JVM), a pod spodem stoi atrapa backendu — więc sprawdzamy to, co
- * użytkownik widzi i klika, a nie to, co ViewModel zwraca.
- *
- * Sensu nabiera zwłaszcza przy doczytywaniu: „Pokaż więcej" trzeba znaleźć na
- * ekranie, kliknąć i zobaczyć drugą stronę — dotąd weryfikowała to wyłącznie
- * kompilacja.
- */
 @RunWith(RobolectricTestRunner::class)
-// Realny rozmiar ekranu ma znaczenie: przy domyślnym (320x470 px) LazyColumn nie
-// komponuje pozycji poniżej ekranu i test nie znalazłby nic, co jest niżej.
 @Config(sdk = [34], qualifiers = "w411dp-h891dp-xhdpi")
 class FriendsScreenTest {
 
@@ -78,14 +67,9 @@ class FriendsScreenTest {
 		compose.onNodeWithText("Pokaż więcej").performClick()
 
 		awaitText("Bartek")
-		// Pierwsza strona zostaje — doczytywanie dokłada, nie podmienia.
 		compose.onNodeWithText("Ada", substring = true).assertIsDisplayed()
 	}
 
-	/**
-	 * Po ostatniej stronie nie ma czego dobierać, więc przycisk musi zniknąć —
-	 * inaczej użytkownik klikałby w żądania zwracające pustkę.
-	 */
 	@Test
 	fun loadMoreDisappearsAtEndOfList() {
 		val backend = FakeBackend().apply {

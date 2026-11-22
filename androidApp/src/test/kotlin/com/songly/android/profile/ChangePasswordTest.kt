@@ -13,15 +13,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Zmiana hasła odwołuje na backendzie wszystkie sesje, łącznie z bieżącą (§9).
- * Gdyby aplikacja została po niej „zalogowana", następne żądanie skończyłoby się
- * nieudanym odświeżeniem tokenu i wylogowaniem bez słowa wyjaśnienia.
- *
- * Na poziomie ViewModelu, nie ekranu: formularz siedzi w `AlertDialog`, a
- * Robolectric nie doczekuje się bezczynności okna dialogu z aktywnym polem
- * tekstowym (migający kursor) — test ekranu wisiałby na tym artefakcie.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ChangePasswordTest {
@@ -31,8 +22,6 @@ class ChangePasswordTest {
 
 	private fun backend(passwordStatus: HttpStatusCode, passwordBody: String = "") = FakeBackend().apply {
 		on("/api/v1/auth/password", passwordStatus) { passwordBody }
-		// 401 przy złym obecnym haśle uruchamia we wtyczce Auth odświeżenie tokenu —
-		// prawdziwy backend je przyjmuje, więc atrapa też.
 		onJson(
 			"/api/v1/auth/refresh",
 			"""{"accessToken":"a2","refreshToken":"r2","tokenType":"Bearer","expiresInSeconds":900}""",

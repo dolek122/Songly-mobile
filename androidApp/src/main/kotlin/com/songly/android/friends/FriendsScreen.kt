@@ -68,19 +68,6 @@ import com.songly.shared.model.FriendRequest
 import com.songly.shared.paging.PagedSection
 import com.songly.shared.util.RelativeTime
 
-/**
- * Ekran znajomych (Compose, natywny UI — §14): wyszukiwarka ludzi po nazwie,
- * zaproszenia otrzymane (akceptuj/odrzuć) i wysłane (anuluj), znajomi i
- * zablokowani. Stan z [FriendsViewModel]; dane z modułu social-graph przez `shared`.
- *
- * Sekcje bez zawartości się chowają (poza samymi znajomymi): cztery nagłówki z
- * „brak…" pod każdym to ściana tekstu, która mówi tylko, czego nie ma.
- *
- * Ekran bywa zakładką dolnego paska ([onBack] `null`, bez strzałki) albo
- * otwiera się nad powiadomieniami, gdy ktoś przyszedł przyjąć zaproszenie.
- * [onOpenMatches] dokłada na górze wejście do dopasowanych — tam szuka się
- * nowych znajomych o podobnym guście.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsScreen(
@@ -156,8 +143,6 @@ fun FriendsScreen(
 						item(key = "matches") { MatchesCard(onClick = onOpenMatches) }
 					}
 
-					// Zaproszenia otrzymane na samej górze list: to jedyna sekcja, która na
-					// coś czeka. Pusta znika — „brak nowych zaproszeń" nikomu nie pomaga.
 					if (state.incoming.items.isNotEmpty()) {
 						item(key = "h-incoming") { SectionHeader("Zaproszenia (${state.incoming.items.size})") }
 						items(state.incoming.items, key = { "in-${it.id}" }) { request ->
@@ -227,11 +212,6 @@ fun FriendsScreen(
 	}
 }
 
-/**
- * Wyszukiwarka ludzi: jedno pole, szuka klawiszem „Szukaj" na klawiaturze albo
- * lupą na końcu pola (bez osobnego przycisku pod spodem, który tylko dublował
- * klawiaturę). W trakcie szukania lupę zastępuje kręciołek.
- */
 @Composable
 private fun SearchSection(
 	query: String,
@@ -262,11 +242,6 @@ private fun SearchSection(
 	)
 }
 
-/**
- * Wejście do dopasowanych jako wyróżniona karta z zieloną poświatą: to jedyne
- * miejsce, gdzie poznaje się nowych ludzi, więc nie może wyglądać jak kolejny
- * wiersz ustawień.
- */
 @Composable
 private fun MatchesCard(onClick: () -> Unit) {
 	Card(
@@ -412,7 +387,6 @@ private fun PersonRow(
 		verticalAlignment = Alignment.CenterVertically,
 		horizontalArrangement = Arrangement.spacedBy(8.dp),
 	) {
-		// Avatar + nazwa prowadzą do profilu osoby (gdy onClick ustawiony); akcje osobno.
 		Row(
 			modifier = Modifier.weight(1f).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
 			verticalAlignment = Alignment.CenterVertically,
@@ -441,10 +415,6 @@ private fun PersonRow(
 	}
 }
 
-/**
- * Rzadkie akcje na osobie (usuń, zablokuj) schowane pod „⋯" — w wierszu zostaje
- * jedna rzecz, którą robi się najczęściej, więc lista nie jest ścianą przycisków.
- */
 @Composable
 private fun MoreActions(name: String, enabled: Boolean, actions: List<Pair<String, () -> Unit>>) {
 	var expanded by remember { mutableStateOf(false) }
@@ -480,17 +450,8 @@ private fun EmptyHint(text: String) {
 	Text(text = text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
-/**
- * Stopka sekcji: „Pokaż więcej", kręciołek albo błąd z ponowieniem. Nic nie
- * renderuje, gdy nie ma czego doczytywać.
- *
- * Doczytywanie na przycisk, nie na przewinięcie: cztery sekcje dzielą jedną
- * przewijaną listę, więc automat nie miałby jak zgadnąć, którą z nich użytkownik
- * właśnie czyta — i po dojechaniu na dół dobierałby strony do wszystkich naraz.
- */
 @Composable
 private fun <T> SectionFooter(section: PagedSection<T>, onLoadMore: () -> Unit, onRetry: () -> Unit) {
-	// Lokalna kopia, bo pole z innego modułu nie podlega smart castowi.
 	val appendError = section.appendError
 	when {
 		appendError != null -> Row(

@@ -15,17 +15,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Wylogowanie po zalogowaniu **w tej samej Activity**. ViewModel logowania żyje tyle
- * co Activity, więc po wylogowaniu wracał ze stanem „zalogowano" z poprzedniego
- * razu: ekran logowania od razu wpuszczał z powrotem, sesji już nie było, każde
- * żądanie dostawało 401, „sesja wygasła" wylogowywała — i tak w kółko, kilkaset
- * żądań na sekundę, z kręcącym się kółkiem na ekranie. Przy okazji formularz
- * pokazywał wpisane wcześniej hasło.
- *
- * Start zalogowany (jak w pozostałych testach Activity) tego nie widział, bo
- * ViewModel logowania nigdy nie powstawał — dlatego logujemy się tu przez UI.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestSonglyApplication::class, qualifiers = "w411dp-h891dp-xhdpi")
 class LogoutTest {
@@ -68,7 +57,6 @@ class LogoutTest {
 		compose.onAllNodesWithText("Zaloguj się")[1].performClick()
 		waitForText("Pierwszy post")
 
-		// Wylogowanie siedzi w zakładce „Profil" dolnego paska.
 		compose.onNodeWithText("Profil").performClick()
 		compose.onNodeWithText("Wyloguj się").performScrollTo().performClick()
 		waitForText("Nie masz konta? Zarejestruj się")

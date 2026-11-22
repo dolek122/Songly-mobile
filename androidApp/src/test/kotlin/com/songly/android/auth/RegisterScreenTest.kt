@@ -19,11 +19,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Rejestracja z potwierdzeniem adresu (backend ADR 0009). Do tej pory klient
- * oczekiwał tokenów w odpowiedzi na `POST /register`, a backend od dawna zwraca
- * tam 202 bez ciała — więc nowego konta nie dało się w aplikacji założyć.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w411dp-h891dp-xhdpi")
 class RegisterScreenTest {
@@ -58,11 +53,9 @@ class RegisterScreenTest {
 		compose.onNodeWithText("E-mail").performTextInput("nowy@songly.local")
 		compose.onNodeWithText("Hasło").performTextInput("haslo1234")
 		compose.onNodeWithText("Powtórz hasło").performTextInput("haslo1234")
-		// „Załóż konto" to też podtytuł ekranu — klikamy tylko węzeł, który da się kliknąć.
 		compose.onNode(hasText("Załóż konto") and hasClickAction()).performClick()
 	}
 
-	/** 202 bez tokenów to sukces kroku 1, a nie błąd — i nie zakłada jeszcze sesji. */
 	@Test
 	fun acceptedRegistrationAsksToCheckInboxInsteadOfLoggingIn() {
 		var registered = false
@@ -109,7 +102,6 @@ class RegisterScreenTest {
 		awaitText("nieprawidłowy albo wygasł")
 	}
 
-	/** Link bez tokenu to pomyłka przy kopiowaniu — nie ma czego wysyłać. */
 	@Test
 	fun verifyIsDisabledForLinkWithoutToken() {
 		show(backend())

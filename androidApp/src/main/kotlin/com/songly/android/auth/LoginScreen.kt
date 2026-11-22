@@ -22,24 +22,16 @@ import androidx.compose.ui.unit.dp
 import com.songly.android.ui.announcedWhenChanged
 import com.songly.android.ui.CenteredScrollColumn
 
-/**
- * Ekran logowania (Compose, natywny UI — §14). Bezstanowy względem logiki:
- * cały stan i akcje pochodzą z [LoginViewModel]. Po udanym logowaniu
- * [LoginViewModel.LoginUiState.loggedIn] wyzwala [onLoggedIn] (nawigację).
- */
 @Composable
 fun LoginScreen(
 	viewModel: LoginViewModel,
 	onLoggedIn: () -> Unit,
 	onNavigateToRegister: () -> Unit,
 	onForgotPassword: () -> Unit = {},
-	/** Komunikat z poprzedniego kroku, np. „hasło zmienione — zaloguj się nowym". */
 	notice: String? = null,
 ) {
 	val state = viewModel.uiState
 
-	// Nawigacja to efekt uboczny — poza fazą kompozycji, żeby nie wywołać jej
-	// wielokrotnie przy rekompozycji.
 	LaunchedEffect(state.loggedIn) {
 		if (state.loggedIn) onLoggedIn()
 	}

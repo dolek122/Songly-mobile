@@ -16,11 +16,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Feed z gestem odświeżania. Sam gest jest tu istotny: pull-to-refresh dodaliśmy
- * niedawno i do tej pory nic poza kompilacją nie potwierdzało, że ściągnięcie
- * listy w dół faktycznie wysyła żądanie i podmienia zawartość.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w411dp-h891dp-xhdpi")
 class FeedScreenTest {
@@ -69,8 +64,6 @@ class FeedScreenTest {
 		compose.onNode(hasScrollAction()).performTouchInput { swipeDown() }
 
 		awaitText("Świeży post")
-		// Dwa żądania: wejście na ekran i gest. Gdyby gest tylko przewijał listę,
-		// licznik zostałby na jednym.
 		assert(backend.callCount("/api/v1/feed") >= 2) {
 			"oczekiwano ponownego żądania feedu po geście, było ${backend.callCount("/api/v1/feed")}"
 		}

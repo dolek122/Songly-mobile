@@ -1,7 +1,6 @@
 import SwiftUI
 import Shared
 
-/// Feed znajomych z paginacją i odświeżaniem gestem.
 struct FeedView: View {
 	@EnvironmentObject private var session: AppSession
 	@StateObject private var viewModel: FeedViewModel
@@ -33,8 +32,6 @@ struct FeedView: View {
 	@ViewBuilder
 	private var content: some View {
 		if viewModel.accountSuspended {
-			// Pełny ekran zawieszenia (powód, termin, odwołanie — ADR 0022/0023) jest na
-			// razie tylko na Androidzie; tu przynajmniej mówimy, co się stało.
 			CenteredMessage(
 				text: "Twoje konto jest zawieszone.",
 				buttonTitle: "Wyloguj"
@@ -65,7 +62,6 @@ struct FeedView: View {
 					onToggleShare: { viewModel.toggleShare(post) }
 				)
 				.onAppear {
-					// Doczytujemy, gdy pokazuje się ostatni wiersz — jak infinite scroll na Androidzie.
 					if post.id == viewModel.posts.last?.id {
 						Task { await viewModel.loadNextPage() }
 					}

@@ -70,23 +70,8 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.fail
 
-/**
- * Wykrywa dryf między ręcznie pisanymi modelami mobilnymi a kontraktem OpenAPI
- * backendu ({@code shared/contract/openapi.json}, zsynchronizowana kopia
- * {@code docs/api/openapi.json} z Songly-backend).
- *
- * Reguła: **każde pole modelu musi istnieć w schemacie backendu**. Modelom wolno
- * być podzbiorem (świadomie pomijamy pola nieużywane w UI — Ktor je ignoruje),
- * ale nie wolno im czytać pola, którego backend już nie ma. To łapie właśnie
- * scenariusz „backend zmienił/usunął pole, a mobilka o tym nie wie" — inaczej
- * `ignoreUnknownKeys` po cichu podałby wartość domyślną zamiast danych.
- *
- * Gdy test padnie po odświeżeniu kontraktu: dostosuj wskazany model do nowego
- * kształtu DTO. Kontrakt odświeżasz kopiując plik z backendu (patrz README).
- */
 class OpenApiContractTest {
 
-	/** Model mobilny -> nazwa schematu w `components/schemas` backendu. */
 	private val mapping: List<Pair<KSerializer<*>, String>> = listOf(
 		RegisterRequest.serializer() to "RegisterRequest",
 		VerifyEmailRequest.serializer() to "VerifyEmailRequest",
@@ -153,11 +138,6 @@ class OpenApiContractTest {
 		ApiError.serializer() to "ApiError",
 	)
 
-	/**
-	 * Pola backendu, których model świadomie nie czyta (schemat -> pola). Pusta
-	 * mapa znaczy „bierzemy wszystko" — każdy wpis tutaj to decyzja do
-	 * uzasadnienia w komentarzu, nie miejsce na chowanie zaległości.
-	 */
 	private val intentionallyIgnored: Map<String, Set<String>> = emptyMap()
 
 	@Test
@@ -187,15 +167,6 @@ class OpenApiContractTest {
 		}
 	}
 
-	/**
-	 * Drugi kierunek: **pole dodane w backendzie musi trafić do modelu** albo na
-	 * listę świadomie pomijanych ([intentionallyIgnored]).
-	 *
-	 * Sam test wyżej łapie dryf tylko wtedy, gdy backend coś *usunie*. Częstszy
-	 * przypadek jest odwrotny: serwer zaczyna zwracać nowe pole, mobilka o nim nie
-	 * wie i po cichu go nie pokazuje. `ignoreUnknownKeys` sprawia, że nic nigdzie
-	 * nie wybucha, więc taki brak potrafi przeżyć miesiące.
-	 */
 	@Test
 	fun everyBackendFieldIsReadOrExplicitlyIgnored() {
 		val schemas = loadSchemas()

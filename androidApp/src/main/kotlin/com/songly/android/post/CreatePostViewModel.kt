@@ -11,41 +11,26 @@ import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
-/** Maksymalna długość treści posta — zgodna z walidacją backendu (@Size max 1000). */
 const val MAX_POST_LENGTH = 1000
 
 private const val UNKNOWN_POST_IMAGE = "UNKNOWN_POST_IMAGE"
 
 internal const val EXPIRED_IMAGE_MESSAGE = "Zdjęcie wygasło. Dodaj je jeszcze raz."
 
-/** Stan ekranu tworzenia posta. */
 data class CreatePostUiState(
 	val content: String = "",
 	val isSubmitting: Boolean = false,
 	val errorMessage: String? = null,
-	/** Zdjęcie już wgrane na serwer — do publikacji idzie jego klucz. */
 	val image: PostImage? = null,
 	val isUploadingImage: Boolean = false,
 ) {
 	val remaining: Int
 		get() = MAX_POST_LENGTH - content.length
 
-	// Czekamy na koniec wgrywania — inaczej post wyszedłby bez zdjęcia, które
-	// użytkownik właśnie dodał.
 	val canSubmit: Boolean
 		get() = content.isNotBlank() && remaining >= 0 && !isSubmitting && !isUploadingImage
 }
 
-/**
- * Logika ekranu tworzenia posta. Woła [SonglyApiClient.createPost] z modułu
- * `shared`. Sukces sygnalizujemy callbackiem [submit] (a nie flagą w stanie) —
- * ViewModel bywa cache'owany na Activity, więc flaga „utworzono" utrzymałaby się
- * między wejściami i od razu zamykała ekran.
- *
- * Zdjęcie wgrywamy od razu po wybraniu (ADR 0010: najpierw `POST /posts/image`,
- * potem post z kluczem), więc przy publikacji jest już tylko jedno szybkie
- * żądanie, a błąd formatu czy rozmiaru wychodzi, zanim ktoś napisze treść.
- */
 class CreatePostViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(CreatePostUiState())
@@ -85,13 +70,10 @@ class CreatePostViewModel(private val client: SonglyApiClient) : ViewModel() {
 		viewModelScope.launch {
 			try {
 				client.createPost(uiState.content.trim(), uiState.image?.key)
-				uiState = CreatePostUiState() // reset — czysty ekran przy następnym wejściu
+				uiState = CreatePostUiState()
 				onCreated()
 			} catch (e: SonglyApiException) {
 				uiState = if (e.error?.code == UNKNOWN_POST_IMAGE) {
-					// Wgranie przepadło: czekało ponad dobę, wyparły je nowsze albo trafiło już
-					// do innego posta (backend ADR 0048). Ten klucz niczego już nie wskaże, więc
-					// zdjęcie znika z formularza, a treść zostaje.
 					uiState.copy(isSubmitting = false, image = null, errorMessage = EXPIRED_IMAGE_MESSAGE)
 				} else {
 					uiState.copy(

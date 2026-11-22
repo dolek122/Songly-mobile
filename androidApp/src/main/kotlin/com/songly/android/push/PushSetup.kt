@@ -12,15 +12,6 @@ import androidx.core.content.ContextCompat
 import com.songly.android.SonglyApplication
 import com.songly.shared.network.SonglyApiClient
 
-/**
- * Wejście do zalogowanej części aplikacji: zgłoszenie urządzenia do pushy i — na
- * Androidzie 13+ — prośba o zgodę na powiadomienia.
- *
- * Prośba dopiero po zalogowaniu, nie przy starcie: na ekranie logowania nie ma
- * jeszcze czego powiadamiać, a odmowa w ciemno zostaje na zawsze (system po dwóch
- * odmowach przestaje pytać). Bez projektu Firebase nie pytamy wcale — zgoda na
- * coś, co nigdy nie przyjdzie, byłaby tylko uciążliwością.
- */
 @Composable
 fun PushSetup(client: SonglyApiClient) {
 	val context = LocalContext.current

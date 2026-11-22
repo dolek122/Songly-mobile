@@ -10,26 +10,14 @@ import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
-/** Stan ekranu preferencji poczty. [preferences] jest `null`, dopóki nie wczytamy ich z serwera. */
 data class MailPreferencesUiState(
 	val isLoading: Boolean = true,
-	val errorMessage: String? = null, // błąd wczytania (nie ma czego pokazać)
+	val errorMessage: String? = null,
 	val preferences: MailPreferences? = null,
 	val isSaving: Boolean = false,
-	val statusMessage: String? = null, // wynik ostatniego zapisu
+	val statusMessage: String? = null,
 )
 
-/**
- * Preferencje poczty (ADR 0020 backendu): dwa przełączniki, decyzje o mnie i
- * wezwania do kolejki moderacji. Dotyczą wyłącznie e-maila — skrzynka w aplikacji
- * jest kompletna zawsze, i ekran ma to mówić, żeby nikt nie szukał tu sposobu na
- * wyciszenie powiadomień.
- *
- * `PUT` zastępuje oba pola naraz, więc zmiany idą po jednej: dwa przełączenia w
- * locie mogłyby dojść w odwrotnej kolejności i drugie nadpisałoby pierwsze starą
- * wartością. Przełącznik przestawiamy od razu i cofamy przy odmowie serwera, jak
- * widoczność statusu w now-playing — inaczej UI kłamałby o tym, co wyjdzie mailem.
- */
 class MailPreferencesViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(MailPreferencesUiState())

@@ -22,10 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.songly.android.ui.announcedWhenChanged
 import com.songly.android.ui.CenteredScrollColumn
 
-/**
- * „Nie pamiętam hasła" (backend ADR 0008). Lokalnie (`MAIL_PROVIDER=log`) link
- * ląduje w konsoli backendu — tak samo jak przy rejestracji wkleja się go tutaj.
- */
 @Composable
 fun ForgotPasswordScreen(
 	viewModel: ForgotPasswordViewModel,

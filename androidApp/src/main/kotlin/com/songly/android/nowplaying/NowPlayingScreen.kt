@@ -62,19 +62,6 @@ import com.songly.android.ui.TeardropShape
 import com.songly.shared.model.NowPlayingStatus
 import com.songly.shared.util.RelativeTime
 
-/**
- * Zakładka „Muzyka" (Compose, natywny UI — §14): co teraz gram, czego słuchają
- * znajomi, integracja ze Spotify (OAuth przez przeglądarkę) i uniwersalny ręczny
- * status. Stan z [NowPlayingViewModel]; dane z modułu now-playing przez `shared`.
- *
- * Na wierzchu jest tylko to, na co się patrzy (duża okładka i utwór) i dwie
- * akcje: Spotify albo status ręczny. Formularz ręcznego statusu otwiera się w
- * arkuszu od dołu — wcześniej cztery pola wisiały na ekranie na stałe, choć
- * używa się ich od święta. Odświeża się gestem w dół, jak każda lista w aplikacji.
- *
- * [onBack] jest `null`, gdy ekran jest zakładką dolnego paska — wtedy nie ma
- * dokąd wracać, więc w pasku nie ma strzałki.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowPlayingScreen(
@@ -186,12 +173,6 @@ fun NowPlayingScreen(
 	}
 }
 
-/**
- * „Teraz gram" jak ekran odtwarzacza: duża okładka w kształcie kropli (albo
- * wyciszony znak Songly, gdy nic nie gra), tytuł, wykonawca i stan. Zielona kropka
- * przy „odtwarzane" mówi to samo co tekst — sam kolor nie niesie informacji,
- * której nie byłoby w słowach.
- */
 @Composable
 private fun NowPlayingHero(status: NowPlayingStatus?) {
 	Card(modifier = Modifier.fillMaxWidth()) {
@@ -252,15 +233,12 @@ private fun NowPlayingHero(status: NowPlayingStatus?) {
 	}
 }
 
-/** „odtwarzane · Spotify · 2 min temu" — stan, źródło i świeżość statusu w jednej linii. */
 @Composable
 private fun PlaybackLine(status: NowPlayingStatus) {
 	val color = if (status.playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
 	val parts = listOfNotNull(
 		if (status.playing) "odtwarzane" else "wstrzymane",
 		status.providerLabel,
-		// Spotify odpytujemy co pół minuty, a ręczny status stoi, aż ktoś go zmieni —
-		// bez wieku statusu „Bohemian Rhapsody" sprzed doby wyglądałoby na bieżące.
 		status.fetchedAt?.let { "zaktualizowano ${RelativeTime.format(it)}" },
 	)
 	Row(
@@ -285,13 +263,11 @@ private fun PlaybackLine(status: NowPlayingStatus) {
 	}
 }
 
-/** Okładka w kształcie kropli; bez adresu — znak Songly, zielony gdy coś gra, szary gdy nic. */
 @Composable
 private fun Cover(imageUrl: String?, playing: Boolean) {
 	if (!imageUrl.isNullOrBlank()) {
 		AsyncImage(
 			model = imageUrl,
-			// Ozdoba: tytuł i wykonawca stoją pod spodem.
 			contentDescription = null,
 			contentScale = ContentScale.Crop,
 			modifier = Modifier
@@ -310,7 +286,6 @@ private fun Cover(imageUrl: String?, playing: Boolean) {
 	}
 }
 
-/** Cały wiersz jest przełącznikiem — TalkBack czyta etykietę razem ze stanem. */
 @Composable
 private fun ShareWithFriendsRow(checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
 	Row(
@@ -333,11 +308,6 @@ private fun ShareWithFriendsRow(checked: Boolean, enabled: Boolean, onChange: (B
 	}
 }
 
-/**
- * Ręczny status w arkuszu od dołu: uniwersalny fallback dla serwisów bez
- * integracji. Zamyka go dopiero udany zapis ([NowPlayingUiState.editingManual]),
- * więc błąd zostawia wpisane pola na miejscu.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ManualStatusSheet(state: NowPlayingUiState, viewModel: NowPlayingViewModel) {
@@ -373,7 +343,6 @@ private fun ManualStatusSheet(state: NowPlayingUiState, viewModel: NowPlayingVie
 				verticalAlignment = Alignment.CenterVertically,
 				modifier = Modifier.fillMaxWidth(),
 			) {
-				// Czyści status na serwerze, nie tylko pola — tak jak robił to przycisk na ekranie.
 				TextButton(onClick = viewModel::clearManual, enabled = !state.isBusy) { Text("Wyczyść status") }
 				Box(modifier = Modifier.weight(1f))
 				Button(onClick = viewModel::setManual, enabled = state.canSetManual) { Text("Ustaw") }

@@ -36,12 +36,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * To, co dostaje TalkBack, a nie to, co widać. Każdy test odpowiada jednemu
- * problemowi z przeglądu dostępności: bez tych asercji poprawki semantyki nie
- * zostawiały śladu w żadnym innym teście, więc mogły zniknąć niezauważone przy
- * pierwszym refaktorze ekranu.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w411dp-h891dp-xhdpi")
 class AccessibilityTest {
@@ -68,7 +62,6 @@ class AccessibilityTest {
 		)
 	}
 
-	/** „♡ 3" czytane było jako „biały kier, trzy" — bez roli, stanu i z celem ~20 dp. */
 	@Test
 	fun postCountersAreLabelledButtonsWithStateAndFullTouchTarget() {
 		showPostCard()
@@ -79,7 +72,6 @@ class AccessibilityTest {
 			.assertHeightIsAtLeast(48.dp)
 		compose.onNodeWithContentDescription("Udostępnienia: 1").assert(hasState("nieudostępniony"))
 		compose.onNodeWithContentDescription("Komentarze: 2").assert(hasRole(Role.Button))
-		// „Usuń" i „Zgłoś" są w menu pod „⋮" — sam przycisk menu musi być pełnym celem dotyku.
 		compose.onNodeWithContentDescription("Więcej akcji posta")
 			.assert(hasRole(Role.Button))
 			.assertHeightIsAtLeast(48.dp)
@@ -88,7 +80,6 @@ class AccessibilityTest {
 		compose.onNodeWithText("Zgłoś").assertExists()
 	}
 
-	/** Awatar obok nazwy powtarzał ją („Awatar: Ola, Ola"); inicjały czytane były „O L". */
 	@Test
 	fun avatarDoesNotRepeatTheName() {
 		showPostCard()
@@ -97,7 +88,6 @@ class AccessibilityTest {
 		assertEquals(0, compose.onAllNodesWithText("O").fetchSemanticsNodes().size)
 	}
 
-	/** Plakietka z liczbą nieprzeczytanych jest tylko wizualna — dzwonek musi ją powiedzieć słowami. */
 	@Test
 	fun feedBellAnnouncesUnreadNotifications() {
 		val client = FakeBackend().apply {
@@ -118,10 +108,6 @@ class AccessibilityTest {
 		}
 	}
 
-	/**
-	 * Przełącznikiem jest cały wiersz — inaczej TalkBack mówił „przełącznik, włączony"
-	 * bez etykiety, a palcem trzeba było trafić w sam Switch.
-	 */
 	@Test
 	fun preferenceRowIsOneLabelledSwitch() {
 		val path = "/api/v1/notifications/mail-preferences"
@@ -142,7 +128,6 @@ class AccessibilityTest {
 		assertEquals("""{"decisionsAboutMe":true,"moderationQueue":true}""", backend.lastBody(HttpMethod.Put, path))
 	}
 
-	/** Błąd logowania był widoczny, ale czytnik go nie ogłaszał. */
 	@Test
 	fun loginErrorIsAnnounced() {
 		val viewModel = LoginViewModel(

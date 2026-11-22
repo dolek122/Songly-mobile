@@ -11,10 +11,9 @@ import com.songly.shared.network.SonglyApiClient
 import com.songly.shared.util.SpotifyConnectResult
 import kotlinx.coroutines.launch
 
-/** Stan ekranu „teraz słucham": aktualny status + formularz ręcznego statusu. */
 data class NowPlayingUiState(
-	val isLoading: Boolean = true, // pierwsze wczytanie (spinner na cały ekran)
-	val isRefreshing: Boolean = false, // odświeżanie gestem (status zostaje na ekranie)
+	val isLoading: Boolean = true,
+	val isRefreshing: Boolean = false,
 	val errorMessage: String? = null,
 	val status: NowPlayingStatus? = null,
 	val title: String = "",
@@ -24,37 +23,20 @@ data class NowPlayingUiState(
 	val isBusy: Boolean = false,
 	val statusMessage: String? = null,
 	val shareWithFriends: Boolean = true,
-	// Formularz ręcznego statusu otwarty (arkusz od dołu) — w stanie, bo zamyka go
-	// dopiero udany zapis, który kończy się asynchronicznie.
 	val editingManual: Boolean = false,
 ) {
 	val canSetManual: Boolean
 		get() = title.isNotBlank() && !isBusy
 
-	/**
-	 * Czy Spotify jest podłączone — wiemy to tylko wtedy, gdy właśnie z niego
-	 * płynie status (backend nie ma osobnego zapytania o stan połączenia). Bez
-	 * statusu pokazujemy więc „Połącz", które przy istniejącym połączeniu po
-	 * prostu odnawia zgodę.
-	 */
 	val spotifyConnected: Boolean
 		get() = status?.provider == "spotify"
 }
 
-/**
- * Logika ekranu „teraz słucham" (moduł now-playing backendu przez `shared`).
- * Dwie ścieżki: integracja ze Spotify (OAuth — otwierany URL autoryzacji) oraz
- * uniwersalny ręczny status. Po powrocie z przeglądarki Spotify UI woła [load],
- * żeby pobrać świeży status.
- */
 class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(NowPlayingUiState())
 		private set
 
-	// Czy status był już choć raz wczytany. Zakładka woła [load] przy każdym wejściu;
-	// spinner na cały ekran tylko za pierwszym razem, potem status odświeża się pod
-	// spodem, zamiast mrugać przy każdym przełączeniu zakładek.
 	private var loaded = false
 
 	fun load() {
@@ -62,7 +44,6 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 		fetch()
 	}
 
-	/** Odświeżenie gestem — to samo co [load], bez chowania ekranu za spinnerem. */
 	fun refresh() {
 		if (uiState.isRefreshing) return
 		uiState = uiState.copy(isRefreshing = true, errorMessage = null)
@@ -81,7 +62,6 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 				loaded = true
 			} catch (e: Exception) {
 				val message = errorText(e, "wczytać statusu")
-				// Wczytany już status zostaje — chwilowy brak sieci nie zasłania ekranu.
 				uiState = if (loaded) {
 					uiState.copy(isLoading = false, isRefreshing = false, statusMessage = message)
 				} else {
@@ -91,16 +71,10 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	/** Komunikat pokazany (snackbar) — bez tego wracałby przy każdej rekompozycji. */
 	fun statusMessageShown() {
 		uiState = uiState.copy(statusMessage = null)
 	}
 
-	/**
-	 * Otwiera formularz ręcznego statusu. Pusty formularz wypełniamy bieżącym
-	 * statusem ręcznym — poprawka literówki w tytule nie powinna wymagać
-	 * przepisywania wszystkiego od nowa.
-	 */
 	fun openManualEditor() {
 		val current = uiState.status?.takeIf { it.provider != "spotify" }
 		uiState = if (current != null && uiState.title.isBlank()) {
@@ -125,11 +99,6 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 	fun onAlbumChange(v: String) { uiState = uiState.copy(album = v, statusMessage = null) }
 	fun onSourceChange(v: String) { uiState = uiState.copy(source = v, statusMessage = null) }
 
-	/**
-	 * Rozpoczyna łączenie ze Spotify i przekazuje URL autoryzacji do otwarcia w
-	 * przeglądarce ([onAuthorizeUrl]). Callback backendu odsyła do aplikacji
-	 * linkiem — ten trafia do [onSpotifyConnectResult], który łączenie kończy.
-	 */
 	fun connectSpotify(onAuthorizeUrl: (String) -> Unit) {
 		if (uiState.isBusy) return
 		uiState = uiState.copy(isBusy = true, statusMessage = null)
@@ -144,15 +113,6 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	/**
-	 * Wynik OAuth z linku powrotnego (backend ADR 0038). Status pobieramy na nowo
-	 * przy każdym wyniku, nie tylko po sukcesie — ekran mógł wisieć w pamięci od
-	 * dawna, a odmowa nie znaczy, że wcześniejsze połączenie zniknęło.
-	 *
-	 * Zgoda ([SpotifyConnectResult.Authorized]) jeszcze niczego nie łączy (backend
-	 * ADR 0050): bilet oddajemy backendowi z naszym tokenem, a ten przypina
-	 * Spotify tylko wtedy, gdy łączenie zaczęło to samo konto.
-	 */
 	fun onSpotifyConnectResult(result: SpotifyConnectResult) {
 		when (result) {
 			SpotifyConnectResult.Denied -> showConnectOutcome("Anulowano łączenie ze Spotify")
@@ -183,7 +143,6 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 		load()
 	}
 
-	/** Kody błędów łączenia — z linku powrotnego i z dokończenia. */
 	private fun connectErrorText(code: String?): String? = when (code) {
 		"INVALID_CONNECT_TICKET" ->
 			"Nie udało się dokończyć łączenia ze Spotify. Link wygasł albo łączenie zaczęto na innym koncie."
@@ -210,15 +169,9 @@ class NowPlayingViewModel(private val client: SonglyApiClient) : ViewModel() {
 	fun clearManual() =
 		runAction("Wyczyszczono status", "wyczyścić statusu", closeEditor = true) {
 			client.clearManualNowPlaying()
-			// Wyczyszczony status nie powinien wracać jako podpowiedź przy następnym otwarciu.
 			uiState = uiState.copy(title = "", artist = "", album = "", source = "")
 		}
 
-	/**
-	 * Przełącza widoczność statusu dla znajomych (ADR 0007 backendu, Etap 4).
-	 * Przełącznik przestawiamy od razu, żeby nie klikał się z opóźnieniem sieci, i
-	 * cofamy, gdy serwer odmówi — inaczej UI kłamałby o stanie prywatności.
-	 */
 	fun onShareWithFriendsChange(share: Boolean) {
 		if (uiState.isBusy) return
 		val previous = uiState.shareWithFriends

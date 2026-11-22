@@ -45,16 +45,6 @@ import coil.compose.AsyncImage
 import com.songly.shared.model.Post
 import com.songly.shared.util.RelativeTime
 
-/**
- * Karta posta — wspólna dla feedu, społeczności, profilu autora i ekranu
- * pojedynczego posta. Post to ten sam byt niezależnie od miejsca publikacji
- * (backend §8), więc i wygląda tak samo.
- *
- * [canDelete] dokłada „Usuń" — na własnych postach, a w społeczności także
- * moderatorom (backend pozwala im usunąć dowolny post u siebie). „Usuń" i „Zgłoś"
- * siedzą pod „⋮": robi się je rzadko, a na karcie widać wtedy tylko autora, treść
- * i trzy liczniki.
- */
 @Composable
 fun PostCard(
 	post: Post,
@@ -64,8 +54,6 @@ fun PostCard(
 	onToggleShare: () -> Unit,
 	onDelete: () -> Unit,
 	onOpenAuthor: () -> Unit,
-	// `null` = bez „Zgłoś" (własny post albo poza społecznością — zwykłych postów
-	// nie ma komu zgłosić, backend §8).
 	onReport: (() -> Unit)? = null,
 ) {
 	Card(modifier = Modifier.fillMaxWidth()) {
@@ -74,7 +62,6 @@ fun PostCard(
 				verticalAlignment = Alignment.CenterVertically,
 				horizontalArrangement = Arrangement.spacedBy(10.dp),
 			) {
-				// Avatar + nazwa autora prowadzą do jego profilu; kosz zostaje osobno.
 				Row(
 					modifier = Modifier
 						.weight(1f)
@@ -117,9 +104,6 @@ fun PostCard(
 						.clip(RoundedCornerShape(8.dp)),
 				)
 			}
-			// Opis i stan podane wprost, bo sama ikona z liczbą nic czytnikowi nie mówi
-			// (wcześniej znaki „♡ 3" czytał jako „biały kier, trzy"). Cel dotyku 48 dp
-			// sam robi odstęp od treści, więc rząd nie potrzebuje górnego paddingu.
 			Row(
 				horizontalArrangement = Arrangement.spacedBy(8.dp),
 				verticalAlignment = Alignment.CenterVertically,
@@ -155,14 +139,10 @@ fun PostCard(
 	}
 }
 
-/** „⋮" z rzadkimi akcjami na poście; w menu tylko te, które ten użytkownik może wykonać. */
 @Composable
 private fun PostMenu(onReport: (() -> Unit)?, onDelete: (() -> Unit)?) {
 	var expanded by remember { mutableStateOf(false) }
 	Box {
-		// 48 dp wprost: IconButton rysuje przycisk 40 dp i tylko rezerwuje miejsce do 48,
-		// więc węzeł widziany przez TalkBack i Accessibility Scanner był za mały
-		// (ta sama pułapka co opisana przy accessibleAction).
 		IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp)) {
 			Icon(
 				Icons.Outlined.MoreVert,
@@ -196,11 +176,6 @@ private fun PostMenu(onReport: (() -> Unit)?, onDelete: (() -> Unit)?) {
 	}
 }
 
-/**
- * Ikona z licznikiem pod postem. Aktywna (polubiony, udostępniony) świeci zielenią
- * — tak jak serce przy polubionym utworze — a nieaktywna jest szara i nie
- * odciąga wzroku od treści.
- */
 @Composable
 private fun PostAction(icon: ImageVector, count: Long, active: Boolean, modifier: Modifier) {
 	val color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant

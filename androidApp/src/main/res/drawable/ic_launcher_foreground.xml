@@ -1,20 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Pierwszy plan ikony aplikacji: zielona kropla (koło z ostrym prawym górnym
-  rogiem) z korektorem z pięciu słupków — ten sam znak co SonglyMark w aplikacji.
-  Liczby są wspólne: kropla to bok 56 z lewym górnym rogiem w (22, 30), a słupki
-  leżą w niej dokładnie tam, gdzie rysuje je SonglyMark (ui/Brand.kt).
 
-  Siatka 108×108 jak każda ikona adaptacyjna; system przycina ją do własnego
-  kształtu i pewne jest tylko środkowe koło o średnicy 66. Kropla jest w nim
-  wyważona: koło przesunięte w lewo i w dół o tyle, ile róg wystaje w prawo i w
-  górę, więc najdalszy punkt (róg i przeciwległy łuk) leży ~34 od środka — w kole
-  o średnicy 72, które widać przy każdym kształcie launchera.
-
-  Słupki są wycięte (evenOdd), a nie domalowane na czarno: przez dziury widać tło
-  ikony, a ten sam rysunek może być warstwą monochromatyczną (ikony w kolorach
-  motywu, Android 13+), w której liczy się sam kształt.
--->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"

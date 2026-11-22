@@ -41,11 +41,6 @@ import com.songly.android.ui.ScreenTopBar
 import com.songly.shared.model.Match
 import com.songly.shared.model.MatchConfidence
 
-/**
- * Ekran dopasowań (Compose, natywny UI — §14): ranking osób o podobnym guście
- * muzycznym (score Jaccarda jako procent) z etykietami wspólnych gatunków i
- * zaproszeniem do znajomych. Stan z [MatchesViewModel]; dane z modułu matching.
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MatchesScreen(
@@ -98,9 +93,6 @@ fun MatchesScreen(
 
 				state.isEmpty -> CenteredMessage {
 					Text(
-						// Pusto bywa też przy wybranych gatunkach: nikt inny ich nie wskazał albo
-						// wskazali je tylko znajomi, których backend z dopasowań pomija. Nie
-						// twierdzimy więc, że użytkownikowi czegoś brakuje.
 						"Brak nowych osób o podobnym guście. Znajomych tu nie pokazujemy. Sprawdź, czy masz wybrane ulubione gatunki w profilu, albo zajrzyj później.",
 						style = MaterialTheme.typography.bodyMedium,
 					)
@@ -162,7 +154,6 @@ private fun MatchCard(
 				verticalAlignment = Alignment.CenterVertically,
 				horizontalArrangement = Arrangement.spacedBy(10.dp),
 			) {
-				// Avatar + nazwa prowadzą do profilu; wskaźnik dopasowania zostaje osobno.
 				Row(
 					modifier = Modifier.weight(1f).clickable(onClick = onOpenProfile),
 					verticalAlignment = Alignment.CenterVertically,
@@ -175,9 +166,6 @@ private fun MatchCard(
 						fontWeight = FontWeight.SemiBold,
 					)
 				}
-				// Wynik z pewnością pod spodem: niski procent przy małej pewności znaczy
-				// „za mało wiemy", a nie „nie pasujecie" (backend ADR 0033) — bez tego
-				// oba przypadki wyglądały identycznie.
 				Column(horizontalAlignment = Alignment.End) {
 					Text(
 						text = "${match.scorePercent}%",
@@ -245,7 +233,6 @@ private fun CenteredMessage(content: @Composable () -> Unit) {
 	}
 }
 
-/** Pewność dopasowania słowami — trzy stopnie liczy `shared` ([Match.confidenceLevel]). */
 private fun confidenceLabel(level: MatchConfidence): String = when (level) {
 	MatchConfidence.LOW -> "mało danych"
 	MatchConfidence.MEDIUM -> "średnia pewność"

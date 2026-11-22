@@ -18,11 +18,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Linki z maili `songly://` (ADR 0037 backendu) otwierają aplikację w odpowiednim
- * miejscu. Test jedzie przez `MainActivity` z prawdziwym intentem, bo cała logika
- * siedzi na styku intentu, stanu sesji i nawigacji.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestSonglyApplication::class, qualifiers = "w411dp-h891dp-xhdpi")
 abstract class AuthDeepLinkTestBase(link: String, private val loggedIn: Boolean) {
@@ -47,7 +42,6 @@ abstract class AuthDeepLinkTestBase(link: String, private val loggedIn: Boolean)
 		},
 	)
 
-	// Atrapa i stan sesji muszą być gotowe, zanim reguła uruchomi Activity.
 	@get:Rule
 	val rules: TestRule = RuleChain
 		.outerRule(MainDispatcherRule())
@@ -76,7 +70,6 @@ class VerificationLinkWhenLoggedOutTest : AuthDeepLinkTestBase("songly://verify-
 		assertEquals("""{"token":"abc123"}""", backend.lastBody(HttpMethod.Post, verifyPath))
 	}
 
-	/** Activity dostaje po obrocie ten sam intent — link nie może zadziałać drugi raz. */
 	@Test
 	fun rotationDoesNotReuseTheLink() {
 		waitForText("Pierwszy post")
@@ -91,7 +84,6 @@ class VerificationLinkWhenLoggedOutTest : AuthDeepLinkTestBase("songly://verify-
 
 class ResetLinkWhenLoggedOutTest : AuthDeepLinkTestBase("songly://reset-password?token=xyz789", loggedIn = false) {
 
-	/** Hasła nie zgadniemy — link otwiera formularz z tokenem, ale niczego nie wysyła. */
 	@Test
 	fun opensNewPasswordFormWithToken() {
 		waitForText("Ustaw nowe hasło do swojego konta.")
@@ -103,7 +95,6 @@ class ResetLinkWhenLoggedOutTest : AuthDeepLinkTestBase("songly://reset-password
 
 class VerificationLinkWhenLoggedInTest : AuthDeepLinkTestBase("songly://verify-email?token=abc123", loggedIn = true) {
 
-	/** Stary mail kliknięty przez pomyłkę nie może zabrać sesji bez pytania. */
 	@Test
 	fun asksBeforeLoggingOutAndCancelKeepsSession() {
 		waitForText("Otworzyć link z maila?")

@@ -7,7 +7,6 @@ class MatchTest {
 
 	private fun match(confidence: Double) = Match(userId = "u", displayName = "Ola", score = 0.4, confidence = confidence)
 
-	/** Jeden wspólny popularny gatunek to „mało danych", nie „pewne dopasowanie" (ADR 0033). */
 	@Test
 	fun confidenceMapsToThreeLevels() {
 		assertEquals(MatchConfidence.LOW, match(0.35).confidenceLevel)

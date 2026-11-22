@@ -54,12 +54,6 @@ import com.songly.android.ui.accessibleAction
 import com.songly.shared.model.Notification
 import com.songly.shared.util.RelativeTime
 
-/**
- * Ekran powiadomień (Compose, natywny UI — §14): lista najnowszych zdarzeń
- * (lajki, komentarze, udostępnienia, zaproszenia, dołączenia do społeczności) z
- * paginacją. Nieprzeczytane wyróżnione i klikalne (oznacz jako przeczytane);
- * w pasku akcja „oznacz wszystkie". Stan z [NotificationsViewModel].
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
@@ -78,7 +72,6 @@ fun NotificationsScreen(
 		viewModel.refresh()
 	}
 
-	// Infinite scroll — jak w feedzie: doczytaj przy zbliżeniu do końca listy.
 	val shouldLoadMore by remember {
 		derivedStateOf {
 			val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -96,8 +89,6 @@ fun NotificationsScreen(
 			ScreenTopBar(
 				title = if (state.hasUnread) "Powiadomienia (${state.unreadCount})" else "Powiadomienia",
 				navigationIcon = { BackButton(onBack) },
-				// Ikony zamiast napisów: dwa przyciski tekstowe obok tytułu z licznikiem
-				// ściskały go na wąskich telefonach do „Powiad…".
 				actions = {
 					if (state.hasUnread) {
 						IconButton(onClick = viewModel::markAllRead) {
@@ -166,9 +157,6 @@ fun NotificationsScreen(
 private fun NotificationCard(notification: Notification, onClick: () -> Unit, onOpenProfile: () -> Unit) {
 	val unread = notification.isUnread
 	Card(
-		// Klikalna, gdy jest co zrobić: oznaczyć jako przeczytane albo otworzyć cel.
-		// Nieprzeczytane wyróżnia tylko kolor tła i kropka — czytnik ekranu dostaje to
-		// samo słowem.
 		modifier = Modifier
 			.fillMaxWidth()
 			.clickable(enabled = unread || targetOf(notification) != null, onClick = onClick)
@@ -185,9 +173,6 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 			horizontalArrangement = Arrangement.spacedBy(12.dp),
 		) {
 			if (isModerationDecision(notification)) {
-				// Decyzję podpisuje społeczność, nie moderator (ADR 0015, 0045): backend nie
-				// wydaje tu nazwy ani awatara, a przejście do profilu po `actorId` i tak
-				// wskazałoby osobę.
 				Box(
 					modifier = Modifier
 						.size(40.dp)
@@ -202,7 +187,6 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 					)
 				}
 			} else {
-				// Avatar aktora prowadzi do jego profilu (osobny tap-target nad kliknięciem karty).
 				Avatar(
 					displayName = notification.actorDisplayName ?: "?",
 					avatarUrl = notification.actorAvatarUrl,
@@ -226,7 +210,6 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 					modifier = Modifier.padding(top = 2.dp),
 				)
 			}
-			// Kropka „nieprzeczytane".
 			if (unread) {
 				Box(
 					modifier = Modifier
@@ -239,25 +222,12 @@ private fun NotificationCard(notification: Notification, onClick: () -> Unit, on
 	}
 }
 
-/** Dokąd prowadzi powiadomienie — `resourceId` znaczy co innego zależnie od typu. */
 internal sealed interface NotificationTarget {
 	data class Post(val postId: String) : NotificationTarget
 	data class Community(val communityId: String) : NotificationTarget
 	data object Friends : NotificationTarget
 }
 
-/**
- * Cel powiadomienia według tego, co backend wkłada do `resourceId`: post przy
- * lajku, komentarzu, udostępnieniu i zgłoszeniach; społeczność przy członkostwie,
- * banach, odwołaniach i rolach. Otrzymane zaproszenie prowadzi do ekranu
- * znajomych, bo tylko tam da się je przyjąć albo odrzucić; przyjęte — do profilu
- * nadawcy (awatar), bo nie ma tu już nic do zrobienia.
- *
- * `POST_REPORT_DISMISSED` i `COMMUNITY_POST_REMOVED` celowo nie prowadzą do
- * posta: pierwszy dotyczy cudzego posta, który zostaje, ale zgłaszający niczego
- * tam już nie zrobi, a drugi — posta, którego już nie ma. Usunięty komentarz
- * prowadzi za to do posta, bo post został (backend: zasobem jest post).
- */
 internal fun targetOf(notification: Notification): NotificationTarget? = when (notification.type) {
 	"POST_LIKED", "POST_COMMENTED", "POST_SHARED", "COMMUNITY_POST_REPORTED", "COMMUNITY_COMMENT_REMOVED" ->
 		NotificationTarget.Post(notification.resourceId)
@@ -272,12 +242,6 @@ internal fun targetOf(notification: Notification): NotificationTarget? = when (n
 	else -> null
 }
 
-/**
- * Typy, w których aktorem jest moderator albo administrator rozstrzygający w
- * sprawie adresata — kopia `NotificationType.DECIDED_BY_MODERATION` z backendu.
- * Zmiana roli moderatora jest poza zbiorem celowo: tam aktorem jest właściciel
- * społeczności i to zwykłe powiadomienie z nazwą (ADR 0016).
- */
 internal val MODERATION_DECISIONS = setOf(
 	"COMMUNITY_BANNED", "COMMUNITY_POST_REMOVED", "COMMUNITY_COMMENT_REMOVED", "POST_REPORT_DISMISSED",
 	"BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED",
@@ -285,11 +249,8 @@ internal val MODERATION_DECISIONS = setOf(
 
 internal fun isModerationDecision(notification: Notification): Boolean = notification.type in MODERATION_DECISIONS
 
-/** Mapuje typ powiadomienia + nazwę autora na zdanie po polsku. */
 internal fun notificationText(notification: Notification): String {
 	val actor = notification.actorDisplayName ?: "Ktoś"
-	// Decyzje moderacyjne podpisujemy funkcją, nie osobą: ban należy do
-	// społeczności, a nie do moderatora (ADR 0015).
 	return when (notification.type) {
 		"POST_LIKED" -> "$actor polubił(a) Twój post"
 		"POST_COMMENTED" -> "$actor skomentował(a) Twój post"

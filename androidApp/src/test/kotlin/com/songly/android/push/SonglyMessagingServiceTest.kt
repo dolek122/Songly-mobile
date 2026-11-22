@@ -16,10 +16,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/**
- * Push z samym `data` (backend ADR 0040) — aplikacja buduje powiadomienie sama,
- * więc to ona odpowiada za treść i za to, co otwiera stuknięcie.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestSonglyApplication::class)
 class SonglyMessagingServiceTest {
@@ -48,7 +44,6 @@ class SonglyMessagingServiceTest {
 		assertEquals(MainActivity.ACTION_OPEN_NOTIFICATIONS, tapIntent.action)
 	}
 
-	/** Bez zgody (Android 13+) nie ma czego pokazywać — i nie może się wywrócić. */
 	@Test
 	fun withoutPermissionNothingIsPosted() {
 		shadowOf(RuntimeEnvironment.getApplication()).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)

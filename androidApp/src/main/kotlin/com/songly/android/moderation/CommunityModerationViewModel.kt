@@ -25,18 +25,10 @@ data class CommunityModerationUiState(
 	val reports: PagedSection<PostReport> = PagedSection(),
 	val bans: PagedSection<CommunityBan> = PagedSection(),
 	val log: PagedSection<ModerationLogEntry> = PagedSection(),
-	/** Pozycja (zgłoszenie albo ban), na której trwa akcja — blokuje jej przyciski. */
 	val busyId: String? = null,
 	val statusMessage: String? = null,
 )
 
-/**
- * Narzędzia moderacji jednej społeczności (właściciel i moderatorzy, ADR 0011):
- * kolejka zgłoszeń, bany z odwołaniami i dziennik decyzji (ADR 0024).
- *
- * Każda sekcja ładuje się przy pierwszym wejściu, nie wszystkie naraz — moderator
- * otwiera zwykle kolejkę, a dziennik bywa długi.
- */
 class CommunityModerationViewModel(
 	private val client: SonglyApiClient,
 	private val communityId: String,
@@ -84,23 +76,16 @@ class CommunityModerationViewModel(
 		}
 	}
 
-	/**
-	 * Uwzględnia zgłoszenie, czyli usuwa post. Znikają wtedy **wszystkie**
-	 * zgłoszenia tego posta (kaskada na backendzie), a każdy zgłaszający dostaje
-	 * zapis trafienia (ADR 0027).
-	 */
 	fun removePost(report: PostReport) = act(report.id, success = "Usunięto post") {
 		client.deletePost(report.post.id)
 		uiState = uiState.copy(reports = uiState.reports.removeIf { it.post.id == report.post.id })
 	}
 
-	/** Odrzuca zgłoszenie — post zostaje, zgłaszający dostaje powiadomienie. */
 	fun dismiss(report: PostReport) = act(report.id, success = "Odrzucono zgłoszenie") {
 		client.dismissReport(communityId, report.id)
 		uiState = uiState.copy(reports = uiState.reports.removeIf { it.id == report.id })
 	}
 
-	/** Zdejmuje ban. Przy oczekującym odwołaniu to jest jego uznanie (ADR 0017). */
 	fun unban(ban: CommunityBan) = act(ban.userId, success = if (ban.hasPendingAppeal) "Uznano odwołanie" else "Zdjęto ban") {
 		client.unbanMember(communityId, ban.userId)
 		uiState = uiState.copy(bans = uiState.bans.removeIf { it.userId == ban.userId })
@@ -115,7 +100,6 @@ class CommunityModerationViewModel(
 		)
 	}
 
-	/** Po banie z ekranu członków — lista banów przeładuje się przy następnym wejściu. */
 	fun invalidateBans() {
 		loaded -= ModerationSection.BANS
 		loaded -= ModerationSection.LOG

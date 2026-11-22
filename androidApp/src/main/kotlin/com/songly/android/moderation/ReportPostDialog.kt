@@ -19,7 +19,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.songly.shared.model.REPORT_REASONS
 
-/** Dialog zgłoszenia posta. [onReported] po przyjęciu zgłoszenia przez serwer. */
 @Composable
 fun ReportPostDialog(viewModel: ReportPostViewModel, onReported: () -> Unit, onDismiss: () -> Unit) {
 	val state = viewModel.uiState

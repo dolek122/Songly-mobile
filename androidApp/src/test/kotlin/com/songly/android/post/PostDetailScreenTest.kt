@@ -80,10 +80,6 @@ class PostDetailScreenTest {
 		compose.waitUntil(timeoutMillis = 5_000) { backend.callCount(HttpMethod.Put, "/api/v1/posts/p1/likes") == 1 }
 	}
 
-	/**
-	 * Post usunięty albo autora, który nas zablokował — backend zwraca to samo 404,
-	 * a powiadomienie o nim wciąż leży w skrzynce. Ekran ma to powiedzieć po ludzku.
-	 */
 	@Test
 	fun unavailablePostShowsReadableMessage() {
 		val backend = FakeBackend().apply {

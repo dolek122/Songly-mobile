@@ -46,11 +46,6 @@ import com.songly.android.ui.FilterPill
 import com.songly.android.ui.ScreenTopBar
 import com.songly.android.ui.SectionTitle
 
-/**
- * Ekran profilu (Compose, natywny UI — §14): edycja danych profilowych i wybór
- * ulubionych gatunków. Stan z [ProfileViewModel]; dane z modułu `profile`
- * backendu przez `shared`.
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ProfileScreen(
@@ -62,8 +57,6 @@ fun ProfileScreen(
 	val state = viewModel.uiState
 	val context = LocalContext.current
 
-	// Systemowy wybór zdjęć — bez uprawnień do całej galerii; aplikacja dostaje
-	// dostęp tylko do jednego wskazanego pliku.
 	val pickAvatar = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
 		if (uri != null) viewModel.changeAvatar { ImagePreparer.prepare(context, uri) }
 	}
@@ -72,12 +65,10 @@ fun ProfileScreen(
 		viewModel.load()
 	}
 
-	// Po usunięciu konta sesja jest już wyczyszczona — wróć do ekranu logowania.
 	LaunchedEffect(state.accountDeleted) {
 		if (state.accountDeleted) onAccountDeleted()
 	}
 
-	// Zmiana hasła zakończyła wszystkie sesje, łącznie z tą — tak samo do logowania.
 	LaunchedEffect(state.passwordChanged) {
 		if (state.passwordChanged) onPasswordChanged()
 	}
@@ -242,7 +233,6 @@ fun ProfileScreen(
 	}
 }
 
-/** Dialog potwierdzenia usunięcia konta — wymusza ponowne podanie hasła (§9). */
 @Composable
 private fun DeleteAccountDialog(
 	password: String,

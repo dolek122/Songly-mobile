@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
 
-/** Stan ekranu szczegółów społeczności: nagłówek + lista członków (paginacja). */
 data class CommunityDetailUiState(
 	val isLoading: Boolean = true,
 	val errorMessage: String? = null,
@@ -25,9 +24,8 @@ data class CommunityDetailUiState(
 	val members: List<CommunityMember> = emptyList(),
 	val isLoadingMoreMembers: Boolean = false,
 	val membersEndReached: Boolean = false,
-	val isBusy: Boolean = false, // dołączanie/opuszczanie w toku
+	val isBusy: Boolean = false,
 	val statusMessage: String? = null,
-	// Zarządzanie właścicielskie: edycja i usuwanie.
 	val showEditDialog: Boolean = false,
 	val editName: String = "",
 	val editDescription: String = "",
@@ -36,22 +34,18 @@ data class CommunityDetailUiState(
 	val showDeleteDialog: Boolean = false,
 	val isDeleting: Boolean = false,
 	val deleteError: String? = null,
-	val deleted: Boolean = false, // po usunięciu — ekran wraca do listy
-	// Posty: mój status (ban z powodem) i pole publikacji.
+	val deleted: Boolean = false,
 	val selectedTab: CommunityTab = CommunityTab.POSTS,
 	val membership: MembershipStatus? = null,
 	val draft: String = "",
 	val isPublishing: Boolean = false,
 	val publishError: String? = null,
-	// Ban członka (dialog): kogo, za co i na ile (null = bezterminowo).
 	val banTarget: CommunityMember? = null,
 	val banReason: String = "",
 	val banDays: Int? = null,
 	val isBanning: Boolean = false,
 	val banError: String? = null,
-	/** Członek, na którym trwa zmiana roli — blokuje jego przyciski. */
 	val roleChangeUserId: String? = null,
-	// Moje odwołanie od bana.
 	val appealText: String = "",
 	val isAppealing: Boolean = false,
 	val appealError: String? = null,
@@ -62,15 +56,12 @@ data class CommunityDetailUiState(
 	val canBan: Boolean
 		get() = banTarget != null && banReason.length <= 500 && !isBanning
 
-	// Backend: BanAppealRequest.text max 1000 znaków.
 	val canAppeal: Boolean
 		get() = appealText.isNotBlank() && appealText.length <= 1000 && !isAppealing
 
-	// Backend: nazwa @NotBlank, max 100 znaków.
 	val canSaveEdit: Boolean
 		get() = editName.isNotBlank() && editName.length <= 100 && !isSaving
 
-	// Publikują wyłącznie członkowie bez aktywnego bana (backend §8); czytać może każdy.
 	val canWrite: Boolean
 		get() = community?.isMember == true && membership?.isBanned != true
 
@@ -80,14 +71,8 @@ data class CommunityDetailUiState(
 
 enum class CommunityTab { POSTS, MEMBERS, MODERATION }
 
-/** Opcje terminu bana w dialogu; `null` = bezterminowo (ADR 0014). */
 val BAN_DURATIONS: List<Int?> = listOf(1, 7, 30, null)
 
-/**
- * Logika ekranu szczegółów jednej społeczności (moduł community przez `shared`).
- * Ładuje dane społeczności i pierwszą stronę członków; dołączanie/opuszczanie
- * odświeża oba (zmienia się i `myRole`, i lista/licznik członków).
- */
 class CommunityDetailViewModel(
 	private val client: SonglyApiClient,
 	private val communityId: String,
@@ -131,7 +116,6 @@ class CommunityDetailViewModel(
 					membersEndReached = page.last,
 				)
 			} catch (e: Exception) {
-				// Doczytywanie członków best-effort — po cichu przerywamy, lista zostaje.
 				uiState = uiState.copy(isLoadingMoreMembers = false)
 			} finally {
 				loadingMembers = false
@@ -139,7 +123,6 @@ class CommunityDetailViewModel(
 		}
 	}
 
-	/** Dołącza lub opuszcza; po sukcesie przeładowuje szczegóły i członków. */
 	fun toggleMembership() {
 		val community = uiState.community ?: return
 		if (uiState.isBusy) return
@@ -161,8 +144,6 @@ class CommunityDetailViewModel(
 			}
 		}
 	}
-
-	// --- Zarządzanie właścicielskie (edycja / usuwanie) ---
 
 	fun openEditDialog() {
 		val community = uiState.community ?: return
@@ -236,8 +217,6 @@ class CommunityDetailViewModel(
 		else -> "Brak połączenia z serwerem."
 	}
 
-	// --- Posty ---
-
 	fun selectTab(tab: CommunityTab) {
 		uiState = uiState.copy(selectedTab = tab)
 	}
@@ -246,10 +225,6 @@ class CommunityDetailViewModel(
 		uiState = uiState.copy(draft = value, publishError = null)
 	}
 
-	/**
-	 * Publikuje post w społeczności. Nowy post oddajemy przez [onPublished], bo
-	 * listę postów trzyma osobny [com.songly.android.post.PostListViewModel].
-	 */
 	fun publish(onPublished: (Post) -> Unit) {
 		if (!uiState.canPublish) return
 		uiState = uiState.copy(isPublishing = true, publishError = null)
@@ -260,15 +235,12 @@ class CommunityDetailViewModel(
 				onPublished(post)
 			} catch (e: SonglyApiException) {
 				uiState = uiState.copy(isPublishing = false, publishError = errorText(e, "opublikować posta"))
-				// Ban mógł zapaść, gdy ekran był otwarty — odśwież status, żeby schować pole.
 				if (e.error?.code == "BANNED_FROM_COMMUNITY") refreshMembership()
 			} catch (e: Exception) {
 				uiState = uiState.copy(isPublishing = false, publishError = errorText(e, "opublikować posta"))
 			}
 		}
 	}
-
-	// --- Moderacja: ban członka i role ---
 
 	fun openBanDialog(member: CommunityMember) {
 		uiState = uiState.copy(banTarget = member, banReason = "", banDays = 7, banError = null)
@@ -287,10 +259,6 @@ class CommunityDetailViewModel(
 		uiState = uiState.copy(banDays = days, banError = null)
 	}
 
-	/**
-	 * Banuje i usuwa z listy członków (ban zabiera członkostwo). Powód zobaczy
-	 * zbanowany w aplikacji — nie jest prywatną notatką moderacji (ADR 0015).
-	 */
 	fun confirmBan(onBanned: () -> Unit = {}) {
 		val target = uiState.banTarget ?: return
 		if (!uiState.canBan) return
@@ -307,7 +275,6 @@ class CommunityDetailViewModel(
 		}
 	}
 
-	/** Nadaje albo odbiera rolę moderatora — wyłącznie właściciel (ADR 0011). */
 	fun toggleModerator(member: CommunityMember) {
 		if (uiState.roleChangeUserId != null) return
 		val role = if (member.isModerator) "MEMBER" else "MODERATOR"
@@ -330,19 +297,15 @@ class CommunityDetailViewModel(
 		}
 	}
 
-	// --- Moje odwołanie od bana (ADR 0017, 0028) ---
-
 	fun onAppealTextChange(value: String) {
 		uiState = uiState.copy(appealText = value, appealError = null)
 	}
 
-	/** Jedno odwołanie na ban — po wysłaniu formularz znika, zostaje jego status. */
 	fun submitAppeal() {
 		if (!uiState.canAppeal) return
 		appealAction { client.appealBan(communityId, uiState.appealText.trim()) }
 	}
 
-	/** Odrzucone odwołanie można raz przekazać administracji platformy. */
 	fun escalateAppeal() {
 		if (uiState.isAppealing) return
 		appealAction { client.escalateBanAppeal(communityId) }
@@ -362,7 +325,6 @@ class CommunityDetailViewModel(
 	}
 
 	private suspend fun refreshMembership() {
-		// Status to dodatek do ekranu: jego awaria nie może zasłonić społeczności.
 		val membership = runCatching { client.membershipStatus(communityId) }.getOrNull()
 		uiState = uiState.copy(membership = membership)
 	}

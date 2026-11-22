@@ -13,21 +13,18 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
 
-/** Która lista społeczności jest pokazywana. */
 enum class CommunitiesTab { ALL, MINE }
 
-/** Stan ekranu listy społeczności (paginacja) + dialog tworzenia. */
 data class CommunitiesUiState(
 	val tab: CommunitiesTab = CommunitiesTab.ALL,
 	val isLoading: Boolean = true,
 	val isLoadingMore: Boolean = false,
-	val isRefreshing: Boolean = false, // odświeżanie gestem (lista zostaje na ekranie)
+	val isRefreshing: Boolean = false,
 	val communities: List<Community> = emptyList(),
 	val errorMessage: String? = null,
 	val appendErrorMessage: String? = null,
 	val endReached: Boolean = false,
 	val statusMessage: String? = null,
-	// Tworzenie nowej społeczności.
 	val showCreateDialog: Boolean = false,
 	val createName: String = "",
 	val createDescription: String = "",
@@ -37,17 +34,10 @@ data class CommunitiesUiState(
 	val isEmpty: Boolean
 		get() = !isLoading && errorMessage == null && communities.isEmpty()
 
-	// Backend: nazwa @NotBlank, max 100 znaków.
 	val canCreate: Boolean
 		get() = createName.isNotBlank() && createName.length <= 100 && !isCreating
 }
 
-/**
- * Logika ekranu społeczności (moduł community backendu przez `shared`). Lista
- * paginowana jak feed; dołączanie/opuszczanie jest optymistyczne (jak lajki) —
- * aktualizuje `myRole` i licznik członków od razu, a przy błędzie cofa zmianę.
- * Nowa społeczność ląduje na górze listy.
- */
 class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(CommunitiesUiState())
@@ -63,11 +53,6 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loadPage(reset = true)
 	}
 
-	/**
-	 * Odświeżenie gestem: to samo żądanie co [refresh], ale bez chowania listy za
-	 * spinnerem — przy pull-to-refresh użytkownik ma widzieć zawartość, którą
-	 * właśnie ściąga w dół.
-	 */
 	fun pullToRefresh() {
 		if (loading) return
 		nextPage = 0
@@ -75,7 +60,6 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loadPage(reset = true)
 	}
 
-	/** Przełącza zakładkę (Wszystkie / Moje) i ładuje odpowiednią listę od nowa. */
 	fun selectTab(tab: CommunitiesTab) {
 		if (tab == uiState.tab || loading) return
 		nextPage = 0
@@ -103,11 +87,6 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loadPage(reset = false)
 	}
 
-	/**
-	 * Dołącza/opuszcza optymistycznie; przy błędzie cofa cały stan listy. Na zakładce
-	 * „Moje" opuszczona społeczność znika z listy (nie jest już Twoja). Właściciel nie
-	 * może opuścić (serwer odrzuci).
-	 */
 	fun toggleMembership(community: Community) {
 		val join = !community.isMember
 		val snapshot = uiState.communities
@@ -116,14 +95,12 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 			try {
 				if (join) client.joinCommunity(community.id) else client.leaveCommunity(community.id)
 			} catch (e: Exception) {
-				// Rollback całej listy do stanu sprzed kliknięcia.
 				uiState = uiState.copy(communities = snapshot, statusMessage = membershipError(e, join))
 			}
 		}
 	}
 
 	private fun optimisticToggle(list: List<Community>, communityId: String, join: Boolean): List<Community> {
-		// Na „Moje" opuszczenie usuwa wiersz — po opuszczeniu społeczność nie jest już Twoja.
 		if (uiState.tab == CommunitiesTab.MINE && !join) {
 			return list.filterNot { it.id == communityId }
 		}
@@ -132,7 +109,6 @@ class CommunitiesViewModel(private val client: SonglyApiClient) : ViewModel() {
 				it
 			} else {
 				it.copy(
-					// Po dołączeniu jesteś MEMBER; po opuszczeniu przestajesz być członkiem.
 					myRole = if (join) "MEMBER" else null,
 					memberCount = (it.memberCount + if (join) 1 else -1).coerceAtLeast(0),
 				)

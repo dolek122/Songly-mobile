@@ -68,7 +68,6 @@ class GenreOnboardingTest {
 		var finished: Boolean? = null
 		show(backend, store) { finished = it }
 
-		// Backend przyjmuje tylko niepusty zbiór — bez wyboru nie ma czego zapisać.
 		compose.onNodeWithText("Wybierz co najmniej jeden").assertIsNotEnabled()
 		compose.onNodeWithText("Jazz").performClick()
 		compose.onNodeWithText("Pop").performClick()
@@ -81,7 +80,6 @@ class GenreOnboardingTest {
 		assertTrue(store.isDone("me-1"))
 	}
 
-	/** „Pomiń" to decyzja — zapamiętana, żeby nie pytać przy każdym logowaniu — ale niczego nie zapisuje. */
 	@Test
 	fun skipRemembersTheChoiceWithoutSavingGenres() {
 		val backend = backend()
@@ -104,8 +102,6 @@ class GenreOnboardingTest {
 		assertTrue(needsGenreOnboarding(backend(favorites = "[]").client(), store))
 		assertFalse(store.isDone("me-1"))
 
-		// Gatunki ustawione wcześniej (np. na innym telefonie): bez onboardingu i od razu
-		// zapamiętane, żeby kolejne starty nie pytały o nie serwera.
 		assertFalse(needsGenreOnboarding(backend(favorites = "[${genreJson("g-pop", "Pop")}]").client(), store))
 		assertTrue(store.isDone("me-1"))
 	}

@@ -14,15 +14,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Konto bez Spotify i bez ręcznego statusu dostawało z `GET /now-playing/me` 404
- * `PROVIDER_NOT_CONNECTED`. Traktowane jako błąd zasłaniało cały ekran
- * „Spróbuj ponownie" — razem z formularzem ręcznego statusu i przyciskiem
- * połączenia ze Spotify, czyli jedynymi drogami wyjścia z tego stanu.
- *
- * Backend od PR #66 odpowiada w tej sytuacji 204. Oba warianty muszą dawać pusty
- * status: stara instancja backendu może jeszcze działać, gdy klient już jest nowy.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class NowPlayingViewModelTest {
@@ -62,12 +53,6 @@ class NowPlayingViewModelTest {
 		assertNull(viewModel.uiState.status)
 	}
 
-	/**
-	 * To samo co wyżej, w wariancie obecnego backendu: 204 z pustym ciałem.
-	 * Sprawdza zachowanie, nie mechanizm — jawna gałąź 204 w kliencie nie jest
-	 * jedyną ochroną, bo Ktor 3 sam czyta puste ciało jako `null` dla typu
-	 * nullowalnego. Test pada, gdy którakolwiek droga zamieni 204 w błąd.
-	 */
 	@Test
 	fun noContentShowsEmptyStatusNotError() {
 		val backend = backend().apply {
@@ -95,11 +80,6 @@ class NowPlayingViewModelTest {
 		assertEquals("Wyczyszczono status", viewModel.uiState.statusMessage)
 	}
 
-	/**
-	 * Powrót z OAuth (backend ADR 0038, 0050): zgoda niesie bilet, który dopiero
-	 * dokończenie zamienia na połączenie. Ekran wisiał pod przeglądarką ze starym
-	 * statusem, więc wynik musi go też odświeżyć, a nie tylko pokazać komunikat.
-	 */
 	@Test
 	fun authorizedResultCompletesConnectAndRefreshesStatus() {
 		val backend = backend().apply {
@@ -119,10 +99,6 @@ class NowPlayingViewModelTest {
 		assertEquals("Połączono ze Spotify", viewModel.uiState.statusMessage)
 	}
 
-	/**
-	 * Link autoryzacji podesłany przez kogoś innego: backend odrzuca bilet z
-	 * cudzego łączenia. Użytkownik musi wiedzieć, że nic się nie połączyło.
-	 */
 	@Test
 	fun foreignTicketIsReportedAsNotConnected() {
 		val backend = backend().apply {
@@ -141,7 +117,6 @@ class NowPlayingViewModelTest {
 		)
 	}
 
-	/** Odmowa zgody to decyzja użytkownika, nie awaria — bez słowa o błędzie. */
 	@Test
 	fun spotifyDenialAndFailureGetDistinctMessages() {
 		val viewModel = NowPlayingViewModel(backend().client())

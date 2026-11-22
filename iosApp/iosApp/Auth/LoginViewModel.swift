@@ -1,7 +1,6 @@
 import Foundation
 import Shared
 
-/// Logika ekranu logowania — odpowiednik `LoginViewModel` z Androida.
 @MainActor
 final class LoginViewModel: ObservableObject {
 
@@ -28,7 +27,6 @@ final class LoginViewModel: ObservableObject {
 		email.trimmingCharacters(in: .whitespacesAndNewlines)
 	}
 
-	/// Zwraca `true`, gdy sesja powstała — tokeny zapisał już klient w `shared`.
 	func submit() async -> Bool {
 		guard canSubmit else { return false }
 		isSubmitting = true

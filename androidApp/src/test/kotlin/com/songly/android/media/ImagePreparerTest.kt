@@ -14,10 +14,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/**
- * Prawdziwe dekodowanie i kodowanie bitmap (natywna grafika Robolectrica) — atrapa
- * nie powiedziałaby nic o tym, czy wynik zmieści się w limicie backendu.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -38,14 +34,12 @@ class ImagePreparerTest {
 		val prepared = runBlocking { ImagePreparer.prepare(context, pngFile(4000, 3000)) }
 
 		assertEquals("image/jpeg", prepared.contentType)
-		// JPEG zaczyna się od FF D8 — backend rozpoznaje format po tych bajtach.
 		assertEquals(0xFF.toByte(), prepared.bytes[0])
 		assertEquals(0xD8.toByte(), prepared.bytes[1])
 		assertTrue("limit backendu to 5 MB", prepared.bytes.size < 5 * 1024 * 1024)
 
 		val decoded = BitmapFactory.decodeByteArray(prepared.bytes, 0, prepared.bytes.size)
 		assertEquals(1600, maxOf(decoded.width, decoded.height))
-		// Proporcje zachowane (4:3).
 		assertEquals(1200, minOf(decoded.width, decoded.height))
 	}
 

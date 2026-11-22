@@ -16,12 +16,10 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
 
-// Limit backendu na jedno zapytanie o nazwy (ADR 0036).
 private const val MAX_NAME_LOOKUP = 100
 
 enum class AdminSection { SUSPENSIONS, ESCALATIONS, ADMINS, ANALYTICS, LOG }
 
-/** Okna analityki do wyboru (backend przyjmuje dowolną liczbę dni). */
 val ANALYTICS_WINDOWS = listOf(7, 30, 90)
 
 data class AdminUiState(
@@ -35,19 +33,12 @@ data class AdminUiState(
 	val analyticsDays: Int = 30,
 	val analytics: AnalyticsSummary? = null,
 	val log: PagedSection<ModerationLogEntry> = PagedSection(),
-	/** Zawężenie dziennika do jednej osoby (np. otwarte z jej profilu). */
 	val logUserId: String? = null,
-	/** Nazwy wyświetlane po id — wykazy admina niosą same identyfikatory. */
 	val names: Map<String, String> = emptyMap(),
 	val currentUserId: String? = null,
 	val busyId: String? = null,
 )
 
-/**
- * Panel administratora platformy. Wszystko, co tu jest, backend gatuje rolą
- * czytaną na żywo (ADR 0006) — więc gdyby ktoś odebrał nam rolę w trakcie, każda
- * akcja po prostu dostanie 403, a nie zadziała na nieaktualnych uprawnieniach.
- */
 class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(AdminUiState())
@@ -58,7 +49,6 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 		refresh()
 	}
 
-	/** Dziennik jednej osoby — wejście z jej profilu. */
 	fun showLogFor(userId: String?) {
 		uiState = uiState.copy(section = AdminSection.LOG, logUserId = userId, log = PagedSection(), statusMessage = null)
 		refresh()
@@ -77,9 +67,6 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 				if (uiState.currentUserId == null) {
 					uiState = uiState.copy(currentUserId = runCatching { client.currentUserId() }.getOrNull())
 				}
-				// Najpierw dane, potem nazwy: resolveNames zapisuje stan, więc nie może
-				// siedzieć wewnątrz wyrażenia, którego wynik przypisujemy później —
-				// przypisanie nadpisałoby świeżo pobrane nazwy.
 				when (section) {
 					AdminSection.SUSPENSIONS -> {
 						val list = client.suspensions()
@@ -124,9 +111,6 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	// --- Zawieszenia (ADR 0022–0023) ---
-
-	/** Zdejmuje zawieszenie. Przy oczekującym odwołaniu to jest jego uznanie. */
 	fun lift(account: SuspendedAccount) = act(
 		account.userId,
 		success = if (account.hasPendingAppeal) "Uznano odwołanie, zawieszenie zdjęte" else "Zdjęto zawieszenie",
@@ -144,8 +128,6 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 		)
 	}
 
-	// --- Eskalacje banów (ADR 0028) ---
-
 	fun overturn(appeal: EscalatedAppeal) = act(appeal.userId + appeal.communityId, success = "Uchylono ban") {
 		client.overturnBan(appeal.communityId, appeal.userId)
 		removeEscalation(appeal)
@@ -156,9 +138,6 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 		removeEscalation(appeal)
 	}
 
-	// --- Administratorzy (ADR 0021) ---
-
-	/** Nie sobie: to niezmiennik „zawsze zostaje co najmniej jeden admin". */
 	fun revokeAdmin(userId: String) = act(userId, success = "Odebrano rolę administratora") {
 		client.revokeAdmin(userId)
 		uiState = uiState.copy(adminIds = uiState.adminIds - userId)
@@ -170,11 +149,6 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 		)
 	}
 
-	/**
-	 * Nazwy z `GET /admin/profiles` (ADR 0036) — wsadowo i także dla zawieszonych,
-	 * których zwykły profil to 404 (ADR 0026). Brak nazwy (konto usunięte, błąd
-	 * sieci) nie jest błędem ekranu: UI pokazuje wtedy skrócony identyfikator.
-	 */
 	private suspend fun resolveNames(ids: List<String>) {
 		val missing = ids.distinct().filterNot { it in uiState.names }
 		if (missing.isEmpty()) return

@@ -96,60 +96,25 @@ import com.songly.shared.util.AuthLink
 import com.songly.shared.util.SpotifyConnectResult
 import kotlinx.coroutines.launch
 
-/**
- * Punkt wejścia aplikacji Androida. UI natywny (Jetpack Compose, §14); logika
- * sieci i sesji żyje w module `shared` (KMP), współdzielona z iOS.
- *
- * [SonglyApiClient] należy do [SonglyApplication], nie do Activity — Activity ginie
- * przy każdym obrocie ekranu, a ViewModele, które trzymają klienta, nie.
- *
- * Stan nawigacji jest w `rememberSaveable`: zwykłe `remember` znika razem z
- * Activity, więc obrót ekranu wyrzucał z dowolnego miejsca z powrotem na feed.
- *
- * Aplikacja rysuje się od krawędzi do krawędzi na każdej wersji Androida, nie
- * tylko na 15+, gdzie system to wymusza — inaczej ten sam ekran wyglądałby inaczej
- * na różnych telefonach, a klawiatura na Androidzie 15 zasłaniała pola tekstowe
- * (tam `adjustResize` już niczego nie zmniejsza, odstęp liczy sam Compose).
- */
 class MainActivity : ComponentActivity() {
 
-	// Link z maila czekający na obsłużenie (ADR 0037 backendu). Trzymany w Activity,
-	// nie w kompozycji, bo przy otwartej aplikacji przychodzi przez onNewIntent.
 	private var pendingAuthLink by mutableStateOf<AuthLink?>(null)
 
-	// Wynik OAuth Spotify z linku powrotnego (ADR 0038 backendu), z tych samych
-	// powodów trzymany w Activity co link z maila.
 	private var pendingSpotifyResult by mutableStateOf<SpotifyConnectResult?>(null)
 
-	// Stuknięcie w push (ADR 0040 backendu) — otwiera skrzynkę powiadomień.
 	private var pendingOpenNotifications by mutableStateOf(false)
 
 	override fun onCreate(savedInstanceState: Bundle?) {
-		// Manifest daje oknu motyw z logo w tle, żeby start na Androidzie 8–11 (bez
-		// systemowego ekranu powitalnego) nie był pustym czarnym prostokątem. Zanim
-		// cokolwiek narysujemy, wracamy do zwykłego motywu — inaczej logo
-		// prześwitywałoby zza każdego przezroczystego ekranu.
 		setTheme(R.style.Theme_Songly)
-		// Ciemne paski z jasnymi ikonami niezależnie od trybu systemu: aplikacja jest
-		// zawsze ciemna (SonglyPalette), a wariant „auto" dałby czarne ikony na czerni.
 		enableEdgeToEdge(
 			statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
 			navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
 		)
 		super.onCreate(savedInstanceState)
-		// Po obrocie albo odtworzeniu procesu Activity dostaje ten sam intent jeszcze
-		// raz — obsłużony już link nie może potwierdzać adresu drugi raz.
 		if (savedInstanceState == null) takeLink(intent)
 		val app = application as SonglyApplication
 		setContent {
 			SonglyTheme {
-				// Zielona poświata pod całą aplikacją: ekrany (zakładki i te otwierane nad
-				// nimi) mają przezroczyste tła, więc wszystkie stoją na tym samym tle.
-				//
-				// imePadding u samej góry drzewa: klawiatura zabiera miejsce wszystkim
-				// ekranom naraz, a Scaffoldy niżej widzą wcięcie paska nawigacji jako już
-				// zużyte (nie dokładają drugiego odstępu nad klawiaturą). Kolor treści
-				// wprost, bo przy przezroczystym Surface domyślny byłby czarny.
 				Surface(
 					modifier = Modifier.fillMaxSize().songlyBackdrop().imePadding(),
 					color = androidx.compose.ui.graphics.Color.Transparent,
@@ -170,8 +135,6 @@ class MainActivity : ComponentActivity() {
 		}
 	}
 
-	// launchMode="singleTask": link otwarty przy działającej aplikacji trafia tutaj,
-	// zamiast tworzyć drugą kopię aplikacji nad pierwszą.
 	override fun onNewIntent(intent: Intent) {
 		super.onNewIntent(intent)
 		takeLink(intent)
@@ -188,7 +151,6 @@ class MainActivity : ComponentActivity() {
 	}
 
 	companion object {
-		/** Akcja intencji z pusha — nie jest w manifeście, bo wysyła ją wyłącznie nasz PendingIntent. */
 		const val ACTION_OPEN_NOTIFICATIONS = "com.songly.android.OPEN_NOTIFICATIONS"
 	}
 }
@@ -204,10 +166,7 @@ private fun AppRoot(
 	openNotifications: Boolean,
 	onOpenNotificationsHandled: () -> Unit,
 ) {
-	// null = jeszcze sprawdzamy zapisaną sesję (Keystore, I/O poza głównym wątkiem).
 	var loggedIn by rememberSaveable { mutableStateOf<Boolean?>(null) }
-	// Powód powrotu do logowania (np. zmiana hasła odwołała sesję) — bez niego
-	// użytkownik zostałby nagle wylogowany bez słowa wyjaśnienia.
 	var authNotice by rememberSaveable { mutableStateOf<String?>(null) }
 	val scope = rememberCoroutineScope()
 
@@ -215,7 +174,6 @@ private fun AppRoot(
 		loggedIn = client.isLoggedIn()
 	}
 
-	// Każde zalogowanie i wylogowanie to nowe pokolenie ViewModeli (SessionViewModels).
 	var generation by rememberSaveable { mutableStateOf(0) }
 	val changeLoggedIn: (Boolean) -> Unit = { value ->
 		if (value != loggedIn) generation++
@@ -231,7 +189,6 @@ private fun AppRoot(
 			onAuthNotice = { authNotice = it },
 			onLoggedInChange = changeLoggedIn,
 			onLogoutForLink = {
-				// Link zostaje oczekujący — po wylogowaniu obsłuży go AuthNav.
 				scope.launch {
 					client.logout()
 					authNotice = null
@@ -264,8 +221,6 @@ private fun AuthOrApp(
 	openNotifications: Boolean,
 	onOpenNotificationsHandled: () -> Unit,
 ) {
-	// Wynik łączenia Spotify bez sesji nie ma już czego dotyczyć — sesja, która
-	// zaczęła OAuth, zdążyła się skończyć. To samo ze stuknięciem w push.
 	if (loggedIn == false && spotifyResult != null) {
 		LaunchedEffect(spotifyResult) { onSpotifyResultHandled() }
 	}
@@ -292,8 +247,6 @@ private fun AuthOrApp(
 			}
 		}
 
-		// Ekrany logowania nie mają Scaffolda, więc odstęp od pasków systemu dają sobie
-		// same; poświata z korzenia rysuje się pod paskiem stanu.
 		false -> Box(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
 			AuthNav(
 				client = client,
@@ -307,12 +260,6 @@ private fun AuthOrApp(
 	}
 }
 
-/**
- * Link z maila przy zalogowanej sesji. Oba linki dotyczą konta, do którego trzeba
- * się dopiero dostać (nowego albo z zapomnianym hasłem), więc wymagają wylogowania —
- * ale wylogowanie bez pytania zabrałoby komuś sesję przez przypadkowe kliknięcie
- * w starego maila, a zignorowanie linku wyglądałoby jak awaria.
- */
 @Composable
 private fun LinkWhileLoggedInDialog(link: AuthLink, onLogout: () -> Unit, onDismiss: () -> Unit) {
 	val purpose = when (link) {
@@ -330,11 +277,6 @@ private fun LinkWhileLoggedInDialog(link: AuthLink, onLogout: () -> Unit, onDism
 
 private enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
 
-/**
- * Nawigacja przed zalogowaniem: logowanie, rejestracja i reset hasła. Rejestracja
- * i logowanie po sukcesie wywołują [onAuthenticated] (sesja jest już założona w
- * `shared`); reset hasła wraca do logowania, bo backend nie wydaje po nim sesji.
- */
 @Composable
 private fun AuthNav(
 	client: SonglyApiClient,
@@ -345,13 +287,9 @@ private fun AuthNav(
 	onAuthLinkHandled: () -> Unit,
 ) {
 	var screen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
-	// Każde wejście w reset dostaje świeży ViewModel — zcache'owany pamiętałby
-	// „hasło ustawione" i od razu wyrzucał z ekranu przy kolejnej próbie.
 	var forgotAttempt by rememberSaveable { mutableStateOf(0) }
 	val backToLogin = { screen = AuthScreen.LOGIN }
 
-	// Link z maila najpierw przełącza ekran; sam token przekazuje ekranowi docelowemu
-	// jego własny efekt niżej, kiedy jego ViewModel już istnieje.
 	LaunchedEffect(authLink) {
 		when (authLink) {
 			is AuthLink.VerifyEmail -> {
@@ -361,9 +299,6 @@ private fun AuthNav(
 
 			is AuthLink.ResetPassword -> {
 				onNotice(null)
-				// Nowy ViewModel tylko przy wejściu na ekran. Gdyby reset był już otwarty,
-				// zmiana klucza w tej samej klatce oddałaby token staremu ViewModelowi,
-				// który zaraz potem zostałby podmieniony na pusty.
 				if (screen != AuthScreen.FORGOT_PASSWORD) {
 					forgotAttempt++
 					screen = AuthScreen.FORGOT_PASSWORD
@@ -374,7 +309,6 @@ private fun AuthNav(
 		}
 	}
 
-	// Wstecz z rejestracji i resetu wraca do logowania, a nie zamyka aplikację.
 	BackHandler(enabled = screen != AuthScreen.LOGIN) { backToLogin() }
 
 	when (screen) {
@@ -441,7 +375,6 @@ private fun AuthNav(
 	}
 }
 
-/** Jedna fabryka dla obu miejsc, które sięgają po ten ViewModel. */
 @Composable
 private fun nowPlayingViewModel(client: SonglyApiClient): NowPlayingViewModel = viewModel(
 	factory = viewModelFactory {
@@ -449,7 +382,6 @@ private fun nowPlayingViewModel(client: SonglyApiClient): NowPlayingViewModel = 
 	},
 )
 
-/** Jeden ViewModel profilu dla zakładki „Profil" i ekranu edycji — ten sam stan. */
 @Composable
 private fun profileViewModel(client: SonglyApiClient): ProfileViewModel = viewModel(
 	factory = viewModelFactory {
@@ -457,13 +389,6 @@ private fun profileViewModel(client: SonglyApiClient): ProfileViewModel = viewMo
 	},
 )
 
-/**
- * Nawigacja w obrębie zalogowanej sesji. Na dole pięć zakładek ([MainTab]) z
- * głównymi miejscami aplikacji; pozostałe ekrany (powiadomienia, szczegóły,
- * edycja) otwierają się nad zakładkami na pełnym ekranie, ze strzałką wstecz.
- * [feedViewModel] jest tu (a nie w gałęzi feedu), żeby po dodaniu posta odświeżyć
- * feed tą samą instancją. Prosty stan zamiast Navigation-Compose.
- */
 @Composable
 private fun LoggedInNav(
 	client: SonglyApiClient,
@@ -482,9 +407,7 @@ private fun LoggedInNav(
 	val scope = rememberCoroutineScope()
 	var tab by rememberSaveable { mutableStateOf(MainTab.HOME) }
 	var creatingPost by rememberSaveable { mutableStateOf(false) }
-	// Edycja profilu — otwierana z zakładki „Profil".
 	var showProfile by rememberSaveable { mutableStateOf(false) }
-	// Znajomi nad innym ekranem (zaproszenie z powiadomień); jako zakładka to [tab].
 	var showFriends by rememberSaveable { mutableStateOf(false) }
 	var showFriendsPresence by rememberSaveable { mutableStateOf(false) }
 	var showNotifications by rememberSaveable { mutableStateOf(false) }
@@ -493,9 +416,6 @@ private fun LoggedInNav(
 	var showMatches by rememberSaveable { mutableStateOf(false) }
 	var showAdmin by rememberSaveable { mutableStateOf(false) }
 
-	// Powrót z OAuth Spotify: wynik trafia do tego samego ViewModelu, który
-	// pokazuje zakładkę „Muzyka" (viewModel() bez klucza oddaje jedną instancję),
-	// a zakładka wraca na wierzch, bo proces zostawił ją pod przeglądarką.
 	if (spotifyResult != null) {
 		val nowPlayingViewModel = nowPlayingViewModel(client)
 		LaunchedEffect(spotifyResult) {
@@ -505,8 +425,6 @@ private fun LoggedInNav(
 		}
 	}
 
-	// Stuknięcie w push: skrzynka na wierzch. Ekrany, które w `when` niżej stoją
-	// przed nią, zamykamy — inaczej skrzynka otworzyłaby się pod nimi, niewidoczna.
 	if (openNotifications) {
 		LaunchedEffect(Unit) {
 			showAdmin = false
@@ -521,21 +439,12 @@ private fun LoggedInNav(
 
 	PushSetup(client)
 
-	// Stan konta sprawdzany na starcie sesji: zawieszone konto dostaje 403 na
-	// prawie wszystko (ADR 0022), więc zamiast zepsutego feedu pokazujemy mu jego
-	// stan. null = jeszcze sprawdzamy. Brak sieci traktujemy jak „niezawieszone"
-	// — feed i tak pokaże wtedy błąd połączenia, a nie fałszywe zawieszenie.
 	var suspended by rememberSaveable { mutableStateOf<Boolean?>(null) }
 	var isAdmin by rememberSaveable { mutableStateOf(false) }
-	// Onboarding z gatunkami dla konta, które ich nie ma (patrz GenreOnboardingViewModel).
 	var showOnboarding by rememberSaveable { mutableStateOf(false) }
 	LaunchedEffect(suspended) {
 		if (suspended == null) {
 			val isSuspended = runCatching { client.mySuspension().suspended }.getOrDefault(false)
-			// Jeszcze pod spinnerem startowym, żeby nowe konto nie mignęło pustym feedem.
-			// Zwykle bez dodatkowego żądania: po pierwszym razie decyduje flaga w pamięci
-			// urządzenia, a id konta i tak pobiera feed. Błąd = bez onboardingu (wróci
-			// przy następnym starcie), bo blokowanie aplikacji przez niego byłoby gorsze.
 			if (!isSuspended) {
 				showOnboarding = runCatching { needsGenreOnboarding(client, onboardingStore) }.getOrDefault(false)
 			}
@@ -569,9 +478,6 @@ private fun LoggedInNav(
 		false -> Unit
 	}
 
-	// Onboarding zasłania całą aplikację, jak ekran zawieszenia: to pierwsza rzecz po
-	// zalogowaniu i nie ma pod nim czego pokazywać. Bez własnej obsługi Wstecz —
-	// systemowy Wstecz wychodzi z aplikacji, a pytanie wraca przy następnym starcie.
 	if (showOnboarding) {
 		val onboardingViewModel: GenreOnboardingViewModel = viewModel(
 			key = "genre-onboarding",
@@ -581,22 +487,14 @@ private fun LoggedInNav(
 			viewModel = onboardingViewModel,
 			onFinished = { saved ->
 				showOnboarding = false
-				// Po zapisie od razu dopasowani — to obietnica z ekranu onboardingu.
 				if (saved) showMatches = true
 			},
 		)
 		return
 	}
 
-	// Profil, post i komentarze to nakładki otwierane z dowolnego ekranu i z siebie
-	// nawzajem (profil → post → komentarze → profil komentującego…), więc nie da się
-	// ich ułożyć w stałą kolejność gałęzi `when` jak ekranów niżej. Trzymamy je na
-	// stosie: rysujemy wierzch, Wstecz zdejmuje jedną warstwę.
 	val overlays = rememberSaveable(saver = OverlayStackSaver) { mutableStateListOf<Overlay>() }
 
-	// Stan zapisywalny (pozycja na liście, wpisany tekst) każdego ekranu z osobna.
-	// Bez tego wejście w komentarze i powrót przewijały feed na sam początek, bo
-	// zakładki znikały z kompozycji razem z całym swoim `rememberSaveable`.
 	val screenStates = rememberSaveableStateHolder()
 	val tabStates = rememberSaveableStateHolder()
 
@@ -604,44 +502,27 @@ private fun LoggedInNav(
 	val openComments: (String) -> Unit = { overlays.add(Overlay.Comments(it)) }
 	val openPost: (String) -> Unit = { overlays.add(Overlay.PostDetail(it)) }
 	val closeOverlay: () -> Unit = {
-		// Zdjęta warstwa nie wróci — jej stan nie ma po co czekać w pamięci.
 		screenStates.removeState(overlayStateKey(overlays.lastIndex, overlays.last()))
 		overlays.removeAt(overlays.lastIndex)
 	}
-	// Zgłoszenie żyje tyle, co jego dialog — świeży stan przy każdym otwarciu.
 	val createReportViewModel: (String) -> ReportPostViewModel = { ReportPostViewModel(client, it) }
 	val adminViewModel: AdminViewModel = viewModel(
 		key = "admin",
 		factory = viewModelFactory { initializer { AdminViewModel(client) } },
 	)
 
-	// Systemowy Wstecz (przycisk i gest) musi robić to samo co „Wróć" na ekranie —
-	// bez tego zamyka aplikację, co na Androidzie jest po prostu zepsute.
-	//
-	// Kolejność MUSI odpowiadać kolejności gałęzi `when` poniżej: zamykamy ekran,
-	// który jest naprawdę na wierzchu, a nie pierwszą podniesioną flagę. Gdy
-	// ekranów będzie więcej, ta duplikacja jest sygnałem, że czas na
-	// Navigation-Compose z prawdziwym back stackiem.
 	val closeTopScreen: (() -> Unit)? = when {
 		overlays.isNotEmpty() -> closeOverlay
 		showAdmin -> ({ showAdmin = false })
 		showMatches -> ({ showMatches = false })
 		communityDetailId != null -> ({ communityDetailId = null })
-		// Otwierane z powiadomień, więc zamyka się przed nimi.
 		showMailPreferences -> ({ showMailPreferences = false })
-		// Też otwierane z powiadomień (zaproszenie do znajomych).
 		showFriends -> ({ showFriends = false })
-		// Powrót z powiadomień odświeża feed tak samo jak „Wróć" — inaczej badge
-		// nieprzeczytanych zostawałby po lekturze.
 		showNotifications -> ({ showNotifications = false; feedViewModel.refresh() })
 		showFriendsPresence -> ({ showFriendsPresence = false })
 		showProfile -> ({ showProfile = false })
 		creatingPost -> ({ creatingPost = false })
-		// Z innej zakładki Wstecz wraca na główną, jak w większości aplikacji z
-		// dolnym paskiem — dopiero z głównej wychodzi z aplikacji.
 		tab != MainTab.HOME -> ({ tab = MainTab.HOME })
-		// Na głównej zostawiamy Wstecz systemowi — tam wyjście z aplikacji jest
-		// zachowaniem oczekiwanym.
 		else -> null
 	}
 	BackHandler(enabled = closeTopScreen != null) { closeTopScreen?.invoke() }
@@ -662,9 +543,6 @@ private fun LoggedInNav(
 	}
 	screenStates.SaveableStateProvider(screenKey) {
 		when {
-			// Klucze ViewModeli per zasób — inaczej viewModel() oddałby dane innej
-			// osoby/posta. Klucz zawiera też głębokość stosu: ten sam profil otwarty
-			// dwa razy (profil → komentarze → ten sam profil) dostaje świeży stan.
 			topOverlay is Overlay.UserProfile -> {
 				val key = "${overlays.lastIndex}-${topOverlay.userId}"
 				val userProfileViewModel: UserProfileViewModel = viewModel(
@@ -750,7 +628,6 @@ private fun LoggedInNav(
 
 			communityDetailId != null -> {
 				val id = communityDetailId!!
-				// Klucz per społeczność — inaczej viewModel() oddałby dane innej.
 				val detailViewModel: CommunityDetailViewModel = viewModel(
 					key = "community-$id",
 					factory = viewModelFactory {
@@ -774,7 +651,6 @@ private fun LoggedInNav(
 					postsViewModel = communityPostsViewModel,
 					onOpenComments = openComments,
 					onBack = { communityDetailId = null },
-					// Po usunięciu wróć do listy — CommunitiesScreen odświeży się sam przy wejściu.
 					onDeleted = { communityDetailId = null },
 					onOpenUserProfile = openUserProfile,
 					moderationViewModel = moderationViewModel,
@@ -817,7 +693,6 @@ private fun LoggedInNav(
 				)
 				NotificationsScreen(
 					viewModel = notificationsViewModel,
-					// Powrót odświeża feed, żeby badge nieprzeczytanych zszedł po lekturze.
 					onBack = { showNotifications = false; feedViewModel.refresh() },
 					onOpenUserProfile = openUserProfile,
 					onOpenPost = openPost,
@@ -878,7 +753,6 @@ private fun LoggedInNav(
 							onOpenComments = openComments,
 							onOpenUserProfile = openUserProfile,
 							onOpenNotifications = { showNotifications = true },
-							// Zawieszenie w trakcie sesji — sprawdzamy stan od nowa i pokazujemy ekran zawieszenia.
 							onAccountSuspended = { suspended = null },
 							onOpenFriendsPresence = { showFriendsPresence = true },
 						)
@@ -934,20 +808,8 @@ private fun LoggedInNav(
 	}
 }
 
-/** Klucz stanu warstwy — z głębokością stosu, jak klucze ViewModeli niżej. */
 private fun overlayStateKey(index: Int, overlay: Overlay): String = "overlay-$index-$overlay"
 
-/**
- * Zakładka z dolnym paskiem. Ekrany w środku mają własne Scaffoldy (pasek u góry,
- * FAB), więc pasek nawigacji systemu, który zasłania już nasz dolny pasek, trzeba
- * oznaczyć jako zużyty — inaczej ekran zostawiłby nad paskiem drugi, pusty odstęp
- * tej samej wysokości (aplikacja rysuje się pod paskami systemu).
- *
- * Zakładki stoją na wspólnej zielonej poświacie z korzenia aplikacji
- * ([songlyBackdrop]), więc ich Scaffoldy są przezroczyste. Przy otwartej
- * klawiaturze dolny pasek się chowa: nad klawiaturą zabierałby miejsce polu, w
- * którym właśnie się pisze.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MainTabs(selected: MainTab, onSelect: (MainTab) -> Unit, content: @Composable () -> Unit) {
@@ -964,18 +826,12 @@ private fun MainTabs(selected: MainTab, onSelect: (MainTab) -> Unit, content: @C
 	}
 }
 
-/** Nakładki otwierane z dowolnego ekranu — patrz stos w [LoggedInNav]. */
 private sealed interface Overlay {
 	data class UserProfile(val userId: String) : Overlay
 	data class PostDetail(val postId: String) : Overlay
 	data class Comments(val postId: String) : Overlay
 }
 
-/**
- * Stos nakładek zapisany jako lista napisów `rodzaj:id` — `Bundle` nie przyjmie
- * zwykłej klasy Kotlina, a sam identyfikator wystarcza, żeby odtworzyć warstwę
- * (dane i tak trzyma ViewModel, który przeżywa obrót).
- */
 private val OverlayStackSaver = listSaver<SnapshotStateList<Overlay>, String>(
 	save = { stack ->
 		stack.map {

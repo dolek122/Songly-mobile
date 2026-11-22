@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Android 13+: bez tej zgody pushe (backend ADR 0040) nie pojawią się na ekranie. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -14,13 +13,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Songly">
 
-        <!-- usesCleartextTraffic tylko dla debug (dev backend po http). W release
-             ruch idzie po https, więc cleartext jest domyślnie wyłączony. -->
-        <!-- singleTask: link z maila przy otwartej aplikacji trafia do onNewIntent
-             istniejącej Activity, zamiast otwierać drugą kopię aplikacji nad pierwszą.
-             adjustResize: aplikacja rysuje się od krawędzi do krawędzi, więc okno się
-             nie zmniejsza, ale bez tego trybu klawiatura nie zgłasza Compose swojej
-             wysokości (imePadding) na Androidzie starszym niż 11. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -31,8 +23,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Linki z maili (backend ADR 0037): weryfikacja adresu i reset hasła.
-                 Wyłącznie te dwa hosty — reszta schematu songly:// nie jest nasza. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -41,9 +31,6 @@
                 <data android:host="verify-email" />
                 <data android:host="reset-password" />
             </intent-filter>
-            <!-- Powrót z OAuth Spotify (backend ADR 0038). Osobny filtr, bo atrybuty
-                 <data> w jednym filtrze łączą się krzyżowo — ścieżka zawęziłaby
-                 też linki z maili. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -54,8 +41,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Odbiór pushy (backend ADR 0040). exported=false: wiadomości dostarcza
-             wyłącznie Firebase z wnętrza procesu, nikt z zewnątrz. -->
         <service
             android:name=".push.SonglyMessagingService"
             android:exported="false">
