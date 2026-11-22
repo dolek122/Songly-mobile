@@ -13,16 +13,15 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
 
-/** Stan ekranu powiadomień z paginacją (infinite scroll) + licznik nieprzeczytanych. */
 data class NotificationsUiState(
-	val isLoading: Boolean = true, // pierwsze wczytanie / odświeżenie (cała lista)
-	val isLoadingMore: Boolean = false, // doczytywanie kolejnej strony
-	val isRefreshing: Boolean = false, // odświeżanie gestem (lista zostaje na ekranie)
+	val isLoading: Boolean = true,
+	val isLoadingMore: Boolean = false,
+	val isRefreshing: Boolean = false,
 	val notifications: List<Notification> = emptyList(),
 	val unreadCount: Long = 0,
-	val errorMessage: String? = null, // błąd pierwszego wczytania (pusta lista)
-	val appendErrorMessage: String? = null, // błąd doczytywania (lista zostaje)
-	val endReached: Boolean = false, // ostatnia strona wczytana
+	val errorMessage: String? = null,
+	val appendErrorMessage: String? = null,
+	val endReached: Boolean = false,
 ) {
 	val isEmpty: Boolean
 		get() = !isLoading && errorMessage == null && notifications.isEmpty()
@@ -31,13 +30,6 @@ data class NotificationsUiState(
 		get() = unreadCount > 0
 }
 
-/**
- * Logika ekranu powiadomień (moduł notification backendu przez `shared`). Lista
- * paginowana jak feed ([refresh]/[loadNextPage]); oznaczanie jako przeczytane jest
- * optymistyczne (jak lajki w feedzie) — UI reaguje natychmiast, a przy błędzie
- * serwera cofamy zmianę. [unreadCount] zasila badge i odświeża się przy każdym
- * wejściu na ekran.
- */
 class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(NotificationsUiState())
@@ -46,7 +38,6 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 	private var nextPage = 0
 	private var loading = false
 
-	/** Ładuje powiadomienia od początku (strona 0) i odświeża licznik nieprzeczytanych. */
 	fun refresh() {
 		if (loading) return
 		nextPage = 0
@@ -54,11 +45,6 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 		loadPage(reset = true)
 	}
 
-	/**
-	 * Odświeżenie gestem: to samo żądanie co [refresh], ale bez chowania listy za
-	 * spinnerem — przy pull-to-refresh użytkownik ma widzieć zawartość, którą
-	 * właśnie ściąga w dół.
-	 */
 	fun pullToRefresh() {
 		if (loading) return
 		nextPage = 0
@@ -66,25 +52,18 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 		loadPage(reset = true)
 	}
 
-	/** Dokłada kolejną stronę na koniec listy. Ignorowane, gdy nie ma czego/kiedy doczytywać. */
 	fun loadNextPage() {
 		if (loading || uiState.endReached || uiState.isLoading || uiState.appendErrorMessage != null) return
 		uiState = uiState.copy(isLoadingMore = true)
 		loadPage(reset = false)
 	}
 
-	/** Ponawia doczytywanie po błędzie strony (footer „Ponów"). */
 	fun retryNextPage() {
 		if (loading) return
 		uiState = uiState.copy(appendErrorMessage = null, isLoadingMore = true)
 		loadPage(reset = false)
 	}
 
-	/**
-	 * Oznacza pojedyncze powiadomienie jako przeczytane optymistycznie: najpierw UI
-	 * (readAt + licznik), potem serwer; przy błędzie cofa zmianę. Ignoruje kliknięcie
-	 * w już przeczytane.
-	 */
 	fun markRead(notification: Notification) {
 		if (!notification.isUnread) return
 		setReadAt(notification.id, readAt = NOW_PLACEHOLDER)
@@ -93,14 +72,12 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 			try {
 				client.markNotificationRead(notification.id)
 			} catch (e: Exception) {
-				// Rollback do stanu sprzed kliknięcia.
 				setReadAt(notification.id, readAt = null)
 				uiState = uiState.copy(unreadCount = uiState.unreadCount + 1)
 			}
 		}
 	}
 
-	/** Oznacza wszystkie jako przeczytane optymistycznie; przy błędzie przeładowuje listę. */
 	fun markAllRead() {
 		if (!uiState.hasUnread) return
 		val snapshot = uiState
@@ -114,7 +91,7 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 			try {
 				client.markAllNotificationsRead()
 			} catch (e: Exception) {
-				uiState = snapshot // przywróć nieprzeczytane; refresh doda pewność
+				uiState = snapshot
 				refresh()
 			}
 		}
@@ -135,7 +112,6 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 				val page = client.notifications(page = nextPage, size = PAGE_SIZE)
 				val merged = if (reset) page.content else uiState.notifications.plusDistinct(page.content) { it.id }
 				nextPage = page.number + 1
-				// Licznik z serwera (autorytatywny) tylko przy odświeżeniu całości.
 				val unread = if (reset) runCatching { client.unreadNotificationCount() }.getOrDefault(uiState.unreadCount)
 				else uiState.unreadCount
 				uiState = uiState.copy(
@@ -167,8 +143,6 @@ class NotificationsViewModel(private val client: SonglyApiClient) : ViewModel() 
 		}
 
 	private companion object {
-		// Znacznik lokalny „przeczytane teraz" — wystarcza fladze isUnread; dokładny
-		// czasu i tak przyniesie kolejny refresh z serwera.
 		const val NOW_PLACEHOLDER = "now"
 	}
 }

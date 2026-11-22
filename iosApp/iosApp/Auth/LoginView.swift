@@ -1,7 +1,6 @@
 import SwiftUI
 import Shared
 
-/// Ekran logowania. Rejestracja i reset hasła są na razie tylko na Androidzie.
 struct LoginView: View {
 	@StateObject private var viewModel: LoginViewModel
 	@FocusState private var focusedField: Field?

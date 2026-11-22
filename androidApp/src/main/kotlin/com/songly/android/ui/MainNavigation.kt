@@ -23,12 +23,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/**
- * Główne miejsca aplikacji — zawsze widoczne w dolnym pasku, zamiast schowanych
- * w menu „⋮", gdzie trzeba było ich szukać. Pięć to górna granica, przy której
- * pasek jest jeszcze czytelny; reszta (powiadomienia, dopasowani, ustawienia) jest
- * o jedno stuknięcie od zakładki, do której tematycznie należy.
- */
 enum class MainTab(val label: String, val selectedIcon: ImageVector, val icon: ImageVector) {
 	HOME("Główna", Icons.Filled.Home, Icons.Outlined.Home),
 	MUSIC("Muzyka", Icons.Filled.MusicNote, Icons.Outlined.MusicNote),
@@ -37,11 +31,6 @@ enum class MainTab(val label: String, val selectedIcon: ImageVector, val icon: I
 	PROFILE("Profil", Icons.Filled.Person, Icons.Outlined.Person),
 }
 
-/**
- * Dolny pasek nawigacji: czarny, wybrana zakładka biała z wypełnioną ikoną,
- * pozostałe szare z konturem. Bez kolorowej „pigułki" pod ikoną — różnicę widać
- * po jasności i kształcie, a zieleń zostaje dla akcji.
- */
 @Composable
 fun SonglyNavigationBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
 	NavigationBar(
@@ -53,7 +42,6 @@ fun SonglyNavigationBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
 			NavigationBarItem(
 				selected = isSelected,
 				onClick = { onSelect(tab) },
-				// Nazwę czyta czytnik z etykiety pod ikoną — ikona jest tylko ozdobą.
 				icon = { Icon(if (isSelected) tab.selectedIcon else tab.icon, contentDescription = null) },
 				label = {
 					Text(

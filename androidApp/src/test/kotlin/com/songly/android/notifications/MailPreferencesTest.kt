@@ -14,12 +14,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Preferencje poczty (ADR 0020 backendu). `PUT` zastępuje ustawienia w całości,
- * więc najważniejsze jest, żeby zmiana jednego przełącznika nie wysłała
- * domyślnej wartości drugiego — po cichu wyłączyłaby kategorię, której nikt nie
- * ruszał.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class MailPreferencesTest {
@@ -73,7 +67,6 @@ class MailPreferencesTest {
 		viewModel.onDecisionsAboutMeChange(false)
 		awaitIdle(viewModel)
 
-		// UI nie może twierdzić, że poczta jest wyłączona, skoro serwer dalej ją wyśle.
 		assertEquals(MailPreferences(decisionsAboutMe = true, moderationQueue = false), viewModel.uiState.preferences)
 		assertNotNull(viewModel.uiState.statusMessage)
 	}
@@ -83,7 +76,6 @@ class MailPreferencesTest {
 		val backend = backend()
 		val viewModel = MailPreferencesViewModel(backend.client())
 
-		// Bez wczytanego stanu nie znamy wartości drugiego pola — zapis by ją zgadywał.
 		viewModel.onModerationQueueChange(true)
 
 		assertEquals(0, backend.callCount(HttpMethod.Put, path))

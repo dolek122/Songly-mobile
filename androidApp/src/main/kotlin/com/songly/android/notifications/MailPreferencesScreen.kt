@@ -30,10 +30,6 @@ import androidx.compose.ui.unit.dp
 import com.songly.android.ui.BackButton
 import com.songly.android.ui.ScreenTopBar
 
-/**
- * Ekran preferencji poczty (ADR 0020), otwierany z powiadomień. Stan z
- * [MailPreferencesViewModel].
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MailPreferencesScreen(viewModel: MailPreferencesViewModel, onBack: () -> Unit) {
@@ -80,8 +76,6 @@ fun MailPreferencesScreen(viewModel: MailPreferencesViewModel, onBack: () -> Uni
 					.padding(16.dp),
 				verticalArrangement = Arrangement.spacedBy(16.dp),
 			) {
-				// Skrzynki w aplikacji nie da się tu wyłączyć (ADR 0020) — mówimy to
-				// wprost, zanim ktoś uzna przełączniki za wyciszanie powiadomień.
 				Text(
 					text = "Te ustawienia dotyczą tylko poczty. W aplikacji powiadomienia o decyzjach " +
 						"moderacji pojawiają się zawsze.",
@@ -127,9 +121,6 @@ private fun PreferenceRow(
 	enabled: Boolean,
 	onCheckedChange: (Boolean) -> Unit,
 ) {
-	// Przełącznikiem jest cały wiersz, nie sam Switch: TalkBack czyta wtedy etykietę
-	// razem ze stanem (inaczej słyszy się „przełącznik, włączony" bez słowa o tym,
-	// czego dotyczy), a cel dotyku obejmuje też tekst.
 	Row(
 		modifier = Modifier
 			.fillMaxWidth()

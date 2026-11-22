@@ -25,17 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.songly.android.ui.announcedWhenChanged
 import com.songly.android.ui.CenteredScrollColumn
 
-/**
- * Ekran rejestracji (Compose, natywny UI — §14) w dwóch krokach, jak w backendzie
- * (ADR 0009): formularz → „sprawdź skrzynkę i wklej link". Konto i sesja powstają
- * dopiero po potwierdzeniu adresu; wtedy [RegisterUiState.registered] wyzwala
- * [onRegistered] i trafiamy prosto do zalogowanej aplikacji.
- *
- * Link z maila (`songly://verify-email`) otwiera aplikację i od razu potwierdza
- * adres; wklejenie zostaje dla klientów poczty, które nie podlinkują nieznanego
- * schematu (backend ADR 0037). Lokalnie (backend z `MAIL_PROVIDER=log`) mail ląduje
- * w konsoli backendu.
- */
 @Composable
 fun RegisterScreen(
 	viewModel: RegisterViewModel,
@@ -48,7 +37,6 @@ fun RegisterScreen(
 		if (state.registered) onRegistered()
 	}
 
-	// Wstecz z kroku weryfikacji wraca do formularza, nie wyrzuca do logowania.
 	BackHandler(enabled = state.awaitingVerification && !state.isSubmitting) { viewModel.editEmail() }
 
 	CenteredScrollColumn {
@@ -166,8 +154,6 @@ private fun ColumnScope.VerificationStep(state: RegisterUiState, viewModel: Regi
 		style = MaterialTheme.typography.titleLarge,
 		modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
 	)
-	// Wejście z linku w mailu: adresu nie znamy (rejestrację mogło zacząć inne
-	// urządzenie), więc nie ma czego wpisać w zdanie ani na co wysłać nowego linku.
 	val fromLink = state.email.isBlank()
 	Text(
 		text = if (fromLink) {

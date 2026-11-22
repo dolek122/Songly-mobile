@@ -9,7 +9,6 @@ import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
-/** Stan ekranu logowania — jedno źródło prawdy dla UI. */
 data class LoginUiState(
 	val email: String = "",
 	val password: String = "",
@@ -21,12 +20,6 @@ data class LoginUiState(
 		get() = email.isNotBlank() && password.isNotBlank() && !isSubmitting
 }
 
-/**
- * Logika ekranu logowania. Woła [SonglyApiClient.login] z modułu `shared` i mapuje
- * wynik na [LoginUiState]. Błędy walidacji/uwierzytelnienia z serwera przychodzą
- * jako [SonglyApiException] w spójnym formacie ApiError — pokazujemy `message`;
- * brak połączenia to osobny, przyjazny komunikat.
- */
 class LoginViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(LoginUiState())

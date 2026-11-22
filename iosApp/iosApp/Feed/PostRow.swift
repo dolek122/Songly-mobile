@@ -1,8 +1,6 @@
 import SwiftUI
 import Shared
 
-/// Wiersz posta — odpowiednik `PostCard` z Androida (na razie bez komentarzy,
-/// usuwania i zgłaszania; te ekrany dojdą razem z resztą iOS).
 struct PostRow: View {
 	let post: FeedPost
 	let onToggleLike: () -> Void
@@ -15,7 +13,6 @@ struct PostRow: View {
 				VStack(alignment: .leading, spacing: 2) {
 					Text(post.authorDisplayName)
 						.font(.subheadline.weight(.semibold))
-					// Ten sam formatter co na Androidzie — „5 min temu" ma brzmieć identycznie.
 					Text(RelativeTime.shared.format(isoInstant: post.createdAt))
 						.font(.caption)
 						.foregroundStyle(.secondary)
@@ -53,8 +50,6 @@ struct PostRow: View {
 				.accessibilityLabel(post.sharedByMe ? "Cofnij udostępnienie" : "Udostępnij")
 			}
 			.font(.callout)
-			// Bez tego dotknięcie w dowolnym miejscu wiersza `List` uruchamia wszystkie
-			// przyciski naraz.
 			.buttonStyle(.borderless)
 		}
 		.padding(.vertical, 6)

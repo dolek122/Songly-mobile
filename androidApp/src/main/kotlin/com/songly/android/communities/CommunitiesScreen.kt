@@ -52,13 +52,6 @@ import com.songly.android.ui.TabTopBar
 import com.songly.android.ui.TeardropShape
 import com.songly.shared.model.Community
 
-/**
- * Ekran społeczności (Compose, natywny UI — §14): lista wszystkich społeczności
- * z dołączaniem/opuszczaniem i tworzeniem nowej (FAB → dialog). Klik w kartę
- * otwiera szczegóły. Stan z [CommunitiesViewModel]; dane z modułu community.
- *
- * Jako zakładka dolnego paska [onBack] jest `null` — bez strzałki wstecz.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunitiesScreen(
@@ -151,7 +144,6 @@ fun CommunitiesScreen(
 
 				else -> LazyColumn(
 					state = listState,
-					// Dół z zapasem na przycisk „Nowa społeczność".
 					contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
 					verticalArrangement = Arrangement.spacedBy(10.dp),
 					modifier = Modifier.fillMaxSize(),
@@ -226,7 +218,6 @@ private fun CommunityCard(
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 					modifier = Modifier.padding(top = 4.dp),
 				)
-				// Założyciel — osobny tap-target nad kliknięciem karty, prowadzi do jego profilu.
 				if (community.ownerDisplayName != null) {
 					Row(
 						modifier = Modifier.padding(top = 6.dp).clickable(onClick = onOpenOwner),
@@ -246,7 +237,6 @@ private fun CommunityCard(
 					}
 				}
 			}
-			// Właściciel nie może opuścić społeczności — nie pokazujemy mu przycisku.
 			when {
 				community.isOwner -> Text(
 					text = "Właściciel",
@@ -261,11 +251,6 @@ private fun CommunityCard(
 	}
 }
 
-/**
- * Kafelek społeczności: kropla z pierwszą literą nazwy. Społeczności nie mają
- * okładek, a sama lista nazw czytała się jak spis treści — kafelek daje każdej
- * karcie punkt zaczepienia dla oka.
- */
 @Composable
 internal fun CommunityTile(name: String, size: Dp = 52.dp, textStyle: TextStyle = MaterialTheme.typography.titleLarge) {
 	Box(
@@ -350,6 +335,5 @@ private fun Footer(isLoading: Boolean, errorMessage: String?, onRetry: () -> Uni
 	}
 }
 
-/** „1 członek", ale „2 członków", „5 członków" — rzeczownik męskoosobowy, więc odmienia się tylko jedynka. */
 internal fun membersLabel(count: Long): String =
 	if (count == 1L) "1 członek" else "$count członków"

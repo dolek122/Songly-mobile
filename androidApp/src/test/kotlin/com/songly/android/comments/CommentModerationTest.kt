@@ -14,12 +14,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Moderator społeczności usuwa cudze komentarze pod postami w niej (backend ADR
- * 0045). Uprawnienie wynika ze społeczności posta, nie z samego posta, więc
- * sprawdzamy wszystkie trzy przypadki: moderator, zwykły członek, post poza
- * społecznością.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CommentModerationTest {
@@ -58,7 +52,6 @@ class CommentModerationTest {
 
 		assertTrue(state.canDelete(state.comment("other")))
 		assertTrue(state.isModeration(state.comment("other")))
-		// Własny komentarz moderatora to zwykłe usunięcie, bez decyzji i powiadomienia.
 		assertTrue(state.canDelete(state.comment("own")))
 		assertFalse(state.isModeration(state.comment("own")))
 	}
@@ -71,7 +64,6 @@ class CommentModerationTest {
 		assertFalse(state.canDelete(state.comment("other")))
 	}
 
-	/** Pod zwykłym postem chroni samo autorstwo — także przed autorem posta. */
 	@Test
 	fun postOutsideCommunity_allowsOnlyOwnComments() {
 		val state = loaded(backend(communityId = null))

@@ -7,10 +7,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * `resourceId` znaczy co innego zależnie od typu (backend NotificationEventListener)
- * — pomyłka otworzyłaby ekran posta z identyfikatorem społeczności, czyli 404.
- */
 class NotificationTargetTest {
 
 	private fun notification(type: String) = Notification(
@@ -45,16 +41,11 @@ class NotificationTargetTest {
 		assertNull(targetOf(notification("FRIEND_REQUEST_ACCEPTED")))
 	}
 
-	/** Decyzję moderacyjną podpisuje funkcja, nie osoba (ADR 0015). */
 	@Test
 	fun banNotificationDoesNotNameModerator() {
 		assertEquals("Moderacja zbanowała Cię w społeczności", notificationText(notification("COMMUNITY_BANNED")))
 	}
 
-	/**
-	 * Nowy typ z backendu (ADR 0045) — bez własnego tekstu trafiłby do ogólnego
-	 * „Ktoś ma dla Ciebie powiadomienie”.
-	 */
 	@Test
 	fun removedCommentHasItsOwnText() {
 		assertEquals(
@@ -63,11 +54,6 @@ class NotificationTargetTest {
 		)
 	}
 
-	/**
-	 * Przy decyzjach karta nie pokazuje awatara ani nie prowadzi do profilu
-	 * aktora — `actorId` wskazałby moderatora. Zmiana roli to zwykłe powiadomienie
-	 * od właściciela i zostaje podpisana (ADR 0016).
-	 */
 	@Test
 	fun moderationDecisionsHideTheModerator() {
 		listOf(

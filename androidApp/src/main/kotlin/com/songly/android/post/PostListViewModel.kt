@@ -27,12 +27,6 @@ data class PostListUiState(
 		get() = !isLoading && errorMessage == null && posts.items.isEmpty()
 }
 
-/**
- * Stronicowana lista postów z jednego źródła — [loadPage] mówi skąd (społeczność,
- * oś czasu autora). Feed ma własny ViewModel (badge powiadomień, pull-to-refresh);
- * ta klasa obsługuje listy osadzone w innych ekranach, żeby lajk, udostępnienie i
- * usuwanie działały wszędzie tak samo zamiast mieć po kopii w każdym ekranie.
- */
 class PostListViewModel(
 	private val client: SonglyApiClient,
 	private val loadPage: suspend SonglyApiClient.(page: Int, size: Int) -> Page<Post>,
@@ -63,12 +57,10 @@ class PostListViewModel(
 		fetchNext(uiState.posts.retrying())
 	}
 
-	/** Nowy post (np. właśnie opublikowany w społeczności) na górę listy. */
 	fun prepend(post: Post) {
 		uiState = uiState.copy(posts = uiState.posts.copy(items = listOf(post) + uiState.posts.items))
 	}
 
-	/** Lajk optymistycznie, z rollbackiem przy błędzie — jak w feedzie. */
 	fun toggleLike(post: Post) {
 		val liked = !post.likedByMe
 		update(post.id) { it.copy(likedByMe = liked, likeCount = it.likeCount + if (liked) 1 else -1) }
@@ -93,7 +85,6 @@ class PostListViewModel(
 		}
 	}
 
-	/** Licznik po powrocie z ekranu komentarzy. */
 	fun adjustCommentCount(postId: String, delta: Int) {
 		update(postId) { it.copy(commentCount = (it.commentCount + delta).coerceAtLeast(0)) }
 	}

@@ -11,11 +11,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Zachęta do ustawienia nazwy przy nazwie nadanej przez backend (ADR 0046):
- * widać ją przy „Użytkownik 123456”, a znika dopiero po zapisaniu własnej nazwy,
- * nie przy samym pisaniu w polu.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class DefaultDisplayNameTest {

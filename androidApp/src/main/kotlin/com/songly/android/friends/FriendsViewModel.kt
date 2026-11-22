@@ -17,10 +17,9 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
 
-/** Stan ekranu znajomych: lista znajomych + zaproszenia otrzymane i wysłane + wyszukiwarka. */
 data class FriendsUiState(
 	val isLoading: Boolean = true,
-	val isRefreshing: Boolean = false, // odświeżanie gestem (listy zostają na ekranie)
+	val isRefreshing: Boolean = false,
 	val errorMessage: String? = null,
 	val friends: PagedSection<Friend> = PagedSection(),
 	val incoming: PagedSection<FriendRequest> = PagedSection(),
@@ -29,37 +28,25 @@ data class FriendsUiState(
 	val searchQuery: String = "",
 	val isSearching: Boolean = false,
 	val searchResults: List<UserSearchResult> = emptyList(),
-	val searched: Boolean = false, // czy było już wyszukiwanie (do rozróżnienia „brak wyników")
-	val isBusy: Boolean = false, // akcja mutująca w toku (blokuje przyciski)
+	val searched: Boolean = false,
+	val isBusy: Boolean = false,
 	val statusMessage: String? = null,
 ) {
 	val canSearch: Boolean
 		get() = searchQuery.isNotBlank() && !isSearching
 }
 
-/**
- * Logika ekranu znajomych (moduł social-graph backendu przez `shared`). Po każdej
- * mutacji (wysłanie/akceptacja/odrzucenie/anulowanie/usunięcie) przeładowuje
- * wszystkie cztery listy — prostsze i pewniejsze niż ręczne przenoszenie pozycji
- * między listami (np. akceptacja usuwa z „otrzymanych" i dodaje do „znajomych").
- * Nowych znajomych szuka się po nazwie ([search], moduł profile backendu).
- */
 class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(FriendsUiState())
 		private set
 
-	// Czy listy były już choć raz wczytane. Ekran woła [load] przy każdym wejściu na
-	// zakładkę; spinner na cały ekran ma sens tylko przy pierwszym, później listy
-	// odświeżają się pod spodem, zamiast mrugać przy każdym przełączeniu zakładek.
 	private var loaded = false
 
 	fun load() {
 		uiState = uiState.copy(isLoading = !loaded, errorMessage = null)
 		viewModelScope.launch {
 			try {
-				// Najpierw dane, potem zgaszenie spinnera — odwrotna kolejność mrugałaby
-				// pustym ekranem przez czas trwania czterech żądań.
 				reloadLists()
 				loaded = true
 				uiState = uiState.copy(isLoading = false)
@@ -68,7 +55,6 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 					is SonglyApiException -> e.error?.message ?: "Nie udało się wczytać znajomych (HTTP ${e.status})"
 					else -> "Brak połączenia z serwerem."
 				}
-				// Wczytane już listy zostają — chwilowy brak sieci nie może ich zasłaniać.
 				uiState = if (loaded) {
 					uiState.copy(isLoading = false, statusMessage = message)
 				} else {
@@ -78,17 +64,10 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	/** Komunikat pokazany (snackbar) — bez tego wracałby przy każdej rekompozycji. */
 	fun statusMessageShown() {
 		uiState = uiState.copy(statusMessage = null)
 	}
 
-	/**
-	 * Odświeżenie gestem: te same cztery żądania co przy wejściu, ale bez chowania
-	 * list za spinnerem — przy pull-to-refresh użytkownik ma widzieć zawartość,
-	 * którą właśnie ściąga w dół. Doczytane wcześniej strony wracają do pierwszej,
-	 * tak samo jak po każdej mutacji.
-	 */
 	fun pullToRefresh() {
 		if (uiState.isRefreshing) return
 		uiState = uiState.copy(isRefreshing = true, errorMessage = null)
@@ -111,7 +90,6 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		uiState = uiState.copy(searchQuery = value, statusMessage = null)
 	}
 
-	/** Wyszukuje użytkowników po nazwie. Osobny stan [FriendsUiState.isSearching]. */
 	fun search() {
 		if (!uiState.canSearch) return
 		uiState = uiState.copy(isSearching = true, statusMessage = null)
@@ -130,19 +108,13 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	/** Wysyła zaproszenie do wybranego z wyników wyszukiwania użytkownika. */
 	fun sendRequestTo(userId: String) {
 		runAction("Wysłano zaproszenie", "wysłać zaproszenia") {
 			client.sendFriendRequest(userId)
-			// Usuń zaproszonego z wyników — od razu wędruje do „wysłanych".
 			dropSearchResult(userId)
 		}
 	}
 
-	/**
-	 * Gdy z wyników zniknie ostatnia osoba, chowamy też „brak użytkowników dla tej
-	 * frazy" — ta osoba istnieje, tylko przeszła do innej sekcji.
-	 */
 	private fun dropSearchResult(userId: String) {
 		val remaining = uiState.searchResults.filterNot { it.userId == userId }
 		uiState = uiState.copy(searchResults = remaining, searched = uiState.searched && remaining.isNotEmpty())
@@ -160,21 +132,15 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 	fun removeFriend(userId: String) =
 		runAction("Usunięto znajomego", "usunąć znajomego") { client.removeFriend(userId) }
 
-	/** Blokuje użytkownika (usuwa też znajomość i zaproszenia — stąd przeładowanie list). */
 	fun block(userId: String) =
 		runAction("Zablokowano", "zablokować użytkownika") {
 			client.blockUser(userId)
-			// Zablokowany znika z ewentualnych wyników wyszukiwania.
 			dropSearchResult(userId)
 		}
 
 	fun unblock(userId: String) =
 		runAction("Odblokowano", "odblokować użytkownika") { client.unblockUser(userId) }
 
-	/**
-	 * Wykonuje akcję mutującą, potem przeładowuje listy. [isBusy] blokuje
-	 * równoległe akcje; komunikat sukcesu/błędu ląduje w [FriendsUiState.statusMessage].
-	 */
 	private fun runAction(successMessage: String, actionLabel: String, action: suspend () -> Unit) {
 		if (uiState.isBusy) return
 		uiState = uiState.copy(isBusy = true, statusMessage = null)
@@ -230,15 +196,6 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 			client.blockedUsers(page, PAGE_SIZE)
 		}
 
-	/**
-	 * Doczytywanie jednej z czterech list. Getter i setter zamiast identyfikatora
-	 * sekcji, bo listy trzymają różne typy — inaczej trzeba by czterech kopii tej
-	 * samej obsługi błędów i blokad.
-	 *
-	 * Stan czytamy przez [get] również po powrocie z sieci: w międzyczasie mogła
-	 * przejść mutacja (akceptacja zaproszenia przeładowuje listy), więc dokładamy do
-	 * tego, co jest teraz, a nie do zapamiętanej kopii.
-	 */
 	private fun <T> loadMoreSection(
 		get: () -> PagedSection<T>,
 		set: (PagedSection<T>) -> Unit,
@@ -247,8 +204,6 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		fetch: suspend (page: Int) -> Page<T>,
 	) {
 		val current = get()
-		// Ponowienie startuje wprost z błędu (canLoadMore jest wtedy false), zwykłe
-		// doczytywanie tylko wtedy, gdy jest co i kiedy dobierać.
 		if (if (retry) current.isLoadingMore else !current.canLoadMore) return
 		set(if (retry) current.retrying() else current.loadingMore())
 		viewModelScope.launch {
@@ -262,12 +217,6 @@ class FriendsViewModel(private val client: SonglyApiClient) : ViewModel() {
 		}
 	}
 
-	/**
-	 * Po mutacji ładujemy każdą listę od pierwszej strony. Doczytane wcześniej
-	 * strony przepadają celowo: po akceptacji zaproszenia pozycje przeskakują
-	 * między listami, więc sklejanie starej zawartości z nową dałoby duplikaty
-	 * albo dziury.
-	 */
 	private suspend fun reloadLists() {
 		uiState = uiState.copy(
 			friends = uiState.friends.replaceWith(client.friends(size = PAGE_SIZE)),

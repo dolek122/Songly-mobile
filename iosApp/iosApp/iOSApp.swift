@@ -1,7 +1,5 @@
 import SwiftUI
 
-// Punkt wejścia aplikacji iOS. UI natywny (SwiftUI, §14); logika sieci/domeny
-// pochodzi z frameworka `Shared` (moduł KMP `shared`), współdzielona z Androidem.
 @main
 struct iOSApp: App {
 	@StateObject private var session = AppSession()
@@ -14,7 +12,6 @@ struct iOSApp: App {
 	}
 }
 
-/// Przełącza ekrany według stanu sesji. Na razie dwa: logowanie i feed.
 struct RootView: View {
 	@EnvironmentObject private var session: AppSession
 

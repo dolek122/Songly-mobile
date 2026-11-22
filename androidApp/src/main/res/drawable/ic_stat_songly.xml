@@ -1,10 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Ikona pushy na pasku stanu: kropla z korektorem, jak ikona aplikacji. System
-  bierze z niej sam kształt (kanał alfa) i barwi po swojemu. Przy 24 dp pięć
-  słupków zlewa się w plamę, więc zostają trzy, szersze — kształt ma być
-  rozpoznawalny, a nie wierny co do słupka.
--->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"

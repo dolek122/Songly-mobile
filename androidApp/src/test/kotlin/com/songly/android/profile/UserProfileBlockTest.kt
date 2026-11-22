@@ -15,7 +15,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Blokada z ekranu cudzego profilu: potwierdzenie, skutek, cofnięcie. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class UserProfileBlockTest {
@@ -38,7 +37,6 @@ class UserProfileBlockTest {
 		onJson("/api/v1/profiles/u2", """{"userId":"u2","displayName":"Ola","bio":null,"favoriteGenres":[]}""")
 	}
 
-	/** Blokada sprzed wejścia na profil: ekran ma od razu pokazać „Odblokuj" (ADR 0039 backendu). */
 	@Test
 	fun loadPicksUpExistingBlock() {
 		val backend = backend().withProfile().apply {
@@ -52,7 +50,6 @@ class UserProfileBlockTest {
 		assertTrue(viewModel.uiState.blocked)
 	}
 
-	/** Stan blokady to dodatek — jego awaria (np. starszy backend) nie zasłania profilu. */
 	@Test
 	fun failingBlockStatusStillShowsProfile() {
 		val backend = backend().withProfile().apply {
@@ -70,7 +67,6 @@ class UserProfileBlockTest {
 		assertFalse(viewModel.uiState.blocked)
 	}
 
-	/** Własny profil nie pyta o blokadę — zablokować siebie i tak się nie da. */
 	@Test
 	fun ownProfileDoesNotAskAboutBlock() {
 		val backend = FakeBackend().apply {
@@ -100,11 +96,9 @@ class UserProfileBlockTest {
 		assertEquals(1, backend.callCount(HttpMethod.Put, "/api/v1/blocks/u2"))
 		assertTrue(viewModel.uiState.blocked)
 		assertFalse(viewModel.uiState.showBlockDialog)
-		// Posty zablokowanego znikają z odpowiedzi backendu — lista musi się odświeżyć.
 		assertEquals(1, refreshed)
 	}
 
-	/** Zerwana znajomość nie wraca sama — komunikat musi to powiedzieć. */
 	@Test
 	fun unblockingRestoresInviteAndExplainsLostFriendship() {
 		val backend = backend()

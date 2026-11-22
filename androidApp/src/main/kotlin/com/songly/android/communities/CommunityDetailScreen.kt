@@ -71,10 +71,6 @@ import com.songly.android.post.postListItems
 import com.songly.android.ui.formatDate
 import com.songly.android.ui.formatDateTime
 
-/**
- * Ekran szczegółów społeczności (Compose, natywny UI — §14): nagłówek z opisem i
- * akcją dołącz/opuść oraz lista członków (paginacja). Stan z [CommunityDetailViewModel].
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityDetailScreen(
@@ -125,7 +121,6 @@ fun CommunityDetailScreen(
 		)
 	}
 
-	// Po usunięciu społeczności wróć do listy (i pozwól jej się odświeżyć).
 	LaunchedEffect(state.deleted) {
 		if (state.deleted) onDeleted()
 	}
@@ -160,7 +155,6 @@ fun CommunityDetailScreen(
 			total > 0 && lastVisible >= total - 3
 		}
 	}
-	// Automatyczne doczytywanie tylko dla członków — posty mają przycisk (patrz postListItems).
 	LaunchedEffect(shouldLoadMore, state.selectedTab) {
 		if (shouldLoadMore && state.selectedTab == CommunityTab.MEMBERS) viewModel.loadMoreMembers()
 	}
@@ -168,13 +162,10 @@ fun CommunityDetailScreen(
 	Scaffold(
 		containerColor = Color.Transparent,
 		topBar = {
-			// Bez tytułu: nazwa stoi w nagłówku pod paskiem, duża — dwa razy ta sama
-			// nazwa jedna nad drugą tylko by szumiała.
 			ScreenTopBar(
 				title = "",
 				navigationIcon = { BackButton(onBack) },
 				actions = {
-					// Zarządzanie widoczne tylko dla właściciela; rzadkie, więc pod „⋮".
 					if (state.community?.isOwner == true) {
 						OwnerMenu(onEdit = viewModel::openEditDialog, onDelete = viewModel::openDeleteDialog)
 					}
@@ -213,7 +204,6 @@ fun CommunityDetailScreen(
 						)
 					}
 					item(key = "tabs") {
-						// Przezroczyste tło, inaczej pod poświatą byłby ciemny pas.
 						TabRow(selectedTabIndex = state.selectedTab.ordinal, containerColor = Color.Transparent) {
 							Tab(
 								selected = state.selectedTab == CommunityTab.POSTS,
@@ -287,7 +277,6 @@ fun CommunityDetailScreen(
 						items(state.members, key = { it.userId }) { member ->
 							MemberRow(
 								member = member,
-								// Właściciela nie da się moderować; siebie samego też nie banujemy.
 								canBan = state.canModerate && !member.isOwner && member.userId != postsViewModel.uiState.currentUserId,
 								canManageRole = state.community.isOwner && !member.isOwner,
 								roleBusy = state.roleChangeUserId == member.userId,
@@ -322,7 +311,6 @@ fun CommunityDetailScreen(
 	}
 }
 
-/** „⋮" właściciela: edycja i usunięcie społeczności. */
 @Composable
 private fun OwnerMenu(onEdit: () -> Unit, onDelete: () -> Unit) {
 	var expanded by remember { mutableStateOf(false) }
@@ -352,10 +340,6 @@ private fun OwnerMenu(onEdit: () -> Unit, onDelete: () -> Unit) {
 	}
 }
 
-/**
- * Nagłówek jak strona albumu: duży kafelek-kropla z inicjałem, nazwa, liczba
- * członków, opis i jedna główna akcja (dołącz / opuść).
- */
 @Composable
 private fun CommunityHeader(
 	community: Community,
@@ -417,10 +401,6 @@ private fun CommunityHeader(
 	}
 }
 
-/**
- * Mój ban z powodem i terminem (backend ADR 0015). Społeczność czytać wolno dalej
- * — ban odcina tylko pisanie — więc baner stoi nad postami, a nie zamiast nich.
- */
 @Composable
 private fun BanBanner(
 	ban: BanDetails,
@@ -455,8 +435,6 @@ private fun BanBanner(
 				)
 			}
 
-			// Jedno odwołanie na ban; po odrzuceniu jedna eskalacja do administracji
-			// (ADR 0017, 0028). Każdy stan ma tu dokładnie jedno możliwe działanie.
 			when (ban.appealStatus) {
 				null -> {
 					OutlinedTextField(
@@ -620,7 +598,6 @@ private fun MemberIdentity(member: CommunityMember, onOpenProfile: () -> Unit) {
 		verticalAlignment = Alignment.CenterVertically,
 		horizontalArrangement = Arrangement.spacedBy(10.dp),
 	) {
-		// Avatar + nazwa prowadzą do profilu członka; etykieta „Właściciel" zostaje osobno.
 		Row(
 			modifier = Modifier.weight(1f).clickable(onClick = onOpenProfile),
 			verticalAlignment = Alignment.CenterVertically,

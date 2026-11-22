@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Muszą zgadzać się z SonglyPalette: tło okna startowego z Background, żeby
-         okno nie różniło się od pierwszego narysowanego ekranu, a pasek nawigacji
-         systemu z Black, czyli z dolnym paskiem aplikacji, który stoi tuż nad nim. -->
     <color name="window_background">#121212</color>
     <color name="navigation_bar">#000000</color>
-    <!-- SonglyPalette.Green — akcent powiadomień push, które rysuje system, nie Compose. -->
     <color name="brand_green">#1ED760</color>
-    <!-- Tło ikony aplikacji = SonglyPalette.Background: na czerni zielona kropla jest
-         kształtem, a nie tylko kolorem, który launcher przytnie po swojemu. Ten sam
-         kolor co tło okna, więc systemowy ekran powitalny (12+) pokazuje samą kroplę. -->
     <color name="ic_launcher_background">#121212</color>
 </resources>

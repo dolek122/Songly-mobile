@@ -31,11 +31,6 @@ import com.songly.shared.model.PostReport
 import com.songly.shared.paging.PagedSection
 import com.songly.shared.util.RelativeTime
 
-/**
- * Zakładka „Moderacja" jako fragment `LazyColumn` ekranu społeczności.
- * [displayNameOf] tłumaczy identyfikatory z dziennika na nazwy znanych członków
- * — dziennik niesie wyłącznie identyfikatory (ADR 0024).
- */
 fun LazyListScope.moderationItems(
 	viewModel: CommunityModerationViewModel,
 	displayNameOf: (String?) -> String,
@@ -155,7 +150,6 @@ private fun ReportCard(
 			if (!report.details.isNullOrBlank()) {
 				Text("„${report.details}”", style = MaterialTheme.typography.bodyMedium)
 			}
-			// Historia zgłaszającego w tej społeczności (90 dni) — waga, nie wyrok (ADR 0025).
 			Text(
 				text = "Zgłosił(a): ${report.reporterDisplayName ?: "nieznany użytkownik"} · trafne: " +
 					"${report.reporterUpheldCount}, odrzucone: ${report.reporterDismissedCount}",
@@ -215,7 +209,6 @@ private fun BanCard(
 					TextButton(onClick = onRejectAppeal, enabled = !busy) { Text("Odrzuć odwołanie") }
 				}
 				OutlinedButton(onClick = onUnban, enabled = !busy) {
-					// Zdjęcie bana przy oczekującym odwołaniu JEST jego uznaniem (ADR 0017).
 					Text(if (ban.hasPendingAppeal) "Uznaj odwołanie" else "Zdejmij ban")
 				}
 			}

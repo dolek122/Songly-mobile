@@ -28,10 +28,6 @@ class SpotifyConnectResultTest {
 		)
 	}
 
-	/**
-	 * Backend przed ADR 0050 łączył konto już w callbacku. Ten wynik nie wraca, a
-	 * udawanie sukcesu bez dokończenia pokazałoby „Połączono” przy niepołączonym.
-	 */
 	@Test
 	fun formerConnectedResultIsUnknown() {
 		assertNull(SpotifyConnectResult.parse("songly://now-playing/spotify?result=connected"))
@@ -50,7 +46,6 @@ class SpotifyConnectResultTest {
 		)
 	}
 
-	/** Nowy wynik z backendu nie może udawać żadnego ze znanych. */
 	@Test
 	fun rejectsUnknownOrMissingResult() {
 		assertNull(SpotifyConnectResult.parse("songly://now-playing/spotify?result=pending"))

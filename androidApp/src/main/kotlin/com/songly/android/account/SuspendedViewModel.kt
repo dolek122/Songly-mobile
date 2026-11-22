@@ -20,7 +20,6 @@ data class SuspendedUiState(
 	val deletePassword: String = "",
 	val isDeleting: Boolean = false,
 	val deleteError: String? = null,
-	/** Zawieszenie wygasło albo zostało zdjęte — wracamy do zwykłej aplikacji. */
 	val lifted: Boolean = false,
 	val sessionEnded: Boolean = false,
 ) {
@@ -28,11 +27,6 @@ data class SuspendedUiState(
 		get() = appealText.isNotBlank() && appealText.length <= 1000 && !isAppealing
 }
 
-/**
- * Zawieszone konto widzi wyłącznie to, na co backend mu pozwala (ADR 0022):
- * swój stan z powodem, odwołanie (ADR 0023), wylogowanie i usunięcie konta —
- * to ostatnie, bo sankcja nie może odbierać prawa z RODO (§9).
- */
 class SuspendedViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(SuspendedUiState())

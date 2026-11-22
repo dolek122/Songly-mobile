@@ -6,12 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * Pilnuje, że mobilny model [Page] pasuje do stabilnego kontraktu `PagedModel`
- * backendu (VIA_DTO): lista pod `content`, metadane w zagnieżdżonym `page`.
- * Dodatkowo weryfikuje lokalne wyliczanie `first`/`last`, których kontrakt
- * już nie niesie.
- */
 class PageTest {
 
 	private val json = Json { ignoreUnknownKeys = true }

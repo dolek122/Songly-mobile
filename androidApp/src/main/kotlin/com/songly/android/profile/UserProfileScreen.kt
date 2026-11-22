@@ -40,12 +40,6 @@ import com.songly.android.post.postListItems
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.ScreenTopBar
 
-/**
- * Ekran cudzego profilu (read-only, §14 natywny UI): avatar, nazwa, bio i ulubione
- * gatunki innego użytkownika. Dane z [UserProfileViewModel]; akcje relacji:
- * zaproszenie i blokada — ta druga tu przede wszystkim, bo na profil trafia się
- * z powiadomienia albo komentarza osoby, która nas zaczepia.
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun UserProfileScreen(
@@ -53,7 +47,6 @@ fun UserProfileScreen(
 	postsViewModel: PostListViewModel,
 	onBack: () -> Unit,
 	onOpenComments: (postId: String) -> Unit,
-	/** Oglądający jest administratorem platformy — pokazujemy akcje admina. */
 	isAdminViewer: Boolean = false,
 	onOpenModerationHistory: (userId: String) -> Unit = {},
 ) {
@@ -80,7 +73,6 @@ fun UserProfileScreen(
 	Scaffold(
 		containerColor = Color.Transparent,
 		topBar = {
-			// Bez tytułu: nazwa stoi duża pod awatarem, tuż pod paskiem.
 			ScreenTopBar(
 				title = "",
 				navigationIcon = { BackButton(onBack) },
@@ -132,7 +124,6 @@ fun UserProfileScreen(
 						viewModel = postsViewModel,
 						emptyText = "Ten użytkownik nie opublikował jeszcze żadnego posta.",
 						onOpenComments = onOpenComments,
-						// Autor każdego posta to właściciel tego profilu — jesteśmy już u niego.
 						onOpenAuthor = {},
 					)
 				}
@@ -173,9 +164,6 @@ private fun ProfileContent(
 			)
 		}
 
-		// Zaproszenie do znajomych — nie na własnym profilu i nie po blokadzie (backend
-		// i tak by je odrzucił). Status znajomości nie jest znany z góry, więc
-		// ewentualne odrzucenie pokazujemy po kliknięciu.
 		if (!state.isSelf && !state.blocked) {
 			if (state.inviteSent) {
 				Text(
@@ -199,8 +187,6 @@ private fun ProfileContent(
 		}
 
 		if (!state.isSelf) {
-			// Blokada sprzed wejścia na ekran nie ma komunikatu z akcji — bez tego
-			// zdania „Odblokuj" wisiałoby bez wyjaśnienia, skąd się wzięło.
 			val blockText = state.blockMessage ?: if (state.blocked) "Blokujesz tę osobę." else null
 			if (blockText != null) {
 				Text(

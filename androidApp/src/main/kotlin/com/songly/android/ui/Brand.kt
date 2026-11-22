@@ -16,12 +16,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/**
- * Kropla — znak rozpoznawczy Songly: koło z jednym ostrym rogiem w prawym górnym
- * rogu. Ten sam kształt ma ikona aplikacji, logo, przycisk głównej akcji i okładka
- * „teraz gram", więc wystarczy jeden rzut oka, żeby wiedzieć, w jakiej aplikacji
- * się jest — bez dokładania ozdób do minimalistycznych ekranów.
- */
 val TeardropShape = RoundedCornerShape(
 	topStartPercent = 50,
 	topEndPercent = 0,
@@ -29,20 +23,13 @@ val TeardropShape = RoundedCornerShape(
 	bottomStartPercent = 50,
 )
 
-// Geometria korektora w kropli, w jednostkach boku kropli = 56. Te same liczby
-// (przesunięte o lewy górny róg kropli: 22, 30) są w res/drawable/ic_launcher_foreground.xml,
-// więc logo w aplikacji i ikona na ekranie głównym są jednym rysunkiem.
 private const val MARK_UNIT = 56f
-private const val BARS_CENTER_X = 29.5f // środek ciężkości kropli, a nie koła — róg przesuwa go w prawo i w górę
+private const val BARS_CENTER_X = 29.5f
 private const val BARS_CENTER_Y = 26.5f
 private const val BAR_SPACING = 7.5f
 private const val BAR_WIDTH = 5f
 private val BAR_HALF_HEIGHTS = floatArrayOf(4.5f, 10f, 16f, 10f, 4.5f)
 
-/**
- * Znak Songly: zielona kropla z czarnym korektorem. Czysto dekoracyjny — nazwa
- * aplikacji zawsze stoi obok w tekście, więc czytnik ekranu nie musi go czytać.
- */
 @Composable
 fun SonglyMark(
 	modifier: Modifier = Modifier,
@@ -72,12 +59,6 @@ fun SonglyMark(
 	}
 }
 
-/**
- * Tło zakładek: zielona poświata u góry, gasnąca w czerń w pierwszej jednej
- * trzeciej ekranu — jak nagłówki w aplikacjach muzycznych. Daje ekranom głębię i
- * charakter bez jednego dodatkowego elementu, który trzeba by zrozumieć. Rysuje
- * się także pod paskiem stanu (aplikacja jest rysowana od krawędzi do krawędzi).
- */
 @Composable
 fun Modifier.songlyBackdrop(): Modifier {
 	val glow = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)

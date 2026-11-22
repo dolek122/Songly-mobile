@@ -15,7 +15,6 @@ private const val MAX_PASSWORD_LENGTH = 72
 
 data class ForgotPasswordUiState(
 	val email: String = "",
-	/** Link zamówiony — ekran przechodzi w krok „wklej link i ustaw hasło". */
 	val linkRequested: Boolean = false,
 	val linkInput: String = "",
 	val newPassword: String = "",
@@ -40,14 +39,6 @@ data class ForgotPasswordUiState(
 			confirmPassword == newPassword && !isSubmitting
 }
 
-/**
- * Reset hasła (backend ADR 0008) w dwóch krokach, jak rejestracja: zamówienie
- * linku na adres, potem wklejony link + nowe hasło.
- *
- * Krok 1 zawsze kończy się tym samym komunikatem — backend odpowiada 202 także
- * dla adresu bez konta, więc aplikacja nie może twierdzić, że mail wyszedł, ani
- * że nie wyszedł.
- */
 class ForgotPasswordViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(ForgotPasswordUiState())
@@ -79,11 +70,6 @@ class ForgotPasswordViewModel(private val client: SonglyApiClient) : ViewModel()
 		}) { client.requestPasswordReset(uiState.email.trim()) }
 	}
 
-	/**
-	 * Wejście z linku w mailu (`songly://reset-password`, ADR 0037): od razu krok
-	 * „ustaw nowe hasło" z tokenem w polu. Hasła oczywiście nie zgadniemy, więc tu —
-	 * inaczej niż przy weryfikacji adresu — nic nie wysyłamy sami.
-	 */
 	fun openResetLink(token: String) {
 		uiState = uiState.copy(
 			linkRequested = true,
@@ -93,7 +79,6 @@ class ForgotPasswordViewModel(private val client: SonglyApiClient) : ViewModel()
 		)
 	}
 
-	/** Wraca do kroku 1 — np. po literówce albo żeby zamówić nowy link. */
 	fun backToEmail() {
 		uiState = uiState.copy(linkRequested = false, errorMessage = null, infoMessage = null)
 	}
@@ -115,7 +100,6 @@ class ForgotPasswordViewModel(private val client: SonglyApiClient) : ViewModel()
 			} catch (e: SonglyApiException) {
 				uiState = uiState.copy(
 					isSubmitting = false,
-					// Jeden kod na token nieznany, wygasły i zużyty.
 					errorMessage = if (e.error?.code == "INVALID_PASSWORD_RESET_TOKEN") {
 						"Link jest nieprawidłowy albo wygasł (ważny 30 minut). Zamów nowy."
 					} else {

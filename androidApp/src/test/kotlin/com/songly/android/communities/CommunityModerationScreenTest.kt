@@ -38,7 +38,6 @@ class CommunityModerationScreenTest {
 
 	private val base = "/api/v1/communities/c1"
 
-	// Post w społeczności niesie communityId — bez niego nie ma „Zgłoś" (zwykłych postów nie ma kto rozpatrzyć).
 	private val communityPost =
 		postJson("p1", "Post Bartka", authorId = "u2", authorName = "Bartek").dropLast(1) + ""","communityId":"c1"}"""
 
@@ -85,7 +84,6 @@ class CommunityModerationScreenTest {
 		awaitText("Post Bartka")
 
 		compose.onNodeWithText("Moderacja").assertDoesNotExist()
-		// Cudzy post w społeczności da się zgłosić, ale nie usunąć (obie akcje są pod „⋮").
 		compose.onNodeWithContentDescription("Więcej akcji posta").performClick()
 		compose.onNodeWithText("Zgłoś").assertIsDisplayed()
 		compose.onNodeWithText("Usuń").assertDoesNotExist()
@@ -98,7 +96,6 @@ class CommunityModerationScreenTest {
 
 		compose.onNodeWithContentDescription("Więcej akcji posta").performClick()
 		compose.onNodeWithText("Usuń").performClick()
-		// Usunięcie cudzego posta pyta o potwierdzenie; wycofujemy się, żeby sprawdzić resztę.
 		compose.onNodeWithText("Usunąć post?").assertIsDisplayed()
 		compose.onNodeWithText("Anuluj").performClick()
 		compose.onNodeWithText("Moderacja").performClick()
@@ -106,7 +103,6 @@ class CommunityModerationScreenTest {
 		awaitText("Brak zgłoszeń do rozpatrzenia.")
 	}
 
-	/** Role rozdaje wyłącznie właściciel (ADR 0011); właściciela nie da się zbanować. */
 	@Test
 	fun ownerManagesRolesButCannotBanOwner() {
 		show(backend(myRole = "OWNER", membership = """{"status":"MEMBER","role":"OWNER"}"""))

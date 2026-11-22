@@ -12,16 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # JDK 21: zgodny z toolchainem mobilki (JDK 26 psuje build — patrz README).
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: "21"
           distribution: "temurin"
 
-      # Domyślnie akcja instaluje "tools platform-tools", a pakietu "tools" Google
-      # już nie publikuje (sdkmanager: "Failed to find package") — krok padał
-      # przed jakimkolwiek buildem. Resztę SDK Gradle dociąga sam.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -30,10 +26,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # Testy współdzielonej logiki (KMP commonTest na targecie Android/JVM) oraz
-      # pełny build aplikacji Android — łapie zarówno regresje logiki, jak i błędy
-      # kompilacji UI. Release (bez klucza, więc niepodpisany) sprawdza, że R8 przechodzi.
-      # iOS nie buduje się na Linuksie (wymaga macOS) i jest pomijany.
       - name: Build & test
         run: |
           chmod +x gradlew

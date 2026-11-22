@@ -13,31 +13,23 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 20
 
-/** Stan ekranu dopasowań (paginacja) + mapa nazw gatunków + zaproszone osoby. */
 data class MatchesUiState(
 	val isLoading: Boolean = true,
 	val isLoadingMore: Boolean = false,
-	val isRefreshing: Boolean = false, // odświeżanie gestem (lista zostaje na ekranie)
+	val isRefreshing: Boolean = false,
 	val matches: List<Match> = emptyList(),
-	val genreNames: Map<String, String> = emptyMap(), // id gatunku -> nazwa (do etykiet)
+	val genreNames: Map<String, String> = emptyMap(),
 	val errorMessage: String? = null,
 	val appendErrorMessage: String? = null,
 	val endReached: Boolean = false,
-	val invitedIds: Set<String> = emptySet(), // komu wysłano już zaproszenie w tej sesji
-	val isBusy: Boolean = false, // wysyłanie zaproszenia w toku
+	val invitedIds: Set<String> = emptySet(),
+	val isBusy: Boolean = false,
 	val statusMessage: String? = null,
 ) {
 	val isEmpty: Boolean
 		get() = !isLoading && errorMessage == null && matches.isEmpty()
 }
 
-/**
- * Logika ekranu dopasowań (moduł matching przez `shared`). Lista paginowana,
- * malejąco po score (ranking robi backend). Nazwy wspólnych gatunków dokładamy
- * lokalnie z listy wszystkich gatunków (odpowiedź zwraca tylko id). Z poziomu
- * dopasowania można od razu wysłać zaproszenie do znajomych — domyka pętlę
- * discovery → social.
- */
 class MatchesViewModel(private val client: SonglyApiClient) : ViewModel() {
 
 	var uiState by mutableStateOf(MatchesUiState())
@@ -53,11 +45,6 @@ class MatchesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loadPage(reset = true)
 	}
 
-	/**
-	 * Odświeżenie gestem: to samo żądanie co [refresh], ale bez chowania listy za
-	 * spinnerem — przy pull-to-refresh użytkownik ma widzieć zawartość, którą
-	 * właśnie ściąga w dół.
-	 */
 	fun pullToRefresh() {
 		if (loading) return
 		nextPage = 0
@@ -77,11 +64,9 @@ class MatchesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loadPage(reset = false)
 	}
 
-	/** Nazwy wspólnych gatunków danego dopasowania (te, które udało się zmapować). */
 	fun sharedGenreNames(match: Match): List<String> =
 		match.sharedGenreIds.mapNotNull { uiState.genreNames[it] }
 
-	/** Wysyła zaproszenie do znajomych do dopasowanej osoby; po sukcesie oznacza jako zaproszoną. */
 	fun invite(userId: String) {
 		if (uiState.isBusy || userId in uiState.invitedIds) return
 		uiState = uiState.copy(isBusy = true, statusMessage = null)
@@ -108,7 +93,6 @@ class MatchesViewModel(private val client: SonglyApiClient) : ViewModel() {
 		loading = true
 		viewModelScope.launch {
 			try {
-				// Nazwy gatunków wystarczy pobrać raz (przy odświeżeniu), best-effort.
 				if (reset && uiState.genreNames.isEmpty()) {
 					runCatching { client.genres(page = 0, size = 100).content.associate { it.id to it.name } }
 						.onSuccess { uiState = uiState.copy(genreNames = it) }

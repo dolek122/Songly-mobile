@@ -22,10 +22,6 @@ data class ReportPostUiState(
 		get() = reason != null && details.length <= MAX_DETAILS_LENGTH && !isSubmitting
 }
 
-/**
- * Zgłoszenie posta w społeczności. Trafia do kolejki moderatorów, a ci przy
- * pierwszym zgłoszeniu posta dostają powiadomienie (ADR 0012).
- */
 class ReportPostViewModel(
 	private val client: SonglyApiClient,
 	private val postId: String,
@@ -59,14 +55,11 @@ class ReportPostViewModel(
 	}
 
 	private fun reportErrorText(e: SonglyApiException): String = when (e.error?.code) {
-		// Limit zależy od historii trafności zgłoszeń (ADR 0025) — nie podajemy liczb,
-		// bo i tak nie są stałe.
 		"REPORT_RATE_LIMIT_EXCEEDED" -> "Zgłaszasz za często. Spróbuj ponownie później."
 		else -> e.error?.message ?: "Nie udało się zgłosić posta (HTTP ${e.status})"
 	}
 }
 
-/** Polskie etykiety powodów zgłoszenia. */
 fun reportReasonLabel(reason: String): String = when (reason) {
 	"SPAM" -> "Spam"
 	"HARASSMENT" -> "Nękanie"

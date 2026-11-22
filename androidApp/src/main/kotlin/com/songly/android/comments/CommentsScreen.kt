@@ -48,11 +48,6 @@ import com.songly.android.ui.accessibleAction
 import com.songly.shared.model.Comment
 import com.songly.shared.util.RelativeTime
 
-/**
- * Ekran komentarzy jednego posta (Compose, natywny UI — §14). Stan z
- * [CommentsViewModel]; dane z modułu `shared`. Po dodaniu komentarza woła
- * [onCommentAdded] (feed podbije licznik komentarzy posta).
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsScreen(
@@ -64,15 +59,12 @@ fun CommentsScreen(
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
-	// Cudzy komentarz czekający na potwierdzenie moderatora.
 	var pendingRemoval by remember { mutableStateOf<Comment?>(null) }
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
 	}
 
-	// Infinite scroll jak w feedzie: jedna lista, więc doczytywanie może być
-	// automatyczne. Warunki (koniec, żądanie w toku, błąd) pilnuje ViewModel.
 	val shouldLoadMore by remember {
 		derivedStateOf {
 			val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -173,11 +165,6 @@ fun CommentsScreen(
 	}
 }
 
-/**
- * Potwierdzenie przed usunięciem cudzego komentarza: to decyzja moderacyjna, po
- * której autor dostaje powiadomienie i mail (backend ADR 0045), więc nie może
- * wyjść z przypadkowego stuknięcia.
- */
 @Composable
 private fun RemoveCommentDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 	AlertDialog(
@@ -204,8 +191,6 @@ private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Uni
 		modifier = Modifier.fillMaxWidth(),
 		horizontalArrangement = Arrangement.spacedBy(10.dp),
 	) {
-		// Avatar i nazwa autora prowadzą do jego profilu. Czytnik ekranu dostaje tylko
-		// nazwę — dwa przyciski robiące to samo to dla niego wyłącznie szum.
 		Avatar(
 			displayName = comment.authorDisplayName,
 			avatarUrl = comment.authorAvatarUrl,
@@ -226,7 +211,6 @@ private fun CommentRow(comment: Comment, canDelete: Boolean, onDelete: () -> Uni
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 					modifier = Modifier.weight(1f).padding(start = 8.dp),
 				)
-				// Na własnych komentarzach, a moderatorowi społeczności także na cudzych.
 				if (canDelete) {
 					Text(
 						text = "Usuń",
@@ -265,8 +249,6 @@ private fun CommentInput(
 				modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
 			)
 		}
-		// Jak w komunikatorach: zaokrąglone pole i okrągły zielony przycisk wysyłania,
-		// który świeci dopiero, gdy jest co wysłać.
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -297,7 +279,6 @@ private fun CommentInput(
 	}
 }
 
-/** Stopka listy: kręciołek doczytywania albo błąd z ponowieniem. */
 @Composable
 private fun CommentsFooter(isLoading: Boolean, errorMessage: String?, onRetry: () -> Unit) {
 	Box(modifier = Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {

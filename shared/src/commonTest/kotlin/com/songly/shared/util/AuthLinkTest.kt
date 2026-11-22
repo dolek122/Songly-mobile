@@ -16,7 +16,6 @@ class AuthLinkTest {
 		assertEquals(AuthLink.ResetPassword("abc"), AuthLink.parse("songly://reset-password?token=abc"))
 	}
 
-	/** Klienci poczty bywają kreatywni z wielkością liter i ukośnikami. */
 	@Test
 	fun toleratesCaseAndTrailingSlash() {
 		assertEquals(AuthLink.VerifyEmail("abc"), AuthLink.parse("SONGLY://Verify-Email/?token=abc"))
@@ -28,7 +27,6 @@ class AuthLinkTest {
 		assertNull(AuthLink.parse("songly://reset-password?token="))
 	}
 
-	/** Prefiks hosta nie wystarcza — `verify-emailx` to nie nasz link. */
 	@Test
 	fun rejectsOtherHostsAndSchemes() {
 		assertNull(AuthLink.parse("songly://verify-emailx?token=abc"))

@@ -15,17 +15,8 @@ import com.songly.android.R
 import com.songly.android.SonglyApplication
 import kotlinx.coroutines.launch
 
-/**
- * Odbiór pushy (backend ADR 0040). Backend wysyła wiadomości wyłącznie z `data`,
- * więc ta metoda dostaje je także w tle i to aplikacja decyduje, jak wygląda
- * powiadomienie i co otwiera stuknięcie.
- */
 class SonglyMessagingService : FirebaseMessagingService() {
 
-	/**
-	 * FCM wymienia token (reinstalacja, czyszczenie danych). Bez zgłoszenia nowego
-	 * backend wysyłałby na stary, aż FCM nie powie mu, że go nie ma.
-	 */
 	override fun onNewToken(token: String) {
 		val app = application as SonglyApplication
 		app.appScope.launch {
@@ -38,7 +29,6 @@ class SonglyMessagingService : FirebaseMessagingService() {
 	override fun onMessageReceived(message: RemoteMessage) {
 		val title = message.data["title"] ?: return
 		val body = message.data["body"] ?: return
-		// Bez zgody (Android 13+) systemowe notify i tak by niczego nie pokazało.
 		if (Build.VERSION.SDK_INT >= 33 &&
 			ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
 			PackageManager.PERMISSION_GRANTED
@@ -57,15 +47,12 @@ class SonglyMessagingService : FirebaseMessagingService() {
 		)
 		val notification = NotificationCompat.Builder(this, PushRegistration.CHANNEL_ID)
 			.setSmallIcon(R.drawable.ic_stat_songly)
-			// Zieleń marki na ikonie i nazwie aplikacji w rozwiniętym powiadomieniu —
-			// bez tego system rysuje je szarością, nie do odróżnienia od innych aplikacji.
 			.setColor(ContextCompat.getColor(this, R.color.brand_green))
 			.setContentTitle(title)
 			.setContentText(body)
 			.setAutoCancel(true)
 			.setContentIntent(pendingIntent)
 			.build()
-		// Id z powiadomienia backendu: ten sam push dostarczony dwa razy nie zrobi dwóch wpisów.
 		val id = message.data["notificationId"]?.hashCode() ?: System.currentTimeMillis().toInt()
 		NotificationManagerCompat.from(this).notify(id, notification)
 	}

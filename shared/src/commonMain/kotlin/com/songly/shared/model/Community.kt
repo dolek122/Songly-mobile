@@ -2,12 +2,6 @@ package com.songly.shared.model
 
 import kotlinx.serialization.Serializable
 
-/**
- * Społeczność (backend: community.dto.CommunityResponse).
- *
- * [myRole] to nazwa enuma (OWNER/MEMBER) albo `null`, gdy przeglądający nie jest
- * członkiem — stąd [isMember]/[isOwner].
- */
 @Serializable
 data class Community(
 	val id: String,
@@ -26,12 +20,10 @@ data class Community(
 	val isOwner: Boolean
 		get() = myRole == "OWNER"
 
-	// Moderują właściciel i moderatorzy (ADR 0011).
 	val isModerator: Boolean
 		get() = myRole == "OWNER" || myRole == "MODERATOR"
 }
 
-/** Członek społeczności (backend: community.dto.CommunityMemberResponse). */
 @Serializable
 data class CommunityMember(
 	val userId: String,
@@ -47,20 +39,12 @@ data class CommunityMember(
 		get() = role == "MODERATOR"
 }
 
-/** Utworzenie społeczności (backend: community.dto.CreateCommunityRequest; nazwa max 100, opis max 500). */
 @Serializable
 data class CreateCommunityRequest(val name: String, val description: String? = null)
 
-/** Edycja społeczności (backend: community.dto.UpdateCommunityRequest; nazwa max 100, opis max 500). */
 @Serializable
 data class UpdateCommunityRequest(val name: String, val description: String? = null)
 
-/**
- * Mój status w społeczności (backend: community.dto.MembershipStatusResponse).
- *
- * [status] to `MEMBER`, `BANNED` albo `NONE`; ban wygasły backend zwraca jako
- * `NONE`. [role] i [joinedAt] są tylko przy `MEMBER`, [ban] tylko przy `BANNED`.
- */
 @Serializable
 data class MembershipStatus(
 	val status: String,
@@ -75,11 +59,6 @@ data class MembershipStatus(
 		get() = status == "BANNED"
 }
 
-/**
- * Szczegóły mojego bana (backend: community.dto.BanDetailsResponse). Bez
- * tożsamości moderatora — ban należy do społeczności (ADR 0015).
- * [expiresAt] `null` = ban bezterminowy.
- */
 @Serializable
 data class BanDetails(
 	val reason: String? = null,

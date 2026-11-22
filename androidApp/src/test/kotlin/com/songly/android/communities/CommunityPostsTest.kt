@@ -23,11 +23,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Posty w społeczności. Do tej pory ekran społeczności pokazywał tylko opis i
- * członków — treści, dla których społeczność istnieje, nie dało się ani
- * przeczytać, ani napisać.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w411dp-h891dp-xhdpi")
 class CommunityPostsTest {
@@ -94,7 +89,6 @@ class CommunityPostsTest {
 		assertEquals(1, backend.callCount(HttpMethod.Post, "$base/posts"))
 	}
 
-	/** Nie-członek czyta (społeczności są publiczne), ale pola publikacji nie dostaje. */
 	@Test
 	fun nonMemberReadsButCannotWrite() {
 		show(backend(myRole = null, membership = """{"status":"NONE"}"""))
@@ -103,7 +97,6 @@ class CommunityPostsTest {
 		compose.onNodeWithText("Napisz post w społeczności").assertDoesNotExist()
 	}
 
-	/** Zbanowany widzi powód i termin — jedyny kanał, którym backend je wydaje (ADR 0015). */
 	@Test
 	fun bannedUserSeesReasonInsteadOfComposer() {
 		show(
@@ -117,7 +110,6 @@ class CommunityPostsTest {
 		awaitText("bezterminowy zakaz")
 		compose.onNodeWithText("Powód: Spam w komentarzach").assertIsDisplayed()
 		compose.onNodeWithText("Napisz post w społeczności").assertDoesNotExist()
-		// Ban odcina pisanie, nie czytanie.
 		compose.onNodeWithText("Kto był na koncercie?").assertIsDisplayed()
 	}
 }

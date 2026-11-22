@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Okrągły awatar z inicjałem jako zastępstwem — gdy brak zdjęcia albo nie da się
-/// go pobrać.
 struct AvatarView: View {
 	let displayName: String
 	let avatarUrl: String?
@@ -23,7 +21,7 @@ struct AvatarView: View {
 		}
 		.frame(width: size, height: size)
 		.clipShape(Circle())
-		.accessibilityHidden(true) // nazwa autora stoi obok, czytnik nie musi jej powtarzać
+		.accessibilityHidden(true)
 	}
 
 	private var initial: some View {

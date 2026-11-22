@@ -16,19 +16,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Obrót ekranu (i zmiana motywu) niszczy Activity i tworzy ją od nowa, a ViewModele
- * przeżywają to bez zmian. Dwa błędy, które to wywoływało:
- *  - klient HTTP zamykany razem z Activity, a dalej używany przez ViewModele —
- *    każda akcja po obrocie kończyła się „Brak połączenia z serwerem",
- *  - nawigacja w zwykłym `remember` — obrót wyrzucał z każdego ekranu na feed.
- *
- * Test jedzie przez całą `MainActivity`, bo oba błędy siedziały na styku Activity,
- * kompozycji i ViewModeli; test pojedynczego ekranu żadnego z nich nie widzi.
- *
- * Wymaga `forkEvery = 1` w `build.gradle.kts` — jako pierwszy alfabetycznie test z
- * Compose odsłonił przeciek globalnego stanu Compose między klasami (opis tamże).
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestSonglyApplication::class, qualifiers = "w411dp-h891dp-xhdpi")
 class ConfigurationChangeTest {
@@ -49,8 +36,6 @@ class ConfigurationChangeTest {
 	@get:Rule(order = 0)
 	val mainDispatcher = MainDispatcherRule()
 
-	// Atrapa musi być na miejscu, zanim reguła Compose uruchomi Activity — a ta
-	// startuje jeszcze przed metodami @Before.
 	@get:Rule(order = 1)
 	val installBackend = object : ExternalResource() {
 		override fun before() {
@@ -84,7 +69,6 @@ class ConfigurationChangeTest {
 		compose.onNodeWithContentDescription("Polubienia: 0").performClick()
 		compose.waitForIdle()
 
-		// Zamknięty klient nie dociera do serwera, a lajk cofa się po błędzie.
 		assertEquals(1, backend.callCount(HttpMethod.Put, "/api/v1/posts/p1/likes"))
 		compose.onNodeWithContentDescription("Polubienia: 1").assertExists()
 	}
@@ -109,7 +93,6 @@ class ConfigurationChangeTest {
 
 		rotate()
 
-		// Nakładki mają własny zapis (rodzaj:id) — to on musi odtworzyć profil.
 		waitForText("Profil Oli")
 		assertEquals(0, compose.onAllNodesWithText("Pierwszy post").fetchSemanticsNodes().size)
 	}

@@ -2,17 +2,6 @@ import Foundation
 import Security
 import Shared
 
-/// Trwały magazyn tokenów sesji w Keychainie — odpowiednik `AndroidKeystoreTokenStorage`.
-/// Tokeny to dane wrażliwe (Claude.md §9 backendu), więc nie trafiają ani do
-/// `UserDefaults`, ani do plików aplikacji.
-///
-/// `AfterFirstUnlockThisDeviceOnly`: odświeżenie tokenu bywa potrzebne w tle przy
-/// zablokowanym ekranie, a `ThisDeviceOnly` nie pozwala sesji przejść przez backup
-/// iCloud na inne urządzenie — skradziony backup nie może być skradzioną sesją.
-///
-/// Implementuje kotlinowy `TokenStorage` w wariancie z completion handlerami, bo tak
-/// Kotlin/Native wystawia metody `suspend` do Objective-C. Keychain jest
-/// synchroniczny, więc odpowiadamy od razu.
 final class KeychainTokenStorage: NSObject, TokenStorage {
 
 	private static let baseQuery: [String: Any] = [
@@ -21,10 +10,6 @@ final class KeychainTokenStorage: NSObject, TokenStorage {
 		kSecAttrAccount as String: "tokens",
 	]
 
-	/// Keychain — inaczej niż reszta danych aplikacji — **przeżywa jej odinstalowanie**.
-	/// Bez tego ktoś, kto usunął aplikację, żeby się wylogować, po ponownej instalacji
-	/// wracałby zalogowany. `UserDefaults` znikają razem z aplikacją, więc brak flagi
-	/// znaczy „świeża instalacja".
 	static func clearIfFreshInstall(defaults: UserDefaults = .standard) {
 		let key = "songly.installed"
 		guard !defaults.bool(forKey: key) else { return }
@@ -55,8 +40,6 @@ final class KeychainTokenStorage: NSObject, TokenStorage {
 			return nil
 		}
 		guard let stored = try? JSONDecoder().decode(StoredTokens.self, from: data) else {
-			// Uszkodzony wpis traktujemy jak brak sesji i usuwamy, żeby nie wracał
-			// przy każdym żądaniu — tak samo jak magazyn na Androidzie.
 			SecItemDelete(Self.baseQuery as CFDictionary)
 			return nil
 		}
@@ -76,8 +59,6 @@ final class KeychainTokenStorage: NSObject, TokenStorage {
 			expiresInSeconds: tokens.expiresInSeconds
 		)
 		guard let data = try? JSONEncoder().encode(stored) else { return }
-		// Usuń + dodaj zamiast `SecItemUpdate`: jedna ścieżka zamiast dwóch, a atrybut
-		// dostępności zawsze jest ten z tego pliku, nawet gdy wpis powstał wcześniej.
 		SecItemDelete(Self.baseQuery as CFDictionary)
 		var attributes = Self.baseQuery
 		attributes[kSecValueData as String] = data

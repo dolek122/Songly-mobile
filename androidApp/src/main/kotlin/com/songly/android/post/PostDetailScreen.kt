@@ -107,7 +107,6 @@ fun PostDetailScreen(
 						onToggleShare = viewModel::toggleShare,
 						onDelete = viewModel::requestDelete,
 						onOpenAuthor = { onOpenUserProfile(post.authorId) },
-						// Zgłosić da się tylko post w społeczności — zwykłego nie ma kto rozpatrzyć.
 						onReport = if (createReportViewModel != null && post.communityId != null && !reported &&
 							post.authorId != state.currentUserId
 						) {

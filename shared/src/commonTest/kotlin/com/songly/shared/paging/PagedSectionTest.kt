@@ -51,7 +51,6 @@ class PagedSectionTest {
 		assertFalse(section.canLoadMore)
 	}
 
-	/** Bez tej blokady infinite scroll wysłałby kilka żądań o tę samą stronę. */
 	@Test
 	fun requestInFlightBlocksAnother() {
 		val section = PagedSection<String>().replaceWith(page(0, 3, "a", "b")).loadingMore()
@@ -59,10 +58,6 @@ class PagedSectionTest {
 		assertFalse(section.canLoadMore)
 	}
 
-	/**
-	 * Po błędzie czekamy na decyzję użytkownika. Automatyczne ponawianie przy
-	 * zerwanej sieci zamieniłoby przewijanie w pętlę nieudanych żądań.
-	 */
 	@Test
 	fun failureBlocksAutomaticRetry_butKeepsItems() {
 		val section = PagedSection<String>().replaceWith(page(0, 3, "a", "b")).loadingMore().failed("brak sieci")
@@ -84,11 +79,6 @@ class PagedSectionTest {
 		assertEquals(listOf("b"), section.removeIf { it == "a" }.items)
 	}
 
-	/**
-	 * Nowy post między żądaniami przesuwa strony o jedną pozycję, więc strona 1
-	 * powtarza ostatni element strony 0. Drugi raz na liście = zdublowany klucz w
-	 * `LazyColumn`, czyli crash.
-	 */
 	@Test
 	fun appendSkipsItemsAlreadyOnTheList() {
 		val section = PagedSection<String>().replaceWith(page(0, 2, "a", "b"))
@@ -96,7 +86,6 @@ class PagedSectionTest {
 		assertEquals(listOf("a", "b", "c"), section.append(page(1, 2, "b", "c")).items)
 	}
 
-	/** Dubel rozpoznajemy po kluczu, nie po całej pozycji — liczniki zdążą się zmienić. */
 	@Test
 	fun appendComparesByKey() {
 		val section = PagedSection<String>().replaceWith(page(0, 2, "a:1", "b:1"))

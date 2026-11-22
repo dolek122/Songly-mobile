@@ -26,7 +26,6 @@ class LinkTokenTest {
 		assertNull(LinkToken.extract("   "))
 	}
 
-	/** Link bez tokenu to pomyłka przy kopiowaniu — nie wysyłamy całego URL-a jako tokenu. */
 	@Test
 	fun rejectsLinkWithoutToken() {
 		assertNull(LinkToken.extract("http://localhost:3000/verify-email"))

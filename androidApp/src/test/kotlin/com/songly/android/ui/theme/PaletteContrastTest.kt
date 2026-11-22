@@ -7,17 +7,6 @@ import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-/**
- * Kontrast palety liczony, nie oceniany na oko. Motyw to jedyna część UI, której
- * poprawność da się sprawdzić bez urządzenia — a „ten odcień chyba wystarczy" to
- * dokładnie ten rodzaj decyzji, po której tekst okazuje się nieczytalny na
- * słońcu.
- *
- * Próg 4.5:1 to WCAG AA dla zwykłego tekstu, 3:1 — dla elementów, które nie są
- * tekstem (obramowanie pola). Sprawdzamy pary, które realnie występują na
- * ekranach: treść na tle i na kartach, tekst pomocniczy, etykiety przycisków,
- * komunikaty błędów i statusu.
- */
 class PaletteContrastTest {
 
 	private fun channelLuminance(channel: Float): Double {
@@ -64,7 +53,6 @@ class PaletteContrastTest {
 		}
 	}
 
-	/** Obramowanie pola tekstowego musi być widać, zanim ktoś w nie stuknie. */
 	@Test
 	fun fieldOutlineIsVisible() {
 		with(SonglyPalette) {
@@ -72,11 +60,6 @@ class PaletteContrastTest {
 		}
 	}
 
-	/**
-	 * Na czarnym tle cienia prawie nie widać, więc to jasność mówi, co leży nad
-	 * czym: karta jaśniejsza od tła, menu od karty, dialog od menu. Odwrócenie
-	 * któregoś kroku sprawiłoby, że karta zleje się z tłem albo dialog z kartą.
-	 */
 	@Test
 	fun surfacesGetLighterAsTheyRise() {
 		with(SonglyPalette) {

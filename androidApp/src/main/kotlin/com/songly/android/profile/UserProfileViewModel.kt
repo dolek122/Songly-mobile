@@ -10,13 +10,6 @@ import com.songly.shared.model.SonglyApiException
 import com.songly.shared.network.SonglyApiClient
 import kotlinx.coroutines.launch
 
-/**
- * Stan ekranu cudzego profilu: dane ładowane po [UserProfileViewModel.userId].
- * [isSelf] chowa akcję zaproszenia na własnym profilu (można tu trafić np. z
- * autora własnego posta). Status znajomości nie jest znany z góry, więc przycisk
- * pokazujemy zawsze, a odrzucenie (już znajomi / oczekujące / blokada) pokazujemy
- * po fakcie w [inviteMessage].
- */
 data class UserProfileUiState(
 	val isLoading: Boolean = true,
 	val profile: PublicProfile? = null,
@@ -25,14 +18,10 @@ data class UserProfileUiState(
 	val isInviting: Boolean = false,
 	val inviteSent: Boolean = false,
 	val inviteMessage: String? = null,
-	// Blokada (Claude.md backendu §9). [blocked] pobieramy razem z profilem
-	// (ADR 0039 backendu). Gdy to zapytanie zawiedzie, zostaje `false`, a ponowna
-	// blokada jest idempotentna, więc „Zablokuj" przy nieznanym stanie niczego nie psuje.
 	val showBlockDialog: Boolean = false,
 	val isBlocking: Boolean = false,
 	val blocked: Boolean = false,
 	val blockMessage: String? = null,
-	// Akcje administratora platformy (widoczne tylko dla admina, nie na własnym profilu).
 	val showSuspendDialog: Boolean = false,
 	val suspendReason: String = "",
 	val suspendDays: Int? = 7,
@@ -40,17 +29,10 @@ data class UserProfileUiState(
 	val adminMessage: String? = null,
 	val suspendError: String? = null,
 ) {
-	// Backend: SuspendAccountRequest.reason wymagany, max 500 — zawieszony go zobaczy.
 	val canSuspend: Boolean
 		get() = suspendReason.isNotBlank() && suspendReason.length <= 500 && !isAdminActionRunning
 }
 
-/**
- * Logika ekranu cudzego profilu (read-only poza akcją zaproszenia). Pobiera
- * publiczny profil innego użytkownika (dane profilowe + ulubione gatunki) z modułu
- * `profile` przez `shared`. 404 rozpoznajemy osobno, bo to „użytkownik nie
- * istnieje", nie awaria.
- */
 class UserProfileViewModel(
 	private val client: SonglyApiClient,
 	private val userId: String,
@@ -65,8 +47,6 @@ class UserProfileViewModel(
 			try {
 				val profile = client.profile(userId)
 				val isSelf = runCatching { client.currentUserId() }.getOrNull() == userId
-				// Stan blokady jest dodatkiem do profilu — jego awaria (albo starszy backend
-				// bez tego endpointu) nie może zasłonić całego ekranu.
 				val blocked = !isSelf && runCatching { client.isBlocking(userId) }.getOrDefault(false)
 				uiState = UserProfileUiState(isLoading = false, profile = profile, isSelf = isSelf, blocked = blocked)
 			} catch (e: SonglyApiException) {
@@ -82,8 +62,6 @@ class UserProfileViewModel(
 		}
 	}
 
-	// --- Blokada ---
-
 	fun openBlockDialog() {
 		uiState = uiState.copy(showBlockDialog = true, blockMessage = null)
 	}
@@ -93,11 +71,6 @@ class UserProfileViewModel(
 		uiState = uiState.copy(showBlockDialog = false)
 	}
 
-	/**
-	 * Blokada zrywa znajomość i oczekujące zaproszenia w obu kierunkach i działa w
-	 * obie strony — stąd potwierdzenie, którego ekran znajomych nie ma (tam skutek
-	 * widać od razu na liście). [onChanged] odświeża posty: po blokadzie znikają.
-	 */
 	fun block(onChanged: () -> Unit = {}) {
 		if (uiState.isBlocking) return
 		uiState = uiState.copy(isBlocking = true, blockMessage = null)
@@ -119,7 +92,6 @@ class UserProfileViewModel(
 		}
 	}
 
-	/** Znajomość zerwana blokadą nie wraca — mówimy o tym, żeby nikt jej nie szukał. */
 	fun unblock(onChanged: () -> Unit = {}) {
 		if (uiState.isBlocking) return
 		uiState = uiState.copy(isBlocking = true, blockMessage = null)
@@ -138,8 +110,6 @@ class UserProfileViewModel(
 		}
 	}
 
-	// --- Akcje administratora (ADR 0021, 0022) ---
-
 	fun openSuspendDialog() {
 		uiState = uiState.copy(showSuspendDialog = true, suspendReason = "", suspendDays = 7, suspendError = null)
 	}
@@ -157,11 +127,6 @@ class UserProfileViewModel(
 		uiState = uiState.copy(suspendDays = days)
 	}
 
-	/**
-	 * Zawieszenie działa od razu (rola i stan czytane na żywo, ADR 0006), a profil
-	 * zawieszonego znika dla wszystkich (ADR 0026) — także z tego ekranu po
-	 * odświeżeniu. Odmowy: siebie i innego admina zawiesić nie można.
-	 */
 	fun suspend() {
 		if (!uiState.canSuspend) return
 		uiState = uiState.copy(isAdminActionRunning = true, suspendError = null)
@@ -193,11 +158,6 @@ class UserProfileViewModel(
 		else -> "Brak połączenia z serwerem."
 	}
 
-	/**
-	 * Wysyła zaproszenie do znajomych; po sukcesie blokuje przycisk, błąd pokazuje po fakcie.
-	 * Gdy ta osoba zaprosiła nas pierwsza, backend od razu łączy znajomość (`ACCEPTED`)
-	 * — to jedyna droga przyjęcia zaproszenia z profilu, więc mówimy, co zaszło.
-	 */
 	fun invite() {
 		if (uiState.isInviting || uiState.inviteSent) return
 		uiState = uiState.copy(isInviting = true, inviteMessage = null)

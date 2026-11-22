@@ -31,15 +31,6 @@ import com.songly.android.ui.Avatar
 import com.songly.android.ui.NavigationRow
 import com.songly.android.ui.TabTopBar
 
-/**
- * Zakładka „Profil": kim jestem i wszystko, co dotyczy mojego konta, w jednym
- * miejscu — edycja profilu, powiadomienia e-mail, panel administratora (tylko dla
- * administracji) i wylogowanie. Wcześniej te rzeczy były rozsiane po menu „⋮" i
- * długim formularzu, więc trzeba było ich szukać.
- *
- * Wiersze są widoczne zawsze, także gdy profil się nie wczytał — wylogowanie nie
- * może zależeć od tego, czy serwer akurat odpowiada.
- */
 @Composable
 fun ProfileHubScreen(
 	viewModel: ProfileViewModel,
@@ -73,7 +64,6 @@ fun ProfileHubScreen(
 				DefaultNameHint(onSetName = onEditProfile)
 			}
 
-			// Zdjęcie, nazwa, bio, ulubione gatunki i hasło — wszystko na jednym ekranie edycji.
 			OutlinedButton(
 				onClick = onEditProfile,
 				modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
@@ -110,10 +100,6 @@ fun ProfileHubScreen(
 	}
 }
 
-/**
- * Zachęta przy nazwie nadanej automatycznie (backend ADR 0046). Znajomi szukają po
- * nazwie, a „Użytkownik 123456” nie mówi im, kim jesteś.
- */
 @Composable
 private fun DefaultNameHint(onSetName: () -> Unit) {
 	Card(
@@ -132,10 +118,6 @@ private fun DefaultNameHint(onSetName: () -> Unit) {
 	}
 }
 
-/**
- * Duży awatar z nazwą i bio — jak nagłówek profilu w aplikacjach muzycznych.
- * Przy błędzie wczytywania zostaje sam komunikat z ponowieniem, bez pustych pól.
- */
 @Composable
 private fun ProfileHeader(state: ProfileUiState, onRetry: () -> Unit) {
 	Row(

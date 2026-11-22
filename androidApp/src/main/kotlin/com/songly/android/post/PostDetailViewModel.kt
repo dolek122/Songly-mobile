@@ -21,11 +21,6 @@ data class PostDetailUiState(
 	val actionError: String? = null,
 )
 
-/**
- * Jeden post — cel powiadomień o lajku, komentarzu i udostępnieniu. Wcześniej
- * kliknięcie takiego powiadomienia tylko oznaczało je jako przeczytane, a do
- * samego posta nie było drogi.
- */
 class PostDetailViewModel(
 	private val client: SonglyApiClient,
 	private val postId: String,
@@ -42,8 +37,6 @@ class PostDetailViewModel(
 				val me = runCatching { client.currentUserId() }.getOrNull()
 				uiState = uiState.copy(isLoading = false, post = post, currentUserId = me)
 			} catch (e: SonglyApiException) {
-				// 404 obejmuje też post autora, który nas zablokował albo został
-				// zawieszony — backend celowo tego nie rozróżnia, więc my też nie.
 				val message = if (e.status == 404) {
 					"Ten post nie jest już dostępny."
 				} else {

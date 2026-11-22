@@ -38,11 +38,6 @@ import com.songly.android.ui.ScreenTopBar
 import com.songly.shared.model.FriendNowPlaying
 import com.songly.shared.presence.PresenceProblem
 
-/**
- * „Znajomi teraz słuchają" na żywo (ADR 0007 backendu, Etap 3): stan początkowy z
- * REST-a, potem zmiany pushowane strumieniem SSE. Ekran nie odpytuje serwera sam —
- * całość (podłączenie, reconnect, scalanie zmian) siedzi w module `shared`.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsPresenceScreen(
@@ -52,7 +47,6 @@ fun FriendsPresenceScreen(
 ) {
 	val state = viewModel.uiState
 
-	// Strumień żyje tak długo, jak ekran — zejście z niego zwalnia połączenie.
 	DisposableEffect(Unit) {
 		viewModel.start()
 		onDispose { viewModel.stop() }
@@ -98,10 +92,6 @@ fun FriendsPresenceScreen(
 	}
 }
 
-/**
- * Rozróżnienie „na żywo" od „ostatnio znane" jest tu istotne: bez niego user
- * widziałby nieświeże statusy nie wiedząc, że strumień padł.
- */
 @Composable
 private fun ConnectionLabel(live: Boolean, connecting: Boolean, problem: PresenceProblem?) {
 	val (label, color) = when {
@@ -110,7 +100,6 @@ private fun ConnectionLabel(live: Boolean, connecting: Boolean, problem: Presenc
 		connecting -> "łączenie…" to MaterialTheme.colorScheme.onSurfaceVariant
 		else -> "offline" to MaterialTheme.colorScheme.error
 	}
-	// Kropka powtarza kolorem to, co mówi napis — sama barwa nie niesie informacji.
 	Row(
 		modifier = Modifier.padding(end = 16.dp),
 		verticalAlignment = Alignment.CenterVertically,
@@ -149,7 +138,6 @@ private fun FriendPresenceCard(friend: FriendNowPlaying, onClick: () -> Unit) {
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 				)
 			}
-			// Zielony korektor przy tym, co gra właśnie teraz (ozdoba — stan mówi linijka wyżej).
 			if (status.playing) {
 				Icon(
 					Icons.Filled.GraphicEq,
@@ -161,7 +149,5 @@ private fun FriendPresenceCard(friend: FriendNowPlaying, onClick: () -> Unit) {
 	}
 }
 
-// Limit strumieni na użytkownika egzekwuje backend (429 TOO_MANY_STREAMS) — zwykle
-// biorą się z porzuconych sesji na innych urządzeniach, które wygasają same.
 private const val STREAM_LIMIT_MESSAGE =
 	"Masz otwarte strumienie na innych urządzeniach. Ten wróci, gdy któryś z nich wygaśnie."

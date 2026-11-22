@@ -57,8 +57,6 @@ android {
 		targetCompatibility = JavaVersion.VERSION_17
 	}
 	testOptions {
-		// Ścieżka do zsynchronizowanej kopii kontraktu OpenAPI — OpenApiContractTest
-		// czyta ją, żeby sprawdzić, czy modele nie odjechały od DTO backendu.
 		unitTests.all {
 			it.systemProperty("songly.openapi.contract", file("contract/openapi.json").absolutePath)
 		}

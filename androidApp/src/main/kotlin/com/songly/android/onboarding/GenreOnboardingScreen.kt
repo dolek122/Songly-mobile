@@ -28,15 +28,6 @@ import com.songly.android.ui.SonglyMark
 import com.songly.android.ui.announcedWhenChanged
 import com.songly.android.ui.songlyBackdrop
 
-/**
- * „Co lubisz słuchać?" — pierwszy ekran po zalogowaniu na konto bez ulubionych
- * gatunków. Jedno pytanie, pigułki gatunków i jeden przycisk; [onFinished] dostaje
- * `true`, gdy gatunki zapisano (wtedy jest sens od razu pokazać dopasowanych).
- *
- * Systemowy Wstecz celowo nie pomija onboardingu, tylko wychodzi z aplikacji jak z
- * każdego ekranu startowego — przypadkowy gest nie może na zawsze schować pytania.
- * Pominięciem jest wyłącznie „Pomiń".
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GenreOnboardingScreen(

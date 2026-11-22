@@ -7,12 +7,6 @@ import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Serwer, który przyjmuje połączenie od razu, a odpowiada dopiero po kilkunastu
- * sekundach — tak zachowuje się staging na Renderze, gdy się budzi. Na
- * prawdziwym silniku (OkHttp), bo to jego domyślne okno odczytu (10 s) zrywało
- * takie żądania; MockEngine timeoutów silnika w ogóle nie ma.
- */
 class SlowServerTest {
 
 	@Test

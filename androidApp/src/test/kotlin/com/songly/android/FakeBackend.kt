@@ -15,14 +15,6 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
-/**
- * Atrapa backendu dla testów UI: podstawiony silnik Ktora zamiast sieci.
- *
- * Podstawiamy warstwę **najniżej jak się da** — pod klientem, nie zamiast niego.
- * Dzięki temu test przechodzi realną ścieżkę: serializację JSON, wtyczkę Auth,
- * mapowanie błędów i logikę ViewModelu. Atrapa ViewModelu sprawdzałaby wyłącznie
- * to, że atrapa zwraca to, co jej kazano.
- */
 class FakeBackend {
 
 	private val handlers = mutableMapOf<String, (callIndex: Int) -> Reply>()
@@ -30,41 +22,25 @@ class FakeBackend {
 
 	data class Reply(val status: HttpStatusCode, val body: String)
 
-	/**
-	 * Odpowiedź na dokładną ścieżkę (bez query). [body] dostaje numer wywołania od
-	 * zera, więc kolejne żądania o tę samą ścieżkę mogą oddać różne strony — bez
-	 * tego nie da się przetestować doczytywania.
-	 */
 	fun on(path: String, status: HttpStatusCode = HttpStatusCode.OK, body: (callIndex: Int) -> String) {
 		handlers[path] = { index -> Reply(status, body(index)) }
 	}
 
 	fun onJson(path: String, body: String) = on(path) { body }
 
-	/**
-	 * Odpowiedź tylko dla jednej metody — gdy ta sama ścieżka znaczy dwie operacje
-	 * (np. `GET` listy i `POST` publikacji w społeczności). Ma pierwszeństwo przed
-	 * [on] dla tej ścieżki.
-	 */
 	fun on(method: HttpMethod, path: String, status: HttpStatusCode = HttpStatusCode.OK, body: (callIndex: Int) -> String) {
 		handlers["${method.value} $path"] = { index -> Reply(status, body(index)) }
 	}
 
-	/** Ile razy odpytano ścieżkę — do sprawdzenia, że odświeżenie faktycznie poszło. */
 	fun callCount(path: String): Int = callCounts[path] ?: 0
 
 	fun callCount(method: HttpMethod, path: String): Int = callCounts["${method.value} $path"] ?: 0
 
 	private val lastBodies = mutableMapOf<String, String>()
 
-	/** Ostatnie ciało JSON wysłane danym żądaniem — do sprawdzenia, co klient wysłał. */
 	fun lastBody(method: HttpMethod, path: String): String? = lastBodies["${method.value} $path"]
 
 	fun client(): SonglyApiClient {
-		// Odpowiedź w wątku wołającego zamiast na puli IO. Inaczej ViewModel zmienia stan
-		// Compose z wątku tła, a pod obciążeniem (cały zestaw testów naraz) taka
-		// aktualizacja potrafiła nie dotrzeć do UI przed końcem waitUntil — test
-		// zakładki moderacji padał mniej więcej co drugi przebieg.
 		val engine = MockEngine.create {
 			dispatcher = Dispatchers.Unconfined
 			addHandler { request ->
@@ -90,14 +66,11 @@ class FakeBackend {
 			}
 		}
 		val storage = InMemoryTokenStorage()
-		// Sesja założona z góry: testy ekranów nie przechodzą przez logowanie, a bez
-		// tokenów wtyczka Auth próbowałaby odświeżania przy pierwszym żądaniu.
 		runBlocking { storage.saveTokens(AuthTokens("access", "refresh", "Bearer", 900)) }
 		return SonglyApiClient.withEngine(ApiConfig("http://test.local"), storage, engine)
 	}
 }
 
-/** Strona `PagedModel` backendu z gotowymi metadanymi. */
 fun pageJson(content: String, number: Int, totalPages: Int, totalElements: Int = 0): String =
 	"""{"content":[$content],"page":{"size":20,"number":$number,"totalElements":$totalElements,"totalPages":$totalPages}}"""
 

@@ -14,17 +14,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
-/**
- * Trwały, szyfrowany magazyn tokenów sesji dla Androida. Tokeny to dane wrażliwe
- * (Claude.md §9), więc szyfrujemy je kluczem AES-256/GCM trzymanym w Android
- * Keystore (sprzętowo, gdy urządzenie ma TEE/StrongBox) — do SharedPreferences
- * trafia wyłącznie szyfrogram, nigdy tokeny w jawnej postaci.
- *
- * Świadomie bez `EncryptedSharedPreferences` (Jetpack security-crypto jest
- * zdeprecjonowany). Operacje kryptograficzne i I/O idą na [Dispatchers.IO].
- *
- * Utwórz z `applicationContext`, nie z Activity, żeby nie przeciekał kontekst.
- */
 class AndroidKeystoreTokenStorage(context: Context) : TokenStorage {
 
 	private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -35,8 +24,6 @@ class AndroidKeystoreTokenStorage(context: Context) : TokenStorage {
 		try {
 			json.decodeFromString<AuthTokens>(decrypt(stored).decodeToString())
 		} catch (e: Exception) {
-			// Uszkodzony szyfrogram lub unieważniony klucz (np. zmiana zabezpieczeń
-			// ekranu) — traktujemy jak brak sesji i czyścimy, żeby nie zapętlić błędu.
 			clearBlocking()
 			null
 		}

@@ -2,20 +2,6 @@ package com.songly.shared.paging
 
 import com.songly.shared.model.Page
 
-/**
- * Jedna doczytywana lista: pozycje plus wszystko, co UI musi wiedzieć, żeby
- * pokazać stopkę i nie wysłać dwóch żądań o tę samą stronę.
- *
- * Powstało dla ekranu znajomych, który trzyma **cztery** niezależnie stronicowane
- * listy (znajomi, zaproszenia otrzymane i wysłane, zablokowani). Trzymanie tego
- * w płaskich polach stanu znaczyłoby dwadzieścia pól i cztery kopie tej samej
- * arytmetyki stron. Ekrany z jedną listą (feed, komentarze) zostają przy płaskich
- * polach — tam kontener niczego nie upraszcza.
- *
- * Logika siedzi w `shared`, nie w ViewModelu, bo iOS będzie stronicował te same
- * listy dokładnie tak samo — i bo dzięki temu da się ją przetestować bez
- * urządzenia.
- */
 data class PagedSection<T>(
 	val items: List<T> = emptyList(),
 	val nextPage: Int = 0,
@@ -24,28 +10,17 @@ data class PagedSection<T>(
 	val appendError: String? = null,
 ) {
 
-	/**
-	 * Czy warto prosić o kolejną stronę. Po błędzie doczytywania **nie** wracamy
-	 * sami — użytkownik decyduje przyciskiem „Ponów", inaczej zerwana sieć
-	 * zamieniłaby się w pętlę nieudanych żądań.
-	 */
 	val canLoadMore: Boolean
 		get() = !endReached && !isLoadingMore && appendError == null
 
 	fun loadingMore(): PagedSection<T> = copy(isLoadingMore = true, appendError = null)
 
-	/** Pierwsza strona: zastępuje zawartość i zeruje stan doczytywania. */
 	fun replaceWith(page: Page<T>): PagedSection<T> = PagedSection(
 		items = page.content,
 		nextPage = page.number + 1,
 		endReached = page.last,
 	)
 
-	/**
-	 * Kolejna strona: dokłada na koniec. [keyOf] to klucz, po którym lista na
-	 * ekranie rozróżnia pozycje — pozycja, która już jest, nie wejdzie drugi raz
-	 * (patrz [plusDistinct]).
-	 */
 	fun append(page: Page<T>, keyOf: (T) -> Any? = { it }): PagedSection<T> = copy(
 		items = items.plusDistinct(page.content, keyOf),
 		nextPage = page.number + 1,
@@ -54,24 +29,13 @@ data class PagedSection<T>(
 		appendError = null,
 	)
 
-	/** Nieudane doczytywanie: lista zostaje, stopka pokazuje błąd i „Ponów". */
 	fun failed(message: String): PagedSection<T> = copy(isLoadingMore = false, appendError = message)
 
-	/** Ponowna próba po błędzie — bez tego [canLoadMore] blokowałby żądanie. */
 	fun retrying(): PagedSection<T> = copy(isLoadingMore = true, appendError = null)
 
 	fun removeIf(predicate: (T) -> Boolean): PagedSection<T> = copy(items = items.filterNot(predicate))
 }
 
-/**
- * Dokłada [more] na koniec, pomijając pozycje o kluczu, który już jest na liście.
- *
- * Stronicowanie po numerze strony przesuwa się, gdy w międzyczasie coś przybędzie
- * (nowy post znajomego wypycha ostatni post strony 0 na początek strony 1), więc
- * kolejna strona potrafi powtórzyć pozycję z poprzedniej. Dla `LazyColumn` z
- * kluczami to nie kosmetyka, tylko wyjątek „Key was already used" — czyli crash
- * przy zwykłym przewijaniu feedu.
- */
 fun <T> List<T>.plusDistinct(more: List<T>, keyOf: (T) -> Any?): List<T> {
 	val seen = mapTo(HashSet(), keyOf)
 	return this + more.filter { seen.add(keyOf(it)) }

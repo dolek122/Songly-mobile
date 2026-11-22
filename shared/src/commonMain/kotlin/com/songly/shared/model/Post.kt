@@ -2,15 +2,12 @@ package com.songly.shared.model
 
 import kotlinx.serialization.Serializable
 
-/** Żądanie utworzenia posta (backend: content.dto.CreatePostRequest, treść max 1000 znaków). */
 @Serializable
 data class CreatePostRequest(
 	val content: String,
-	// Klucz z `POST /posts/image` (ADR 0010) — zdjęcie wgrywa się osobno, przed postem.
 	val imageKey: String? = null,
 )
 
-/** Post z feedu (backend: content.dto.PostResponse). */
 @Serializable
 data class Post(
 	val id: String,
@@ -24,17 +21,10 @@ data class Post(
 	val commentCount: Long,
 	val shareCount: Long,
 	val sharedByMe: Boolean,
-	// `null` = zwykły post; wartość = post w społeczności.
 	val communityId: String? = null,
 	val imageUrl: String? = null,
 )
 
-/**
- * Strona wyników — backend paginuje wszystkie listy (Claude.md §6: `?page=&size=`).
- * Backend serializuje strony jako stabilne `PagedModel` (VIA_DTO): lista pod
- * [content], a metadane w zagnieżdżonym obiekcie [page]. `first`/`last` nie ma
- * w kontrakcie — wyliczamy je lokalnie z numeru strony i liczby stron.
- */
 @Serializable
 data class Page<T>(
 	val content: List<T>,
@@ -45,12 +35,9 @@ data class Page<T>(
 	val totalElements: Long get() = page.totalElements
 	val totalPages: Int get() = page.totalPages
 	val first: Boolean get() = page.number == 0
-	// Odwzorowuje Spring: last = brak następnej strony. Dla pustego wyniku
-	// (totalPages = 0) daje true, tak samo jak `PageImpl`.
 	val last: Boolean get() = page.number + 1 >= page.totalPages
 }
 
-/** Metadane strony z `PagedModel` backendu (klucz `page`). */
 @Serializable
 data class PageMetadata(
 	val size: Int,
@@ -59,10 +46,5 @@ data class PageMetadata(
 	val totalPages: Int,
 )
 
-/**
- * Wgrane zdjęcie do posta (backend: content.dto.PostImageResponse). [key] idzie
- * do `CreatePostRequest.imageKey`, [url] służy wyłącznie do podglądu przed
- * publikacją.
- */
 @Serializable
 data class PostImage(val key: String, val url: String)

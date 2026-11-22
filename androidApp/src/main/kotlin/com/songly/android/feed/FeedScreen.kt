@@ -60,17 +60,6 @@ import com.songly.android.ui.SonglyMark
 import com.songly.android.ui.TabTopBar
 import com.songly.shared.model.FriendNowPlaying
 
-/**
- * Ekran feedu z paginacją (Compose, natywny UI — §14) — pierwsza zakładka dolnego
- * paska. Stan pochodzi z [FeedViewModel]; dane z modułu `shared` (auto-refresh
- * tokenów w tle). Gdy sesja wygaśnie bezpowrotnie, wywołuje [onSessionExpired],
- * żeby wrócić do logowania.
- *
- * W pasku tylko dzwonek powiadomień — reszta aplikacji jest w dolnym pasku, a
- * nie w menu „⋮", w którym trzeba było jej szukać. Nad postami pasek „Teraz
- * słuchają" ze znajomymi, którzy coś grają — muzyka jest pierwszą rzeczą, jaką
- * widać po otwarciu aplikacji, a nie trzy stuknięcia dalej.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
@@ -87,8 +76,6 @@ fun FeedScreen(
 	val listState = rememberLazyListState()
 	val snackbarHostState = remember { SnackbarHostState() }
 
-	// Każde wejście na ekran: za pierwszym razem wczytanie, potem ciche odświeżenie
-	// (pozycja na liście przeżywa wyjście do komentarzy czy innej zakładki).
 	LaunchedEffect(Unit) {
 		viewModel.onScreenShown()
 	}
@@ -112,9 +99,6 @@ fun FeedScreen(
 		if (state.accountSuspended) onAccountSuspended()
 	}
 
-	// Infinite scroll: gdy widoczny jest jeden z ostatnich elementów, doczytaj
-	// kolejną stronę. Warunki (koniec listy, trwające żądanie, błąd) pilnuje
-	// sam [FeedViewModel.loadNextPage].
 	val shouldLoadMore by remember {
 		derivedStateOf {
 			val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -135,7 +119,6 @@ fun FeedScreen(
 	}
 
 	Scaffold(
-		// Przezroczyste tło: za ekranem jest zielona poświata zakładek (songlyBackdrop).
 		containerColor = Color.Transparent,
 		topBar = {
 			TabTopBar(
@@ -178,7 +161,6 @@ fun FeedScreen(
 				else -> {
 					LazyColumn(
 						state = listState,
-						// Dół z zapasem na przycisk „Nowy post", żeby nie zasłaniał ostatniego posta.
 						contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
 						verticalArrangement = Arrangement.spacedBy(12.dp),
 						modifier = Modifier.fillMaxSize(),
@@ -219,7 +201,6 @@ fun FeedScreen(
 	}
 }
 
-/** Nazwa aplikacji ze znakiem kropli — jedyna ozdoba w pasku. */
 @Composable
 private fun BrandTitle() {
 	Row(
@@ -232,12 +213,6 @@ private fun BrandTitle() {
 	}
 }
 
-/**
- * „Teraz słuchają": poziomy pasek znajomych, którzy właśnie coś grają — awatar w
- * zielonej obwódce, imię i utwór. Migawka z chwili wejścia na ekran; na żywo (SSE)
- * aktualizuje się dopiero pełny ekran pod „Wszyscy", żeby feed nie trzymał
- * otwartego strumienia (backend limituje ich liczbę na użytkownika).
- */
 @Composable
 private fun FriendsListeningStrip(
 	friends: List<FriendNowPlaying>,
@@ -285,7 +260,6 @@ private fun ListeningFriend(friend: FriendNowPlaying, onClick: () -> Unit) {
 					.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
 					.padding(4.dp),
 			)
-			// Znak w rogu mówi to samo co zielona obwódka: ta osoba właśnie gra.
 			SonglyMark(size = 20.dp, modifier = Modifier.align(Alignment.BottomEnd))
 		}
 		Text(
@@ -305,10 +279,6 @@ private fun ListeningFriend(friend: FriendNowPlaying, onClick: () -> Unit) {
 	}
 }
 
-/**
- * Dzwonek z liczbą nieprzeczytanych. Plakietka jest czysto wizualna, więc opis
- * dla czytnika mówi wprost i „powiadomienia", i ile jest nowych.
- */
 @Composable
 private fun NotificationsButton(unread: Long, onClick: () -> Unit) {
 	val description = if (unread > 0) "Powiadomienia, nieprzeczytane: $unread" else "Powiadomienia"
@@ -331,7 +301,6 @@ private fun NotificationsButton(unread: Long, onClick: () -> Unit) {
 	}
 }
 
-/** Etykieta badge'a — powyżej 99 nieprzeczytanych pokazujemy „99+", żeby nie rozpychać ikony. */
 private fun badgeLabel(count: Long): String = if (count > 99) "99+" else count.toString()
 
 @Composable

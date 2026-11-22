@@ -1,9 +1,6 @@
 import Foundation
 import Shared
 
-/// Post w wersji do wyświetlenia. Własna struktura zamiast kotlinowego `Post`, bo
-/// lajk i udostępnienie zmieniają się optymistycznie, a `copy` z Kotlina wymaga w
-/// Swifcie podania wszystkich pól naraz.
 struct FeedPost: Identifiable, Equatable {
 	let id: String
 	let authorDisplayName: String
@@ -32,28 +29,22 @@ struct FeedPost: Identifiable, Equatable {
 	}
 }
 
-/// Logika feedu — odpowiednik `FeedViewModel` z Androida: paginacja, odświeżanie
-/// gestem, optymistyczne lajki i udostępnienia z wycofaniem przy błędzie.
 @MainActor
 final class FeedViewModel: ObservableObject {
 
 	@Published private(set) var posts: [FeedPost] = []
-	@Published private(set) var isLoading = true // pierwsze wczytanie (lista za spinnerem)
+	@Published private(set) var isLoading = true
 	@Published private(set) var isLoadingMore = false
-	@Published private(set) var errorMessage: String? // błąd pierwszego wczytania
-	@Published private(set) var appendErrorMessage: String? // błąd doczytywania (lista zostaje)
+	@Published private(set) var errorMessage: String?
+	@Published private(set) var appendErrorMessage: String?
 	@Published private(set) var endReached = false
-	// 401 mimo automatycznego odświeżenia = refresh token też wygasł.
 	@Published private(set) var sessionExpired = false
-	// Zawieszone konto dostaje 403 ACCOUNT_SUSPENDED prawie wszędzie (ADR 0022).
 	@Published private(set) var accountSuspended = false
 
 	private static let pageSize: Int32 = 20
 
 	private let client: SonglyApiClient
 	private var nextPage: Int32 = 0
-	// Blokuje równoległe żądania — przewijanie potrafi poprosić o stronę kilka razy,
-	// zanim pierwsza wróci.
 	private var loading = false
 	private var loadedOnce = false
 
@@ -65,14 +56,12 @@ final class FeedViewModel: ObservableObject {
 		!isLoading && errorMessage == nil && posts.isEmpty
 	}
 
-	/// Pierwsze wczytanie przy wejściu na ekran — powrót na ekran nie przeładowuje listy.
 	func loadIfNeeded() async {
 		guard !loadedOnce else { return }
 		loadedOnce = true
 		await reload()
 	}
 
-	/// Od strony 0, z listą schowaną za spinnerem (przycisk „Spróbuj ponownie").
 	func reload() async {
 		guard !loading else { return }
 		isLoading = true
@@ -80,7 +69,6 @@ final class FeedViewModel: ObservableObject {
 		await loadPage(reset: true)
 	}
 
-	/// Odświeżenie gestem: lista zostaje na ekranie, spinner rysuje sam `refreshable`.
 	func pullToRefresh() async {
 		guard !loading else { return }
 		await loadPage(reset: true)
@@ -161,9 +149,6 @@ final class FeedViewModel: ObservableObject {
 			if reset {
 				posts = fresh
 			} else {
-				// Paginacja po numerze strony przesuwa się, gdy w międzyczasie pojawi się
-				// nowy post — ten sam post wraca wtedy na kolejnej stronie. Zdublowane id
-				// psułoby `ForEach`, więc odsiewamy już pokazane.
 				let known = Set(posts.map(\.id))
 				posts += fresh.filter { !known.contains($0.id) }
 			}
@@ -180,8 +165,6 @@ final class FeedViewModel: ObservableObject {
 			} else {
 				let message = ApiFailure.message(error, action: "wczytać feedu")
 				if reset {
-					// Odświeżenie gestem przy pokazanej liście nie chowa jej — błąd
-					// pokazujemy pod listą, jak przy doczytywaniu.
 					if posts.isEmpty { errorMessage = message } else { appendErrorMessage = message }
 				} else {
 					appendErrorMessage = message

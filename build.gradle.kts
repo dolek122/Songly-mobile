@@ -1,4 +1,3 @@
-// Root build — deklaruje pluginy dla podprojektów bez aplikowania ich tutaj.
 plugins {
 	alias(libs.plugins.kotlinMultiplatform) apply false
 	alias(libs.plugins.kotlinAndroid) apply false
