@@ -28,11 +28,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.songly.android.moderation.ReportPostDialog
+import com.songly.android.moderation.ReportPostViewModel
+import com.songly.android.moderation.reportThanks
 import com.songly.android.ui.BackButton
 import com.songly.android.post.PostListDialogs
 import com.songly.android.post.PostListViewModel
@@ -49,8 +56,11 @@ fun UserProfileScreen(
 	onOpenComments: (postId: String) -> Unit,
 	isAdminViewer: Boolean = false,
 	onOpenModerationHistory: (userId: String) -> Unit = {},
+	createReportViewModel: ((postId: String) -> ReportPostViewModel)? = null,
 ) {
 	val state = viewModel.uiState
+	var reportingPostId by remember { mutableStateOf<String?>(null) }
+	var reportStatus by remember { mutableStateOf<String?>(null) }
 
 	LaunchedEffect(Unit) {
 		viewModel.load()
@@ -58,6 +68,20 @@ fun UserProfileScreen(
 	}
 
 	PostListDialogs(postsViewModel)
+
+	val reportingId = reportingPostId
+	if (reportingId != null && createReportViewModel != null) {
+		val reportViewModel = remember(reportingId) { createReportViewModel(reportingId) }
+		ReportPostDialog(
+			viewModel = reportViewModel,
+			onReported = {
+				reportingPostId = null
+				reportStatus = reportThanks(null)
+			},
+			onDismiss = { reportingPostId = null },
+			inCommunity = false,
+		)
+	}
 
 	if (state.showSuspendDialog) {
 		SuspendDialog(state, viewModel)
@@ -120,11 +144,21 @@ fun UserProfileScreen(
 					item(key = "posts-title") {
 						Text("Posty", style = MaterialTheme.typography.titleMedium)
 					}
+					reportStatus?.let { status ->
+						item(key = "report-status") {
+							Text(status, color = MaterialTheme.colorScheme.primary)
+						}
+					}
 					postListItems(
 						viewModel = postsViewModel,
 						emptyText = "Ten użytkownik nie opublikował jeszcze żadnego posta.",
 						onOpenComments = onOpenComments,
 						onOpenAuthor = {},
+						onReport = if (createReportViewModel != null) {
+							{ reportingPostId = it; reportStatus = null }
+						} else {
+							null
+						},
 					)
 				}
 			}

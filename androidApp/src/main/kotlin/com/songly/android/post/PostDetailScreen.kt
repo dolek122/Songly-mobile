@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.BackButton
 import com.songly.android.moderation.ReportPostDialog
+import com.songly.android.moderation.reportThanks
 import com.songly.android.moderation.ReportPostViewModel
 import com.songly.android.ui.DeletePostDialog
 import com.songly.android.ui.PostCard
@@ -59,6 +60,7 @@ fun PostDetailScreen(
 			viewModel = reportViewModel,
 			onReported = { reporting = false; reported = true },
 			onDismiss = { reporting = false },
+			inCommunity = reportedPost.communityId != null,
 		)
 	}
 
@@ -107,16 +109,14 @@ fun PostDetailScreen(
 						onToggleShare = viewModel::toggleShare,
 						onDelete = viewModel::requestDelete,
 						onOpenAuthor = { onOpenUserProfile(post.authorId) },
-						onReport = if (createReportViewModel != null && post.communityId != null && !reported &&
-							post.authorId != state.currentUserId
-						) {
+						onReport = if (createReportViewModel != null && !reported && post.authorId != state.currentUserId) {
 							{ reporting = true }
 						} else {
 							null
 						},
 					)
 					if (reported) {
-						Text("Dziękujemy — zgłoszenie trafiło do moderatorów.", color = MaterialTheme.colorScheme.primary)
+						Text(reportThanks(post.communityId), color = MaterialTheme.colorScheme.primary)
 					}
 					if (state.actionError != null) {
 						Text(state.actionError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)

@@ -19,8 +19,20 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.songly.shared.model.REPORT_REASONS
 
+fun reportThanks(communityId: String?): String =
+	if (communityId == null) {
+		"Dziękujemy — zgłoszenie trafiło do administracji."
+	} else {
+		"Dziękujemy — zgłoszenie trafiło do moderatorów."
+	}
+
 @Composable
-fun ReportPostDialog(viewModel: ReportPostViewModel, onReported: () -> Unit, onDismiss: () -> Unit) {
+fun ReportPostDialog(
+	viewModel: ReportPostViewModel,
+	onReported: () -> Unit,
+	onDismiss: () -> Unit,
+	inCommunity: Boolean = true,
+) {
 	val state = viewModel.uiState
 
 	LaunchedEffect(state.submitted) {
@@ -33,7 +45,7 @@ fun ReportPostDialog(viewModel: ReportPostViewModel, onReported: () -> Unit, onD
 		text = {
 			Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
 				Text(
-					"Zgłoszenie trafi do moderatorów tej społeczności.",
+					if (inCommunity) "Zgłoszenie trafi do moderatorów tej społeczności." else "Zgłoszenie trafi do administracji Songly.",
 					style = MaterialTheme.typography.bodySmall,
 				)
 				REPORT_REASONS.forEach { reason ->

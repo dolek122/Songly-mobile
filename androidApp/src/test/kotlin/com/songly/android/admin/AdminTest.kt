@@ -4,6 +4,8 @@ import com.songly.android.FakeBackend
 import com.songly.android.MainDispatcherRule
 import com.songly.android.account.SuspendedViewModel
 import com.songly.android.feed.FeedViewModel
+import com.songly.android.pageJson
+import com.songly.android.postJson
 import com.songly.android.profile.UserProfileViewModel
 import com.songly.android.profileJson
 import io.ktor.http.HttpMethod
@@ -35,6 +37,52 @@ class AdminTest {
 	private fun suspensionJson(userId: String, appeal: String?) =
 		"""{"userId":"$userId","reason":"nękanie","suspendedAt":"2026-01-01T10:00:00Z","expiresAt":null,""" +
 			""""appealStatus":${appeal?.let { "\"$it\"" } ?: "null"},"appealText":"to pomyłka"}"""
+
+	private fun reportJson(id: String, postId: String) =
+		"""{"id":"$id","post":${postJson(postId, "treść")},"reporterId":"u9","reporterDisplayName":"Ola",""" +
+			""""reason":"SPAM","details":null,"createdAt":"2026-01-01T10:00:00Z","reportCount":2,""" +
+			""""reporterUpheldCount":0,"reporterDismissedCount":0}"""
+
+	@Test
+	fun reportQueueIsShownFirst_andRemovingPostClearsAllItsReports() {
+		val backend = FakeBackend().apply {
+			onJson("/api/v1/profiles/me", profileJson("me-1"))
+			onJson(
+				"/api/v1/admin/post-reports",
+				pageJson("${reportJson("r1", "p1")},${reportJson("r2", "p1")},${reportJson("r3", "p2")}", 0, 1),
+			)
+			on(HttpMethod.Delete, "/api/v1/admin/posts/p1", HttpStatusCode.NoContent) { "" }
+		}
+		val viewModel = AdminViewModel(backend.client())
+		assertEquals(AdminSection.REPORTS, viewModel.uiState.section)
+
+		viewModel.refresh()
+		awaitUntil { viewModel.uiState.reports.items.size == 3 }
+		viewModel.removeReportedPost(viewModel.uiState.reports.items.first())
+		awaitUntil { viewModel.uiState.busyId == null && viewModel.uiState.statusMessage != null }
+
+		assertEquals("Usunięto post", viewModel.uiState.statusMessage)
+		assertEquals(listOf("r3"), viewModel.uiState.reports.items.map { it.id })
+		assertEquals(1, backend.callCount(HttpMethod.Delete, "/api/v1/admin/posts/p1"))
+	}
+
+	@Test
+	fun dismissingReportKeepsOtherReportsOfSamePost() {
+		val backend = FakeBackend().apply {
+			onJson("/api/v1/profiles/me", profileJson("me-1"))
+			onJson("/api/v1/admin/post-reports", pageJson("${reportJson("r1", "p1")},${reportJson("r2", "p1")}", 0, 1))
+			on("/api/v1/admin/post-reports/r1/dismissal", HttpStatusCode.NoContent) { "" }
+		}
+		val viewModel = AdminViewModel(backend.client())
+		viewModel.select(AdminSection.REPORTS)
+		awaitUntil { viewModel.uiState.reports.items.size == 2 }
+
+		viewModel.dismissReport(viewModel.uiState.reports.items.first())
+		awaitUntil { viewModel.uiState.statusMessage != null }
+
+		assertEquals("Odrzucono zgłoszenie", viewModel.uiState.statusMessage)
+		assertEquals(listOf("r2"), viewModel.uiState.reports.items.map { it.id })
+	}
 
 	@Test
 	fun adminIsRecognizedByOwnIdOnAdminList() {

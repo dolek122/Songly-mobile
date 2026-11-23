@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.songly.android.ui.BackButton
+import com.songly.android.moderation.ReportCard
 import com.songly.android.moderation.logActionLabel
 import com.songly.android.ui.ScreenTopBar
 import com.songly.android.ui.formatDateTime
@@ -46,6 +47,7 @@ fun AdminScreen(
 	onBack: () -> Unit,
 	onOpenUserProfile: (userId: String) -> Unit,
 	onOpenCommunity: (communityId: String) -> Unit,
+	onOpenPost: (postId: String) -> Unit = {},
 ) {
 	val state = viewModel.uiState
 
@@ -99,6 +101,7 @@ fun AdminScreen(
 				}
 
 				else -> when (state.section) {
+					AdminSection.REPORTS -> reportItems(state, viewModel, onOpenPost, onOpenUserProfile)
 					AdminSection.SUSPENSIONS -> suspensionItems(state, viewModel, onOpenUserProfile)
 					AdminSection.ESCALATIONS -> escalationItems(state, viewModel, onOpenUserProfile, onOpenCommunity)
 					AdminSection.ADMINS -> adminItems(state, viewModel, onOpenUserProfile)
@@ -115,6 +118,42 @@ private fun AdminUiState.nameOf(userId: String?): String =
 
 private fun LazyListScope.empty(text: String) = item(key = "empty") {
 	Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+private fun LazyListScope.reportItems(
+	state: AdminUiState,
+	viewModel: AdminViewModel,
+	onOpenPost: (String) -> Unit,
+	onOpenProfile: (String) -> Unit,
+) {
+	item(key = "reports-hint") {
+		Text(
+			"Zgłoszenia postów spoza społeczności. Posty w społecznościach rozpatrują ich moderatorzy.",
+			style = MaterialTheme.typography.bodySmall,
+			color = MaterialTheme.colorScheme.onSurfaceVariant,
+		)
+	}
+	if (state.reports.items.isEmpty()) return empty("Brak zgłoszeń do rozpatrzenia.")
+	items(state.reports.items, key = { "r-${it.id}" }) { report ->
+		ReportCard(
+			report = report,
+			busy = state.busyId == report.id,
+			onOpenPost = { onOpenPost(report.post.id) },
+			onOpenReporter = { onOpenProfile(report.reporterId) },
+			onRemovePost = { viewModel.removeReportedPost(report) },
+			onDismiss = { viewModel.dismissReport(report) },
+		)
+	}
+	if (!state.reports.endReached || state.reports.appendError != null) {
+		item(key = "reports-more") {
+			Column {
+				state.reports.appendError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+				TextButton(onClick = viewModel::loadMoreReports, enabled = !state.reports.isLoadingMore) {
+					Text("Pokaż więcej")
+				}
+			}
+		}
+	}
 }
 
 private fun LazyListScope.suspensionItems(state: AdminUiState, viewModel: AdminViewModel, onOpenProfile: (String) -> Unit) {
@@ -294,6 +333,7 @@ private fun LazyListScope.logItems(state: AdminUiState, viewModel: AdminViewMode
 }
 
 private fun sectionLabel(section: AdminSection): String = when (section) {
+	AdminSection.REPORTS -> "Zgłoszenia"
 	AdminSection.SUSPENSIONS -> "Zawieszenia"
 	AdminSection.ESCALATIONS -> "Eskalacje banów"
 	AdminSection.ADMINS -> "Administratorzy"
@@ -318,5 +358,6 @@ private fun analyticsLabel(type: String): String = when (type) {
 	"BAN_APPEAL_SUBMITTED" -> "Odwołania od banów"
 	"BAN_APPEAL_ACCEPTED" -> "Uznane odwołania"
 	"BAN_APPEAL_REJECTED" -> "Odrzucone odwołania"
+	"POST_REMOVED" -> "Posty usunięte przez administrację"
 	else -> type
 }

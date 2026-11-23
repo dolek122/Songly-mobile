@@ -132,7 +132,7 @@ private fun <T> LazyListScope.section(
 }
 
 @Composable
-private fun ReportCard(
+internal fun ReportCard(
 	report: PostReport,
 	busy: Boolean,
 	onOpenPost: () -> Unit,
@@ -273,5 +273,6 @@ fun logActionLabel(action: String): String = when (action) {
 	"SUSPENSION_APPEAL_REJECTED" -> "Odrzucone odwołanie od zawieszenia"
 	"PLATFORM_ADMIN_GRANTED" -> "Nadanie roli administratora"
 	"PLATFORM_ADMIN_REVOKED" -> "Odebranie roli administratora"
+	"POST_REMOVED" -> "Usunięcie posta przez administrację"
 	else -> action
 }

@@ -65,7 +65,7 @@ fun LazyListScope.postListItems(
 					onToggleShare = { viewModel.toggleShare(post) },
 					onDelete = { viewModel.requestDelete(post.id) },
 					onOpenAuthor = { onOpenAuthor(post.authorId) },
-					onReport = if (onReport != null && post.communityId != null && post.authorId != state.currentUserId) {
+					onReport = if (onReport != null && post.authorId != state.currentUserId) {
 						{ onReport(post.id) }
 					} else {
 						null

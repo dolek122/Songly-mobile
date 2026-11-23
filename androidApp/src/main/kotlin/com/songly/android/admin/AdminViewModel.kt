@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.songly.shared.model.AnalyticsSummary
 import com.songly.shared.model.EscalatedAppeal
 import com.songly.shared.model.ModerationLogEntry
+import com.songly.shared.model.PostReport
 import com.songly.shared.model.SonglyApiException
 import com.songly.shared.model.SuspendedAccount
 import com.songly.shared.network.SonglyApiClient
@@ -18,15 +19,16 @@ private const val PAGE_SIZE = 20
 
 private const val MAX_NAME_LOOKUP = 100
 
-enum class AdminSection { SUSPENSIONS, ESCALATIONS, ADMINS, ANALYTICS, LOG }
+enum class AdminSection { REPORTS, SUSPENSIONS, ESCALATIONS, ADMINS, ANALYTICS, LOG }
 
 val ANALYTICS_WINDOWS = listOf(7, 30, 90)
 
 data class AdminUiState(
-	val section: AdminSection = AdminSection.SUSPENSIONS,
+	val section: AdminSection = AdminSection.REPORTS,
 	val isLoading: Boolean = false,
 	val errorMessage: String? = null,
 	val statusMessage: String? = null,
+	val reports: PagedSection<PostReport> = PagedSection(),
 	val suspensions: List<SuspendedAccount> = emptyList(),
 	val escalations: List<EscalatedAppeal> = emptyList(),
 	val adminIds: List<String> = emptyList(),
@@ -68,6 +70,9 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 					uiState = uiState.copy(currentUserId = runCatching { client.currentUserId() }.getOrNull())
 				}
 				when (section) {
+					AdminSection.REPORTS -> uiState = uiState.copy(
+						reports = uiState.reports.replaceWith(client.adminPostReports(0, PAGE_SIZE)),
+					)
 					AdminSection.SUSPENSIONS -> {
 						val list = client.suspensions()
 						uiState = uiState.copy(suspensions = list)
@@ -109,6 +114,29 @@ class AdminViewModel(private val client: SonglyApiClient) : ViewModel() {
 				uiState = uiState.copy(log = uiState.log.failed(errorText(e, "doczytać dziennika")))
 			}
 		}
+	}
+
+	fun loadMoreReports() {
+		if (uiState.reports.endReached || uiState.reports.isLoadingMore) return
+		uiState = uiState.copy(reports = uiState.reports.loadingMore())
+		viewModelScope.launch {
+			try {
+				val page = client.adminPostReports(uiState.reports.nextPage, PAGE_SIZE)
+				uiState = uiState.copy(reports = uiState.reports.append(page) { it.id })
+			} catch (e: Exception) {
+				uiState = uiState.copy(reports = uiState.reports.failed(errorText(e, "doczytać zgłoszeń")))
+			}
+		}
+	}
+
+	fun dismissReport(report: PostReport) = act(report.id, success = "Odrzucono zgłoszenie") {
+		client.dismissAdminReport(report.id)
+		uiState = uiState.copy(reports = uiState.reports.removeIf { it.id == report.id })
+	}
+
+	fun removeReportedPost(report: PostReport) = act(report.id, success = "Usunięto post") {
+		client.removePostAsAdmin(report.post.id)
+		uiState = uiState.copy(reports = uiState.reports.removeIf { it.post.id == report.post.id })
 	}
 
 	fun lift(account: SuspendedAccount) = act(

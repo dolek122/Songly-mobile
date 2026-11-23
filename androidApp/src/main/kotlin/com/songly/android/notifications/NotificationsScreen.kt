@@ -63,6 +63,7 @@ fun NotificationsScreen(
 	onOpenPost: (postId: String) -> Unit,
 	onOpenCommunity: (communityId: String) -> Unit = {},
 	onOpenFriends: () -> Unit = {},
+	onOpenAdminReports: () -> Unit = {},
 	onOpenMailPreferences: () -> Unit = {},
 ) {
 	val state = viewModel.uiState
@@ -132,6 +133,7 @@ fun NotificationsScreen(
 									is NotificationTarget.Post -> onOpenPost(target.postId)
 									is NotificationTarget.Community -> onOpenCommunity(target.communityId)
 									NotificationTarget.Friends -> onOpenFriends()
+									NotificationTarget.AdminReports -> onOpenAdminReports()
 									null -> Unit
 								}
 							},
@@ -226,6 +228,7 @@ internal sealed interface NotificationTarget {
 	data class Post(val postId: String) : NotificationTarget
 	data class Community(val communityId: String) : NotificationTarget
 	data object Friends : NotificationTarget
+	data object AdminReports : NotificationTarget
 }
 
 internal fun targetOf(notification: Notification): NotificationTarget? = when (notification.type) {
@@ -239,12 +242,14 @@ internal fun targetOf(notification: Notification): NotificationTarget? = when (n
 
 	"FRIEND_REQUEST_RECEIVED" -> NotificationTarget.Friends
 
+	"POST_REPORTED" -> NotificationTarget.AdminReports
+
 	else -> null
 }
 
 internal val MODERATION_DECISIONS = setOf(
 	"COMMUNITY_BANNED", "COMMUNITY_POST_REMOVED", "COMMUNITY_COMMENT_REMOVED", "POST_REPORT_DISMISSED",
-	"BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED",
+	"BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED", "POST_REMOVED",
 )
 
 internal fun isModerationDecision(notification: Notification): Boolean = notification.type in MODERATION_DECISIONS
@@ -263,6 +268,8 @@ internal fun notificationText(notification: Notification): String {
 		"COMMUNITY_COMMENT_REMOVED" -> "Moderacja usunęła Twój komentarz w społeczności"
 		"COMMUNITY_POST_REPORTED" -> "Nowe zgłoszenie posta do rozpatrzenia"
 		"POST_REPORT_DISMISSED" -> "Moderacja odrzuciła Twoje zgłoszenie"
+		"POST_REPORTED" -> "Nowe zgłoszenie posta do rozpatrzenia przez administrację"
+		"POST_REMOVED" -> "Administracja usunęła Twój post"
 		"BAN_APPEAL_SUBMITTED" -> "Nowe odwołanie od bana do rozpatrzenia"
 		"BAN_APPEAL_ACCEPTED" -> "Moderacja uznała Twoje odwołanie — ban zdjęty"
 		"BAN_APPEAL_REJECTED" -> "Moderacja odrzuciła Twoje odwołanie od bana"

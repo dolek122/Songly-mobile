@@ -40,7 +40,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,6 +54,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.songly.android.moderation.ReportPostDialog
+import com.songly.android.moderation.ReportPostViewModel
+import com.songly.android.moderation.reportThanks
 import com.songly.android.ui.Avatar
 import com.songly.android.ui.DeletePostDialog
 import com.songly.android.ui.EmptyState
@@ -59,6 +65,8 @@ import com.songly.android.ui.SonglyFab
 import com.songly.android.ui.SonglyMark
 import com.songly.android.ui.TabTopBar
 import com.songly.shared.model.FriendNowPlaying
+import com.songly.shared.model.Post
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,10 +79,27 @@ fun FeedScreen(
 	onOpenNotifications: () -> Unit,
 	onAccountSuspended: () -> Unit = {},
 	onOpenFriendsPresence: () -> Unit = {},
+	createReportViewModel: ((postId: String) -> ReportPostViewModel)? = null,
 ) {
 	val state = viewModel.uiState
 	val listState = rememberLazyListState()
 	val snackbarHostState = remember { SnackbarHostState() }
+	val scope = rememberCoroutineScope()
+	var reportingPost by remember { mutableStateOf<Post?>(null) }
+
+	val reporting = reportingPost
+	if (reporting != null && createReportViewModel != null) {
+		val reportViewModel = remember(reporting.id) { createReportViewModel(reporting.id) }
+		ReportPostDialog(
+			viewModel = reportViewModel,
+			onReported = {
+				reportingPost = null
+				scope.launch { snackbarHostState.showSnackbar(reportThanks(reporting.communityId)) }
+			},
+			onDismiss = { reportingPost = null },
+			inCommunity = reporting.communityId != null,
+		)
+	}
 
 	LaunchedEffect(Unit) {
 		viewModel.onScreenShown()
@@ -183,6 +208,11 @@ fun FeedScreen(
 								onToggleShare = { viewModel.toggleShare(post) },
 								onDelete = { viewModel.requestDeletePost(post.id) },
 								onOpenAuthor = { onOpenUserProfile(post.authorId) },
+								onReport = if (createReportViewModel != null && post.authorId != state.currentUserId) {
+									{ reportingPost = post }
+								} else {
+									null
+								},
 							)
 						}
 						if (state.isLoadingMore || state.appendErrorMessage != null) {

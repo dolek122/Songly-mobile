@@ -723,6 +723,21 @@ class SonglyApiClient internal constructor(
 		http.post("$base/api/v1/admin/communities/$communityId/bans/$userId/escalation-rejection").ensureSuccessOrThrow()
 
 	@Throws(Exception::class)
+	suspend fun adminPostReports(page: Int = 0, size: Int = 20): Page<PostReport> =
+		http.get("$base/api/v1/admin/post-reports") {
+			parameter("page", page)
+			parameter("size", size)
+		}.decodeOrThrow()
+
+	@Throws(Exception::class)
+	suspend fun dismissAdminReport(reportId: String) =
+		http.post("$base/api/v1/admin/post-reports/$reportId/dismissal").ensureSuccessOrThrow()
+
+	@Throws(Exception::class)
+	suspend fun removePostAsAdmin(postId: String) =
+		http.delete("$base/api/v1/admin/posts/$postId").ensureSuccessOrThrow()
+
+	@Throws(Exception::class)
 	suspend fun platformModerationLog(userId: String? = null, page: Int = 0, size: Int = 20): Page<ModerationLogEntry> =
 		http.get("$base/api/v1/admin/moderation-log") {
 			userId?.let { parameter("userId", it) }

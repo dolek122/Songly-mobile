@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.songly.android.account.SuspendedScreen
 import com.songly.android.account.SuspendedViewModel
 import com.songly.android.admin.AdminScreen
+import com.songly.android.admin.AdminSection
 import com.songly.android.admin.AdminViewModel
 import com.songly.android.auth.ForgotPasswordScreen
 import com.songly.android.auth.ForgotPasswordViewModel
@@ -570,6 +571,7 @@ private fun LoggedInNav(
 						showAdmin = true
 						adminViewModel.showLogFor(userId)
 					},
+					createReportViewModel = createReportViewModel,
 				)
 			}
 
@@ -611,6 +613,7 @@ private fun LoggedInNav(
 				onBack = { showAdmin = false },
 				onOpenUserProfile = openUserProfile,
 				onOpenCommunity = { showAdmin = false; communityDetailId = it },
+				onOpenPost = openPost,
 			)
 
 			showMatches -> {
@@ -698,6 +701,7 @@ private fun LoggedInNav(
 					onOpenPost = openPost,
 					onOpenCommunity = { communityDetailId = it },
 					onOpenFriends = { showFriends = true },
+					onOpenAdminReports = { showAdmin = true; adminViewModel.select(AdminSection.REPORTS) },
 					onOpenMailPreferences = { showMailPreferences = true },
 				)
 			}
@@ -755,6 +759,7 @@ private fun LoggedInNav(
 							onOpenNotifications = { showNotifications = true },
 							onAccountSuspended = { suspended = null },
 							onOpenFriendsPresence = { showFriendsPresence = true },
+							createReportViewModel = createReportViewModel,
 						)
 
 						MainTab.MUSIC -> NowPlayingScreen(

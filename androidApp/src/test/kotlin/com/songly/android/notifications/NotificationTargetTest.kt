@@ -42,6 +42,13 @@ class NotificationTargetTest {
 	}
 
 	@Test
+	fun platformReportOpensAdminQueue_andRemovedPostHasNoTarget() {
+		assertEquals(NotificationTarget.AdminReports, targetOf(notification("POST_REPORTED")))
+		assertNull(targetOf(notification("POST_REMOVED")))
+		assertEquals("Administracja usunęła Twój post", notificationText(notification("POST_REMOVED")))
+	}
+
+	@Test
 	fun banNotificationDoesNotNameModerator() {
 		assertEquals("Moderacja zbanowała Cię w społeczności", notificationText(notification("COMMUNITY_BANNED")))
 	}
@@ -59,8 +66,9 @@ class NotificationTargetTest {
 		listOf(
 			"COMMUNITY_BANNED", "COMMUNITY_POST_REMOVED", "COMMUNITY_COMMENT_REMOVED", "POST_REPORT_DISMISSED",
 			"BAN_APPEAL_ACCEPTED", "BAN_APPEAL_REJECTED", "BAN_ESCALATION_ACCEPTED", "BAN_ESCALATION_REJECTED",
+			"POST_REMOVED",
 		).forEach { assertTrue(it, isModerationDecision(notification(it))) }
-		listOf("POST_LIKED", "COMMUNITY_MODERATOR_GRANTED", "COMMUNITY_POST_REPORTED", "BAN_APPEAL_SUBMITTED")
+		listOf("POST_LIKED", "COMMUNITY_MODERATOR_GRANTED", "COMMUNITY_POST_REPORTED", "BAN_APPEAL_SUBMITTED", "POST_REPORTED")
 			.forEach { assertFalse(it, isModerationDecision(notification(it))) }
 	}
 }
